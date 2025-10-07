@@ -6,6 +6,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
+# Global vectorizer
+vectorizer = TfidfVectorizer(stop_words='english')
+
+vectorizer = TfidfVectorizer(stop_words='english')
+
 def find_matches(db: Session, user_id: int):
     """Find matches for user's items"""
     user_items = db.query(Item).filter(Item.user_id == user_id, Item.active == True).all()
@@ -99,3 +104,50 @@ def score_candidates(item: Item, candidates):
     matches.sort(key=lambda x: x["score"], reverse=True)
 
     return matches
+
+def score_pair(item_a, item_b):
+    """Calculate the score for a pair of items based on wants and offers."""
+    # Text similarity between wants and offers
+    wants_a = ' '.join(item_a.wants or [])
+    offers_b = ' '.join(item_b.offers or [])
+    sim_wants_offers = cosine_similarity(
+        vectorizer.transform([wants_a]),
+        vectorizer.transform([offers_b])
+    )[0][0] if wants_a and offers_b else 0.0
+
+    offers_a = ' '.join(item_a.offers or [])
+    wants_b = ' '.join(item_b.wants or [])
+    sim_offers_wants = cosine_similarity(
+        vectorizer.transform([offers_a]),
+        vectorizer.transform([wants_b])
+    )[0][0] if offers_a and wants_b else 0.0
+
+    # Combine scores
+    score = 0.5 * sim_wants_offers + 0.5 * sim_offers_wants
+    return score, sim_wants_offers, sim_offers_wants
+
+def match_for_item(db: Session, item_id: int, top_k: int = 5):
+    """Find top-k matches for a given item."""
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if not item:
+        return []
+
+    candidates = find_candidates(db, item)
+    scored_matches = []
+
+    for candidate in candidates:
+        score, sim_wo, sim_ow = score_pair(item, candidate)
+        if score > 0.5:  # Threshold for a valid match
+            scored_matches.append({
+                "item_a": item.id,
+                "item_b": candidate.id,
+                "score": score,
+                "reasons": {
+                    "sim_wants_offers": sim_wo,
+                    "sim_offers_wants": sim_ow
+                },
+                "status": "new"
+            })
+
+    scored_matches.sort(key=lambda x: x["score"], reverse=True)
+    return scored_matches[:top_k]

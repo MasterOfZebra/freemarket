@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS items (
   title TEXT,
   description TEXT,
   metadata JSONB,
+  wants TEXT[] NOT NULL DEFAULT '{}',
+  offers TEXT[] NOT NULL DEFAULT '{}',
   active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
@@ -53,7 +55,10 @@ CREATE TABLE IF NOT EXISTS matches (
   computed_by TEXT DEFAULT 'rule-based',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   notified BOOLEAN DEFAULT FALSE,
-  notified_at TIMESTAMP WITH TIME ZONE
+  notified_at TIMESTAMP WITH TIME ZONE,
+  reasons JSONB,
+  status TEXT DEFAULT 'new' CHECK (status IN ('new', 'notified', 'accepted_a', 'accepted_b', 'matched', 'rejected', 'expired')),
+  UNIQUE (LEAST(item_a, item_b), GREATEST(item_a, item_b))
 );
 
 -- Ratings table
@@ -99,6 +104,10 @@ CREATE INDEX IF NOT EXISTS idx_items_title_gin ON items USING GIN (to_tsvector('
 CREATE INDEX IF NOT EXISTS idx_profiles_data_gin ON profiles USING GIN (data);
 CREATE INDEX IF NOT EXISTS idx_items_metadata_gin ON items USING GIN (metadata);
 CREATE INDEX IF NOT EXISTS idx_notifications_payload_gin ON notifications USING GIN (payload);
+
+-- GIN indexes for arrays
+CREATE INDEX IF NOT EXISTS idx_items_wants_gin ON items USING GIN (wants);
+CREATE INDEX IF NOT EXISTS idx_items_offers_gin ON items USING GIN (offers);
 
 -- Function to update trust score
 CREATE OR REPLACE FUNCTION update_trust_score()

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, List
 from datetime import datetime
 
 # User schemas
@@ -46,6 +46,8 @@ class ItemBase(BaseModel):
     description: Optional[str] = None
     item_metadata: Optional[Dict[str, Any]] = None
     active: bool = True
+    wants: Optional[List[str]] = None
+    offers: Optional[List[str]] = None
 
 class ItemCreate(ItemBase):
     user_id: int
@@ -62,6 +64,8 @@ class Item(ItemBase):
 class MatchBase(BaseModel):
     score: float
     computed_by: str = "rule-based"
+    reasons: Optional[Dict[str, Any]] = None
+    status: str = "new"
 
 class MatchCreate(MatchBase):
     item_a: int
@@ -74,6 +78,7 @@ class Match(MatchBase):
     created_at: datetime
     notified: bool
     notified_at: Optional[datetime]
+    status: str
 
     class Config:
         from_attributes = True

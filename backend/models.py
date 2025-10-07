@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey, ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -44,6 +44,8 @@ class Item(Base):
     item_metadata = Column(JSON)
     active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    wants = Column(ARRAY(String), nullable=True)  # List of desired items
+    offers = Column(ARRAY(String), nullable=True)  # List of offered items
 
     user = relationship("User", back_populates="items")
 
@@ -58,6 +60,8 @@ class Match(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     notified = Column(Boolean, default=False)
     notified_at = Column(DateTime(timezone=True))
+    reasons = Column(JSON, nullable=True)  # Explanation for the match
+    status = Column(String, default="new")  # new, notified, accepted_a, accepted_b, matched, rejected, expired
 
 class Rating(Base):
     __tablename__ = "ratings"

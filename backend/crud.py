@@ -49,6 +49,8 @@ def create_item(db: Session, item: ItemCreate):
         title=item.title,
         description=item.description,
         item_metadata=item.item_metadata,
+        wants=item.wants,
+        offers=item.offers,
         active=item.active
     )
     db.add(db_item)
@@ -72,7 +74,9 @@ def create_match(db: Session, match: MatchCreate):
         item_a=match.item_a,
         item_b=match.item_b,
         score=match.score,
-        computed_by=match.computed_by
+        computed_by=match.computed_by,
+        reasons=match.reasons,
+        status=match.status
     )
     db.add(db_match)
     db.commit()
