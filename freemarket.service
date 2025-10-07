@@ -1,0 +1,20 @@
+[Unit]
+Description=Gunicorn instance to serve FreeMarket app
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/freemarket
+EnvironmentFile=/opt/freemarket/.env
+ExecStart=/opt/freemarket/venv/bin/uvicorn freemarket.main:app --host 127.0.0.1 --port 8000 --workers 4 --access-log --log-level info
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=freemarket
+
+[Install]
+WantedBy=multi-user.target
