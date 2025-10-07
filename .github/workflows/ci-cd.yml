@@ -14,47 +14,48 @@ env:
 jobs:
   # Run backend checks only if a backend folder exists
   test-backend:
-    if: ${{ hashFiles('backend/**') != '' }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Check backend presence
+      run: |
+        if [ ! -d "backend" ]; then
+          echo "No backend directory found, skipping backend checks";
+          exit 0;
+        fi
 
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
-    - name: Install dependencies
+    - name: Backend checks (conditional)
       run: |
+        if [ ! -d "backend" ]; then
+          echo "No backend directory found, skipping backend checks";
+          exit 0;
+        fi
+        python -V
+        cd backend
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-    - name: Run basic backend checks
-      run: |
-        # Lightweight import/importability check
-        python - <<'PY'
-        try:
-            import main  # noqa: F401
-            print('Backend imports successfully')
-        except Exception as e:
-            print('Backend import failed:', e)
-            raise SystemExit(1)
-        PY
+        python -c "import importlib; importlib.import_module('main'); print('Backend imports successfully')"
 
   # Run frontend checks only if a package.json exists in src
   test-frontend:
-    if: ${{ hashFiles('src/package.json') != '' }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./src
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Check frontend presence
+      run: |
+        if [ ! -f "src/package.json" ]; then
+          echo "No frontend package.json found, skipping frontend checks";
+          exit 0;
+        fi
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
@@ -64,6 +65,7 @@ jobs:
         cache-dependency-path: src/package-lock.json
 
     - name: Install dependencies
+      working-directory: ./src
       run: |
         if [ -f package-lock.json ]; then
           npm ci;
@@ -72,6 +74,7 @@ jobs:
         fi
 
     - name: Run tests (if script exists)
+      working-directory: ./src
       run: |
         if grep -q '"test"[[:space:]]*:' package.json; then
           npm test -- --coverage --watchAll=false;
@@ -80,6 +83,7 @@ jobs:
         fi
 
     - name: Build (if script exists)
+      working-directory: ./src
       run: |
         if grep -q '"build"[[:space:]]*:' package.json; then
           npm run build;
