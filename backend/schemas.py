@@ -1,15 +1,15 @@
-from pydantic import BaseModel
-from typing import Optional, Dict, Any, List, List
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, Dict, Any, List
 from datetime import datetime
+from decimal import Decimal
 
 # User schemas
 class UserBase(BaseModel):
-    username: Optional[str] = None
-    telegram_id: int
+    username: Optional[str]
     contact: Optional[Dict[str, Any]] = None
 
 class UserCreate(UserBase):
-    telegram_id: int
+    username: str
 
 class User(UserBase):
     id: int
@@ -17,26 +17,30 @@ class User(UserBase):
     created_at: datetime
     last_active_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Profile schemas
 class ProfileBase(BaseModel):
-    data: Dict[str, Any]
+    name: str  # Required field for profile name
+    category: str  # Required field for profile category
+    description: str  # Required field for profile description
+    avatar_url: Optional[str] = None  # Optional field for avatar URL
     location: Optional[str] = None
     visibility: bool = True
 
 class ProfileCreate(ProfileBase):
-    user_id: int
+    # Prefer username; keep optional user_id for backward compatibility in tests
+    username: Optional[str] = None
+    user_id: Optional[int] = None
 
 class Profile(ProfileBase):
     id: int
     user_id: int
+    username: str  # Include username in the response
     created_at: datetime
     updated_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Item schemas
 class ItemBase(BaseModel):
@@ -48,17 +52,23 @@ class ItemBase(BaseModel):
     active: bool = True
     wants: Optional[List[str]] = None
     offers: Optional[List[str]] = None
+    value_min: Optional[Decimal] = None
+    value_max: Optional[Decimal] = None
+    lease_term: Optional[str] = None  # ISO 8601 duration string
+    is_money: bool = False
 
 class ItemCreate(ItemBase):
-    user_id: int
+    # Accept either user_id (legacy) or username (new). Keep user_id for backward compatibility in tests.
+    user_id: Optional[int] = None
+    username: Optional[str] = None
 
 class Item(ItemBase):
     id: int
     user_id: int
     created_at: datetime
+    expires_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Match schemas
 class MatchBase(BaseModel):
@@ -78,10 +88,9 @@ class Match(MatchBase):
     created_at: datetime
     notified: bool
     notified_at: Optional[datetime]
-    status: str
+    status: str = "new"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Rating schemas
 class RatingBase(BaseModel):
@@ -90,8 +99,8 @@ class RatingBase(BaseModel):
     tx_id: Optional[str] = None
 
 class RatingCreate(RatingBase):
-    from_user: int
-    to_user: int
+    from_username: str
+    to_username: str
 
 class Rating(RatingBase):
     id: int
@@ -99,8 +108,7 @@ class Rating(RatingBase):
     to_user: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Notification schemas
 class NotificationBase(BaseModel):
@@ -117,5 +125,4 @@ class Notification(NotificationBase):
     created_at: datetime
     sent_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

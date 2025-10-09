@@ -1,0 +1,4 @@
+# file: C:\Users\user\Desktop\FreeMarket\backend\ml\embeddings.py
+# hypothesis_version: 6.140.3
+
+[768, 3600, 'all-MiniLM-L6-v2']

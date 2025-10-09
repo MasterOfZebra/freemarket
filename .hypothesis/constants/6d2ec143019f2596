@@ -1,0 +1,4 @@
+# file: C:\Users\user\Desktop\FreeMarket\backend\crud.py
+# hypothesis_version: 6.140.3
+
+[404, 'User not found', 'id', 'queued', 'sent', 'sent_at', 'status', 'trust_score']

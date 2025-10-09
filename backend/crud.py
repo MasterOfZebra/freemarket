@@ -2,18 +2,18 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from .models import User, Profile, Item, Match, Rating, Notification
 from .schemas import UserCreate, ProfileCreate, ItemCreate, MatchCreate, RatingCreate, NotificationCreate
+from fastapi import HTTPException
 
 # User CRUD
 def get_user(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
 
-def get_user_by_telegram(db: Session, telegram: int):
-    return db.query(User).filter(User.telegram_id == telegram).first()
+def get_user_by_username(db: Session, username: str):
+    return db.query(User).filter(User.username == username).first()
 
 def create_user(db: Session, user: UserCreate):
     db_user = User(
-        telegram_id=user.telegram_id,
-        username=user.username,
+    username=user.username,
         contact=user.contact
     )
     db.add(db_user)
@@ -26,9 +26,22 @@ def get_user_profiles(db: Session, user_id: int):
     return db.query(Profile).filter(Profile.user_id == user_id).all()
 
 def create_profile(db: Session, profile: ProfileCreate):
+    # Resolve username to user_id or use user_id directly
+    user = None
+    if getattr(profile, "username", None):
+        user = db.query(User).filter(User.username == profile.username).first()
+    elif getattr(profile, "user_id", None) is not None:
+        user = db.query(User).filter(User.id == profile.user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
     db_profile = Profile(
-        user_id=profile.user_id,
-        data=profile.data,
+        user_id=user.id,  # Use resolved user_id
+        name=profile.name,
+        category=profile.category,
+        description=profile.description,
+        avatar_url=profile.avatar_url,
         location=profile.location,
         visibility=profile.visibility
     )
@@ -88,19 +101,53 @@ def get_user_ratings(db: Session, user_id: int):
     return db.query(Rating).filter(Rating.from_user == user_id).all()
 
 def create_rating(db: Session, rating: RatingCreate):
+    # Support multiple possible field names on RatingCreate (safe getattr fallbacks)
+    from_username = getattr(rating, "from_username", getattr(rating, "from_user", None))
+    to_username = getattr(rating, "to_username", getattr(rating, "to_user", None))
+
+    from_user = get_user_by_username(db, from_username) if from_username else None
+    to_user = get_user_by_username(db, to_username) if to_username else None
+    if not from_user or not to_user:
+        raise HTTPException(status_code=404, detail="User(s) not found")
+
+    # Helper to safely extract an integer id from a SQLAlchemy object or raw value
+    def _extract_id(obj):
+        val = getattr(obj, "id", obj)
+        try:
+            return int(val)
+        except Exception:
+            # If we cannot convert, return the original value (fallback)
+            return val
+
+    from_user_id = _extract_id(from_user)
+    to_user_id = _extract_id(to_user)
+
+    # Safely extract score, comment and tx_id with common alternate names
+    score = getattr(rating, "score", getattr(rating, "rating", None))
+    if score is None:
+        raise HTTPException(status_code=400, detail="Missing rating score")
+    try:
+        score = float(score)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid rating score")
+
+    comment = getattr(rating, "comment", getattr(rating, "message", None))
+    tx_id = getattr(rating, "tx_id", getattr(rating, "transaction_id", None))
+
     db_rating = Rating(
-        from_user=rating.from_user,
-        to_user=rating.to_user,
-        score=rating.score,
-        comment=rating.comment,
-        tx_id=rating.tx_id
+        from_user=from_user_id,
+        to_user=to_user_id,
+        score=score,
+        comment=comment,
+        tx_id=tx_id
     )
     db.add(db_rating)
     db.commit()
     db.refresh(db_rating)
 
-    # Update trust score
-    update_trust_score(db, rating.to_user)
+    # Update trust score using a plain int id when available
+    if isinstance(to_user_id, int):
+        update_trust_score(db, to_user_id)
 
     return db_rating
 
@@ -113,6 +160,18 @@ def update_trust_score(db: Session, user_id: int):
 
 # Notification CRUD
 def create_notification(db: Session, notification: NotificationCreate):
+    # Check soft-throttle: if user has ignored >5 notifications in last 24h, skip
+    from datetime import datetime, timedelta
+    recent_ignored = db.query(Notification).filter(
+        Notification.user_id == notification.user_id,
+        Notification.status == "queued",
+        Notification.created_at > datetime.utcnow() - timedelta(hours=24)
+    ).count()
+
+    if recent_ignored > 5:
+        # Skip notification to avoid spam
+        return None
+
     db_notification = Notification(
         user_id=notification.user_id,
         channel=notification.channel,

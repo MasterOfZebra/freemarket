@@ -1,0 +1,4 @@
+# file: C:\Users\user\Desktop\FreeMarket\backend\database.py
+# hypothesis_version: 6.140.3
+
+['Creating tables...', 'DATABASE_URL', 'REDIS_URL', '__main__']

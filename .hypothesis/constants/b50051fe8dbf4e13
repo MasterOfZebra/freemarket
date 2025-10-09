@@ -1,0 +1,4 @@
+# file: C:\Users\user\Desktop\FreeMarket\backend\test_data\fixtures.py
+# hypothesis_version: 6.140.3
+
+[0.7, 0.8, 0.9, 'iPhone', 'user_A', 'user_B', 'user_C', 'Инструменты', 'Книги', 'Роман', 'Старая книга', 'Шуруповёрт', 'Электроника', 'айфон', 'книга', 'роман', 'шуруповёрт']

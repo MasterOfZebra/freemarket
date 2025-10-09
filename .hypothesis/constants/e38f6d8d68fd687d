@@ -1,0 +1,4 @@
+# file: C:\Users\user\Desktop\FreeMarket\backend\models.py
+# hypothesis_version: 6.140.3
+
+[0.0, 'Item', 'Profile', 'Rating', 'Rating.from_user', 'Rating.to_user', 'User', 'ab_metrics', 'api_metrics', 'exchange_chains', 'from_user_rel', 'items', 'items.id', 'matches', 'mutual_matches', 'new', 'notifications', 'profiles', 'proposed', 'queued', 'ratings', 'ratings_given', 'ratings_received', 'rule-based', 'telegram', 'to_user_rel', 'user', 'users', 'users.id']

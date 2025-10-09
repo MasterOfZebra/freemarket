@@ -1,0 +1,4 @@
+# file: C:\Users\user\Desktop\FreeMarket\backend\main.py
+# hypothesis_version: 6.140.3
+
+[400, 404, 8000, '*', '/', '/health', '/items/', '/items/{item_id}', '/matches/{item_id}', '/profiles/', '/profiles/{user_id}', '/ratings/', '/ratings/{user_id}', '/users/', '/users/{user_id}', '0.0.0.0', '1.0.0', 'FreeMarket API', 'Item not found', 'Match accepted', 'Match not found', 'Match rejected', 'User not found', '__main__', 'accepted_a', 'accepted_b', 'find_matches', 'healthy', 'id', 'item_a', 'item_b', 'item_id', 'match_for_item', 'match_offer', 'matched', 'matched_at', 'message', 'mutual_accepted', 'mutual_match_id', 'new', 'offer_id', 'rejected', 'status', 'title', 'user_id']
