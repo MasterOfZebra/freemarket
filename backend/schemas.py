@@ -126,3 +126,78 @@ class Notification(NotificationBase):
     sent_at: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)
+
+# Listing schemas
+class ListingBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    offers: list[str] = []
+    wants: list[str] = []
+
+class ListingCreate(ListingBase):
+    user_id: int
+
+class Listing(ListingBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Category schemas (for marketplace taxonomy)
+class CategoryBase(BaseModel):
+    name: str
+    slug: str
+    section: str  # "wants" or "offers"
+    parent_id: Optional[int] = None
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class CategoryCreate(CategoryBase):
+    pass
+
+
+class CategoryResponse(CategoryBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime]
+    subcategories: Optional[List["CategoryResponse"]] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Market Listing schemas
+class MarketListingBase(BaseModel):
+    type: str  # "wants" or "offers"
+    title: str
+    description: Optional[str] = None
+    category_id: int
+    subcategory_id: Optional[int] = None
+    location: Optional[str] = None
+    contact: str
+
+
+class MarketListingCreate(MarketListingBase):
+    user_id: int
+
+
+class MarketListingResponse(MarketListingBase):
+    id: int
+    user_id: int
+    status: str  # "active" or "archived"
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Hierarchical category tree (for frontend)
+class CategoryTree(CategoryResponse):
+    subcategories: Optional[List["CategoryTree"]] = None
+
+
+CategoryTree.model_rebuild()
+CategoryResponse.model_rebuild()

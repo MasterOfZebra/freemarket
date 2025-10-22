@@ -1,0 +1,4 @@
+# file: C:\Users\user\Desktop\FreeMarket\backend\crud.py
+# hypothesis_version: 6.140.3
+
+[400, 404, 'Category not found', 'Invalid rating score', 'Listing not found', 'Missing rating score', 'User not found', 'User(s) not found', 'active', 'archived', 'comment', 'from_user', 'from_username', 'id', 'message', 'queued', 'rating', 'score', 'sent', 'sent_at', 'status', 'to_user', 'to_username', 'transaction_id', 'trust_score', 'tx_id', 'user_id', 'username', 'value']

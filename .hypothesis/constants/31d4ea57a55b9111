@@ -1,0 +1,4 @@
+# file: C:\Users\user\Desktop\FreeMarket\backend\ab_testing.py
+# hypothesis_version: 6.140.3
+
+[0.0, 0.05, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 'accepted_a', 'accepted_b', 'avg_accept_rate', 'avg_conversion', 'control', 'match_count', 'matched', 'mutual_match', 'score_threshold', 'sent', 'top_k', 'type', 'updated_at', 'variant_a', 'variant_b']

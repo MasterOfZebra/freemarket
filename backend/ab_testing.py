@@ -3,9 +3,10 @@ A/B Testing Module for Match Threshold Optimization
 """
 
 from sqlalchemy.orm import Session
-from .models import AbMetric, Match, Notification, User
-from .database import SessionLocal
+from backend.models import AbMetric, Match, Notification, User
+from backend.database import SessionLocal
 from datetime import datetime, timedelta
+from typing import Any, cast
 import logging
 
 logger = logging.getLogger(__name__)
@@ -88,18 +89,18 @@ def update_ab_metrics(db: Session, user_id: int):
     ).first()
 
     if metric:
-        metric.match_accept_rate = match_accept_rate
-        metric.conversion_rate = float(conversion_rate)
-        metric.time_to_match = timedelta(seconds=avg_time_to_match)
+        metric.match_accept_rate = cast(Any, float(match_accept_rate))
+        metric.conversion_rate = cast(Any, float(conversion_rate))
+        metric.time_to_match = cast(Any, timedelta(seconds=avg_time_to_match))
         setattr(metric, "match_count", total_matches)
         setattr(metric, "updated_at", datetime.utcnow())
     else:
         metric = AbMetric(
             user_id=user_id,
             config_key=config_key,
-            match_accept_rate=match_accept_rate,
-            conversion_rate=conversion_rate,
-            time_to_match=timedelta(seconds=avg_time_to_match),
+            match_accept_rate=cast(Any, match_accept_rate),
+            conversion_rate=cast(Any, conversion_rate),
+            time_to_match=cast(Any, timedelta(seconds=avg_time_to_match)),
             match_count=total_matches
         )
         db.add(metric)

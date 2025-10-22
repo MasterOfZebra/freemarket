@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from backend.database import Base
-from backend import models  # ensure models are registered on Base
+from .database import Base
+from . import models  # ensure models are registered on Base
 
 @pytest.fixture(scope="function")
 def session():

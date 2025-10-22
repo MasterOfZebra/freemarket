@@ -1,0 +1,4 @@
+# file: C:\Users\user\Desktop\FreeMarket\backend\models.py
+# hypothesis_version: 6.140.3
+
+[0.0, '1', 'Category', 'Item', 'Listing', 'ListingOffer', 'ListingWant', 'MarketListing', 'Profile', 'Rating', 'Rating.from_user', 'Rating.to_user', 'User', 'ab_metrics', 'active', 'all, delete-orphan', 'api_metrics', 'archived', 'categories', 'categories.id', 'category', 'category_id', 'created_at', 'exchange_chains', 'from_user_rel', 'items', 'items.id', 'listing', 'listing_offers', 'listing_wants', 'listings', 'listings.id', 'market_listings', 'matches', 'mutual_matches', 'new', 'notifications', 'offers', 'parent', 'parent_id', 'profiles', 'proposed', 'queued', 'ratings', 'ratings_given', 'ratings_received', 'rule-based', 'section', 'slug', 'status', 'telegram', 'to_user_rel', 'type', 'user', 'users', 'users.id', 'wants']

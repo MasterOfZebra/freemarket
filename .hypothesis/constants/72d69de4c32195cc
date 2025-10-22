@@ -1,0 +1,4 @@
+# file: C:\Users\user\Desktop\FreeMarket\backend\schemas.py
+# hypothesis_version: 6.140.3
+
+['CategoryResponse', 'CategoryTree', 'new', 'queued', 'rule-based', 'telegram']

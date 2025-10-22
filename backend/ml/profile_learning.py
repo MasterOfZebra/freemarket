@@ -3,8 +3,8 @@ Compute user vectors from history of accepted matches.
 This is a lightweight in-memory/resdis-backed implementation to start with.
 """
 from typing import List, Optional
-from ..database import redis_client
-from .embeddings import get_embedding
+from backend.database import redis_client
+from backend.ml.embeddings import get_embedding
 import numpy as np
 import json
 

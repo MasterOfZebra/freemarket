@@ -1,6 +1,6 @@
 import pytest
-from backend.test_data.fixtures import create_users, create_items
-from backend.models import Item
+from .test_data.fixtures import create_users, create_items
+from .models import Item
 from datetime import datetime
 
 def test_filter_expired_items(session):

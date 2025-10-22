@@ -9,7 +9,7 @@ import os
 import time
 sys.path.insert(0, os.path.dirname(__file__))
 
-from tasks import process_task_queue
+from backend.tasks import process_task_queue
 
 def main():
     print("Starting background worker...")

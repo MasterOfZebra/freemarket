@@ -5,10 +5,11 @@ from typing import List, Optional, cast, Dict, Any
 import uvicorn
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+import json
 
-from .database import SessionLocal, engine
-from .models import Base as ModelBase, Item as ItemModel, Match as MatchModel, Rating as RatingModel, Profile as ProfileModel, User as UserModel, Notification
-from .schemas import (
+from backend.database import SessionLocal, engine, redis_client
+from backend.models import Base as ModelBase, Item as ItemModel, Match as MatchModel, Rating as RatingModel, Profile as ProfileModel, User as UserModel, Notification, Category, MarketListing
+from backend.schemas import (
     User,
     UserCreate,
     Profile,
@@ -20,11 +21,18 @@ from .schemas import (
     Rating,
     RatingCreate,
     NotificationCreate,
+    Listing as ListingSchema,
+    ListingCreate as ListingCreateSchema,
+    CategoryResponse,
+    CategoryTree,
+    MarketListingResponse,
+    MarketListingCreate as MarketListingCreateSchema,
 )
-from .crud import create_user as create_user_crud, create_profile as create_profile_crud, create_rating as create_rating_crud, create_item as create_item_crud, create_match, create_notification
-from .crud import get_user_by_username as get_user_by_telegram, get_user, get_user_profiles, get_user_matches, get_user_ratings
-from .matching import find_matches, match_for_item
-from .tasks import enqueue_task
+from backend.crud import create_user as create_user_crud, create_profile as create_profile_crud, create_rating as create_rating_crud, create_item as create_item_crud, create_match, create_notification
+from backend.crud import get_user_by_username as get_user_by_telegram, get_user, get_user_profiles, get_user_matches, get_user_ratings
+from backend.crud import get_categories, get_category_by_id, get_category_by_slug, get_market_listings, get_market_listing_by_id, create_market_listing, archive_market_listing
+from backend.matching import find_matches, match_for_item
+from backend.tasks import enqueue_task
 
 # Create database tables
 ModelBase.metadata.create_all(bind=engine)
@@ -401,15 +409,11 @@ def read_user_ratings(username: str, db: Session = Depends(get_db)):
     user = get_user_by_telegram(db, username=username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    # Ensure user.id is treated as a plain int for the get_user_ratings call
+    # Ensurated as a plain int for the get_user_ratings calle user.id is tre
     user_id_val: int = cast(int, user.id)
     ratings = get_user_ratings(db, user_id=user_id_val)
     return ratings
 
-# Health check
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
 
 @app.get("/matches/{item_id}/optimal", response_model=List[Dict[str, Any]])
 def get_optimal_matches(item_id: int, db: Session = Depends(get_db)):
@@ -723,3 +727,397 @@ def mark_notification_read(notification_id: int, db: Session = Depends(get_db)):
     notification.is_read = True
     db.commit()
     return {"message": "Notification marked as read"}
+
+# Listings endpoints
+from backend.models import Listing as ListingModel, ListingOffer as ListingOfferModel, ListingWant as ListingWantModel
+
+@app.post("/listings/", response_model=ListingSchema, status_code=201)
+def create_listing(payload: ListingCreateSchema, db: Session = Depends(get_db)):
+    # Create base listing
+    listing = ListingModel(title=payload.title, description=payload.description, user_id=payload.user_id)
+    db.add(listing)
+    db.commit()
+    db.refresh(listing)
+
+    # Insert offers
+    offers = payload.offers or []
+    for name in offers:
+        if name:
+            db.add(ListingOfferModel(listing_id=listing.id, item_name=str(name)))
+
+    # Insert wants
+    wants = payload.wants or []
+    for name in wants:
+        if name:
+            db.add(ListingWantModel(listing_id=listing.id, item_name=str(name)))
+
+    db.commit()
+    db.refresh(listing)
+
+    # Build response (flatten offers/wants)
+    listing_offers = [o.item_name for o in db.query(ListingOfferModel).filter(ListingOfferModel.listing_id == listing.id).all()]
+    listing_wants = [w.item_name for w in db.query(ListingWantModel).filter(ListingWantModel.listing_id == listing.id).all()]
+    return {
+        "id": listing.id,
+        "user_id": listing.user_id,
+        "title": listing.title,
+        "description": listing.description,
+        "offers": listing_offers,
+        "wants": listing_wants,
+        "created_at": listing.created_at,
+        "updated_at": listing.updated_at,
+    }
+
+@app.get("/listings/", response_model=List[ListingSchema])
+def list_listings(db: Session = Depends(get_db)):
+    listings = db.query(ListingModel).all()
+    results = []
+    for l in listings:
+        offers = [o.item_name for o in db.query(ListingOfferModel).filter(ListingOfferModel.listing_id == l.id).all()]
+        wants = [w.item_name for w in db.query(ListingWantModel).filter(ListingWantModel.listing_id == l.id).all()]
+        results.append({
+            "id": l.id,
+            "user_id": l.user_id,
+            "title": l.title,
+            "description": l.description,
+            "offers": offers,
+            "wants": wants,
+            "created_at": l.created_at,
+            "updated_at": l.updated_at,
+        })
+    return results
+
+@app.get("/listings/{listing_id}", response_model=ListingSchema)
+def get_listing(listing_id: int, db: Session = Depends(get_db)):
+    l = db.query(ListingModel).filter(ListingModel.id == listing_id).first()
+    if not l:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    offers = [o.item_name for o in db.query(ListingOfferModel).filter(ListingOfferModel.listing_id == l.id).all()]
+    wants = [w.item_name for w in db.query(ListingWantModel).filter(ListingWantModel.listing_id == l.id).all()]
+    return {
+        "id": l.id,
+        "user_id": l.user_id,
+        "title": l.title,
+        "description": l.description,
+        "offers": offers,
+        "wants": wants,
+        "created_at": l.created_at,
+        "updated_at": l.updated_at,
+    }
+
+
+# ============================================================================
+# Marketplace Wants/Offers Endpoints
+# ============================================================================
+
+@app.get("/sections")
+def get_sections():
+    """Get list of sections (wants, offers)"""
+    return {"sections": ["wants", "offers"]}
+
+
+@app.get("/categories", response_model=List[CategoryTree])
+async def list_categories(section: Optional[str] = None, db: Session = Depends(get_db)):
+    """
+    Get categories tree (with subcategories).
+    Query params:
+    - section: "wants" or "offers" (optional, returns both if not specified)
+    """
+    # Try to get from cache first
+    cache_key = f"categories:tree:{section or 'all'}"
+    cached = await redis_client.get(cache_key)
+    if cached:
+        return json.loads(cached.decode('utf-8'))
+
+    # Get root categories for section(s)
+    if section:
+        root_cats = db.query(Category).filter(
+            Category.parent_id == None,
+            Category.section == section,
+            Category.is_active == True
+        ).order_by(Category.section, Category.sort_order).all()
+    else:
+        # Get all root categories
+        all_cats = db.query(Category).filter(
+            Category.parent_id == None,
+            Category.is_active == True
+        ).order_by(Category.section, Category.sort_order).all()
+        root_cats = all_cats
+
+    # Build tree recursively
+    def build_tree(cat):
+        return {
+            "id": cat.id,
+            "name": cat.name,
+            "slug": cat.slug,
+            "section": cat.section.value,
+            "parent_id": cat.parent_id,
+            "sort_order": cat.sort_order,
+            "is_active": cat.is_active,
+            "created_at": cat.created_at,
+            "updated_at": cat.updated_at,
+            "subcategories": [
+                build_tree(subcat)
+                for subcat in sorted(cat.subcategories, key=lambda x: x.sort_order)
+            ] if hasattr(cat, "subcategories") and cat.subcategories else []
+        }
+
+    tree = [build_tree(cat) for cat in sorted(root_cats, key=lambda x: x.sort_order)]
+
+    # Cache for 5 minutes
+    await redis_client.setex(cache_key, 300, json.dumps(tree))
+
+    return tree
+
+
+@app.get("/categories/{category_id}", response_model=CategoryResponse)
+def get_category(category_id: int, db: Session = Depends(get_db)):
+    """Get a specific category by ID"""
+    category = get_category_by_id(db, category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return category
+
+
+@app.post("/market-listings/", response_model=MarketListingResponse, status_code=201)
+async def create_market_listing_endpoint(
+    listing: MarketListingCreateSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new market listing (Wants or Offers).
+
+    Request:
+    {
+      "type": "wants" or "offers",
+      "title": "Looking for...",
+      "description": "...",
+      "category_id": 1,
+      "subcategory_id": 2 (optional),
+      "location": "City, Country",
+      "contact": "phone or telegram",
+      "user_id": 1
+    }
+    """
+    # Rate limit: max 10 listings per user per hour
+    cache_key = f"ratelimit:listings:user:{listing.user_id}"
+    current_count = await redis_client.get(cache_key)
+    if current_count and int(current_count) >= 10:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 listings per hour.")
+
+    # Create listing
+    db_listing = create_market_listing(db, listing)
+
+    # Increment rate limit counter (1 hour expiry)
+    if current_count:
+        await redis_client.incr(cache_key)
+    else:
+        await redis_client.setex(cache_key, 3600, 1)
+
+    return db_listing
+
+
+@app.get("/market-listings/", response_model=Dict[str, Any])
+def list_market_listings(
+    listing_type: Optional[str] = None,
+    category_id: Optional[int] = None,
+    subcategory_id: Optional[int] = None,
+    q: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """
+    List market listings with filtering.
+
+    Query params:
+    - listing_type: "wants" or "offers"
+    - category_id: filter by category
+    - subcategory_id: filter by subcategory
+    - q: search term (searches title and description)
+    - skip: pagination offset
+    - limit: pagination limit (max 100)
+    """
+    if limit > 100:
+        limit = 100
+
+    listings, total = get_market_listings(
+        db,
+        listing_type=listing_type,
+        category_id=category_id,
+        subcategory_id=subcategory_id,
+        status="active",
+        skip=skip,
+        limit=limit,
+        search_query=q
+    )
+
+    return {
+        "items": [
+            {
+                "id": l.id,
+                "type": l.type.value,
+                "title": l.title,
+                "description": l.description,
+                "category_id": l.category_id,
+                "subcategory_id": l.subcategory_id,
+                "location": l.location,
+                "contact": l.contact,
+                "user_id": l.user_id,
+                "status": l.status.value,
+                "created_at": l.created_at,
+                "updated_at": l.updated_at,
+            }
+            for l in listings
+        ],
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@app.get("/market-listings/{listing_id}", response_model=MarketListingResponse)
+def get_market_listing_endpoint(listing_id: int, db: Session = Depends(get_db)):
+    """Get a specific market listing by ID"""
+    listing = get_market_listing_by_id(db, listing_id)
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    return listing
+
+
+@app.post("/market-listings/{listing_id}/archive", response_model=MarketListingResponse)
+def archive_listing_endpoint(
+    listing_id: int,
+    db: Session = Depends(get_db)
+):
+    """Archive a market listing"""
+    listing = archive_market_listing(db, listing_id)
+    return listing
+
+
+@app.get("/market-listings/wants/all", response_model=Dict[str, Any])
+def list_wants(
+    category_id: Optional[int] = None,
+    subcategory_id: Optional[int] = None,
+    q: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """
+    Получить все объявления в разделе 'ХОЧУ' (wants).
+
+    Query params:
+    - category_id: фильтр по категории
+    - subcategory_id: фильтр по подкатегории
+    - q: поисковый запрос (ищет в названии и описании)
+    - skip: смещение для пагинации
+    - limit: лимит результатов (макс. 100)
+    """
+    if limit > 100:
+        limit = 100
+
+    listings, total = get_market_listings(
+        db,
+        listing_type="wants",
+        category_id=category_id,
+        subcategory_id=subcategory_id,
+        status="active",
+        skip=skip,
+        limit=limit,
+        search_query=q
+    )
+
+    return {
+        "items": [
+            {
+                "id": l.id,
+                "type": l.type.value,
+                "title": l.title,
+                "description": l.description,
+                "category_id": l.category_id,
+                "subcategory_id": l.subcategory_id,
+                "location": l.location,
+                "contact": l.contact,
+                "user_id": l.user_id,
+                "status": l.status.value,
+                "created_at": l.created_at,
+                "updated_at": l.updated_at,
+            }
+            for l in listings
+        ],
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@app.get("/market-listings/offers/all", response_model=Dict[str, Any])
+def list_offers(
+    category_id: Optional[int] = None,
+    subcategory_id: Optional[int] = None,
+    q: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """
+    Получить все объявления в разделе 'ДАРЮ' (offers).
+
+    Query params:
+    - category_id: фильтр по категории
+    - subcategory_id: фильтр по подкатегории
+    - q: поисковый запрос (ищет в названии и описании)
+    - skip: смещение для пагинации
+    - limit: лимит результатов (макс. 100)
+    """
+    if limit > 100:
+        limit = 100
+
+    listings, total = get_market_listings(
+        db,
+        listing_type="offers",
+        category_id=category_id,
+        subcategory_id=subcategory_id,
+        status="active",
+        skip=skip,
+        limit=limit,
+        search_query=q
+    )
+
+    return {
+        "items": [
+            {
+                "id": l.id,
+                "type": l.type.value,
+                "title": l.title,
+                "description": l.description,
+                "category_id": l.category_id,
+                "subcategory_id": l.subcategory_id,
+                "location": l.location,
+                "contact": l.contact,
+                "user_id": l.user_id,
+                "status": l.status.value,
+                "created_at": l.created_at,
+                "updated_at": l.updated_at,
+            }
+            for l in listings
+        ],
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@app.get("/health")
+def health_check(db: Session = Depends(get_db)):
+    """Health check endpoint"""
+    try:
+        # Check DB connection
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
+        # Check Redis connection
+        redis_client.ping()
+        return {"status": "healthy", "timestamp": datetime.utcnow()}
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Service unavailable: {str(e)}")

@@ -10,8 +10,7 @@ lightgbm==4.1.0
 networkx==3.2.1
 redis==5.0.1
 
-# PyTorch and ML
-torch==2.1.2+cpu
-torchvision==0.16.2+cpu
+# PyTorch (CPU) - fixed versions to avoid dependency resolution conflicts
+torch==2.1.0+cpu
+torchvision==0.24.0+cpu
 sentence-transformers==2.2.2
-gunicorn==21.2.0

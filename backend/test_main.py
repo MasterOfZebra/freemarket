@@ -6,9 +6,9 @@ from sqlalchemy.orm import sessionmaker
 import sys
 import os
 
-from backend.main import app
-from backend.database import Base
-from backend.models import User, Profile
+from .main import app
+from .database import Base
+from .models import User, Profile
 
 # Test database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -35,7 +35,9 @@ def client():
 def test_health_check(client):
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "healthy"}
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert "timestamp" in data
 
 def test_create_user(client, db):
     user_data = {"username": f"user_{uuid.uuid4().hex[:8]}"}

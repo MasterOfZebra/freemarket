@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from .models import Item, Match, User
-from .crud import create_match, create_notification
-from .schemas import NotificationCreate
+from backend.models import Item, Match, User
+from backend.crud import create_match, create_notification
+from backend.schemas import NotificationCreate
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
@@ -36,10 +36,10 @@ from sklearn.model_selection import train_test_split
 import networkx as nx
 from collections import defaultdict
 from datetime import datetime, timedelta
-from .database import redis_client  # Import Redis client
+from backend.database import redis_client  # Import Redis client
 import json
-from .ab_testing import get_ab_test_config  # Import from ab_testing module
-from .ml.embeddings import get_embedding
+from backend.ab_testing import get_ab_test_config  # Import from ab_testing module
+from backend.ml.embeddings import get_embedding
 
 # Set up logging
 logger = logging.getLogger(__name__)

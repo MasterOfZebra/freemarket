@@ -4,7 +4,7 @@ No async/await usage to match sync stack.
 """
 import numpy as np
 import logging
-from ..database import redis_client
+from backend.database import redis_client
 
 logger = logging.getLogger(__name__)
 

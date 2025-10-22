@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from .database import SessionLocal, redis_client
-from .models import Match, Item, User, MutualMatch
-from . import matching
-from .crud import create_match, create_notification
-from .schemas import MatchCreate, NotificationCreate
+from backend.database import SessionLocal, redis_client
+from backend.models import Match, Item, User, MutualMatch
+import backend.matching as matching
+from backend.crud import create_match, create_notification
+from backend.schemas import MatchCreate, NotificationCreate
 from datetime import datetime, timedelta
 import json
 import logging
@@ -11,7 +11,7 @@ from typing import Any, cast, List, Awaitable
 
 # Try to import bandit implementation; provide a safe fallback if missing
 try:
-    from .ml.ab_learning import BanditThreshold  # type: ignore
+    from ml.ab_learning import BanditThreshold  # type: ignore
 except Exception:
     class BanditThreshold:  # fallback minimal bandit
         def __init__(self, base_threshold: float = 0.5):
@@ -196,6 +196,14 @@ def match_offer(db: Session, offer_id: int) -> None:
         else:
             reward = 0
         bandit.log_reward(dynamic_threshold, reward)
+
+
+def filter_items_by_section(db: Session, section: str):
+    """Фильтрует элементы по секции (wants/offers)."""
+    return db.query(Item).filter(Item.kind == section).all()
+
+# Пример использования в существующих функциях
+# Вставить вызов filter_items_by_section в нужных местах, где требуется фильтрация.
 
 
 # ────────────────────────────────────────────────

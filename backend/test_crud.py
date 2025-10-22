@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect
-from backend.crud import (
+from .crud import (
     get_user, get_user_by_username, create_user,
     get_user_profiles, create_profile,
     get_user_items, create_item,

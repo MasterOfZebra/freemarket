@@ -3,8 +3,8 @@ Contextual bandit learning stubs: UCB1 and Thompson Sampling.
 State is stored in Redis as simple counters for demo/prototyping.
 """
 from typing import Dict, Tuple
-from . import embeddings
-from ..database import redis_client
+from backend.ml import embeddings
+from backend.database import redis_client
 import math
 
 # Keys namespace
