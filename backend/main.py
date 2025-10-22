@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Add parent directory to sys.path to allow imports from package root
+# This handles both local runs and GitHub Actions where working directory may differ
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -7,9 +14,9 @@ from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 import json
 
-from .database import SessionLocal, engine, redis_client
-from .models import Base as ModelBase, Item as ItemModel, Match as MatchModel, Rating as RatingModel, Profile as ProfileModel, User as UserModel, Notification, Category, MarketListing
-from .schemas import (
+from backend.database import SessionLocal, engine, redis_client
+from backend.models import Base as ModelBase, Item as ItemModel, Match as MatchModel, Rating as RatingModel, Profile as ProfileModel, User as UserModel, Notification, Category, MarketListing
+from backend.schemas import (
     User,
     UserCreate,
     Profile,
@@ -28,11 +35,11 @@ from .schemas import (
     MarketListingResponse,
     MarketListingCreate as MarketListingCreateSchema,
 )
-from .crud import create_user as create_user_crud, create_profile as create_profile_crud, create_rating as create_rating_crud, create_item as create_item_crud, create_match, create_notification
-from .crud import get_user_by_username as get_user_by_telegram, get_user, get_user_profiles, get_user_matches, get_user_ratings
-from .crud import get_categories, get_category_by_id, get_category_by_slug, get_market_listings, get_market_listing_by_id, create_market_listing, archive_market_listing
-from .matching import find_matches, match_for_item
-from .tasks import enqueue_task
+from backend.crud import create_user as create_user_crud, create_profile as create_profile_crud, create_rating as create_rating_crud, create_item as create_item_crud, create_match, create_notification
+from backend.crud import get_user_by_username as get_user_by_telegram, get_user, get_user_profiles, get_user_matches, get_user_ratings
+from backend.crud import get_categories, get_category_by_id, get_category_by_slug, get_market_listings, get_market_listing_by_id, create_market_listing, archive_market_listing
+from backend.matching import find_matches, match_for_item
+from backend.tasks import enqueue_task
 
 app = FastAPI(title="FreeMarket API", version="1.0.0")
 
@@ -268,7 +275,7 @@ def create_item(item: ItemCreate, db: Session = Depends(get_db)):
 
     # Trigger matching for the new item
     try:
-        from .matching import find_candidates, score_candidates
+        from backend.matching import find_candidates, score_candidates
         candidates = find_candidates(db, db_item)
         if candidates:
             scored_matches = score_candidates(db_item, candidates)
@@ -415,7 +422,7 @@ def read_user_ratings(username: str, db: Session = Depends(get_db)):
 @app.get("/matches/{item_id}/optimal", response_model=List[Dict[str, Any]])
 def get_optimal_matches(item_id: int, db: Session = Depends(get_db)):
     """Get optimal matches for an item with reasons."""
-    from .matching import match_for_item
+    from backend.matching import match_for_item
     matches = match_for_item(db, item_id)
     return matches
 
@@ -726,7 +733,7 @@ def mark_notification_read(notification_id: int, db: Session = Depends(get_db)):
     return {"message": "Notification marked as read"}
 
 # Listings endpoints
-from .models import Listing as ListingModel, ListingOffer as ListingOfferModel, ListingWant as ListingWantModel
+from backend.models import Listing as ListingModel, ListingOffer as ListingOfferModel, ListingWant as ListingWantModel
 
 @app.post("/listings/", response_model=ListingSchema, status_code=201)
 def create_listing(payload: ListingCreateSchema, db: Session = Depends(get_db)):
