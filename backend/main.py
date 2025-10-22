@@ -14,7 +14,7 @@ from backend.schemas import (
     UserCreate,
     Profile,
     ProfileCreate,
-    Item as ItemSchema,
+    Item as ItemSchemaResponse,
     ItemCreate,
     Match as MatchSchema,
     MatchCreate,
@@ -33,9 +33,6 @@ from backend.crud import get_user_by_username as get_user_by_telegram, get_user,
 from backend.crud import get_categories, get_category_by_id, get_category_by_slug, get_market_listings, get_market_listing_by_id, create_market_listing, archive_market_listing
 from backend.matching import find_matches, match_for_item
 from backend.tasks import enqueue_task
-
-# Create database tables
-ModelBase.metadata.create_all(bind=engine)
 
 app = FastAPI(title="FreeMarket API", version="1.0.0")
 
@@ -300,7 +297,7 @@ def create_item(item: ItemCreate, db: Session = Depends(get_db)):
         "created_at": db_item.created_at,
     }
 
-@app.put("/items/{item_id}", response_model=ItemSchema)
+@app.put("/items/{item_id}", response_model=ItemSchemaResponse)
 def update_item(item_id: int, item: ItemCreate, db: Session = Depends(get_db)):
     db_item = db.query(ItemModel).filter(ItemModel.id == item_id).one_or_none()
     if not db_item:
@@ -316,7 +313,7 @@ def update_item(item_id: int, item: ItemCreate, db: Session = Depends(get_db)):
         enqueue_task("match_for_item", {"item_id": item_id_val})
     return db_item
 
-@app.get("/items/{item_id}", response_model=ItemSchema)
+@app.get("/items/{item_id}", response_model=ItemSchemaResponse)
 def read_item(item_id: int, db: Session = Depends(get_db)):
     db_item = db.query(ItemModel).filter(ItemModel.id == item_id).first()
     if db_item is None:
