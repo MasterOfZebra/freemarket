@@ -8,10 +8,21 @@ import sys
 
 # Ensure project root is on sys.path for imports.
 # In Docker, env.py lives at /app/alembic/env.py and project root is /app.
-# Locally, it may be backend/alembic/env.py and project root is one level up.
+# Create a fake 'backend' package alias pointing to /app so imports like
+# 'from backend.database import Base' work in the container.
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+
+# If running in container (/app/alembic/env.py), create a 'backend' alias
+# that points to the current directory (/app) so that 'from backend.X import Y'
+# resolves to 'from /app/X import Y'.
+if os.path.basename(PROJECT_ROOT) == 'app' and '/app' in os.path.abspath(__file__):
+    import importlib.util
+    spec = importlib.util.spec_from_loader('backend', loader=None)
+    backend_module = importlib.util.module_from_spec(spec)
+    backend_module.__path__ = [PROJECT_ROOT]
+    sys.modules['backend'] = backend_module
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -23,13 +34,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # add your model's MetaData object here for 'autogenerate' support
-# Try absolute package import first; fallback to flat module layout used in Docker.
-try:
-    from backend.database import Base  # type: ignore
-    from backend import models  # noqa: F401
-except ModuleNotFoundError:
-    from database import Base  # type: ignore
-    import models  # noqa: F401
+from backend.database import Base  # type: ignore
+from backend import models  # noqa: F401
 
 target_metadata = Base.metadata
 
