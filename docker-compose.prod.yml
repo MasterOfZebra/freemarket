@@ -13,6 +13,7 @@ services:
       dockerfile: Dockerfile.backend
     command: gunicorn -k uvicorn.workers.UvicornWorker --workers 4 --bind 0.0.0.0:8000 backend.main:app
     environment:
+      PYTHONPATH: /app
       DATABASE_URL: postgresql://assistadmin_pg:${DB_PASSWORD}@192.168.1.9:5432/assistance_kz
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       REDIS_URL: redis://redis:6379/0
@@ -67,6 +68,7 @@ services:
 volumes:
   redis_data:
   frontend_build:
+
 
 networks:
   freemarket:

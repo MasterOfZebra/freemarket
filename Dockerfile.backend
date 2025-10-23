@@ -26,15 +26,15 @@ WORKDIR /app
 # Copy requirements file
 COPY backend/requirements.txt .
 
-# Install PyTorch CPU versions from official index first (to get wheels, not build from source)
-RUN /opt/venv/bin/pip install --no-cache-dir torch==2.1.2+cpu torchvision==0.16.2+cpu \
+# Install PyTorch CPU versions from official index first (to get wheels, not build from source) 
+RUN /opt/venv/bin/pip install --no-cache-dir torch==2.1.2 torchvision==0.16.2 \
     -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
 # Install remaining dependencies
 RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY backend/ .
+# Copy application code (create backend/ subdirectory to match local structure)
+COPY backend/ backend/
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app \
@@ -50,4 +50,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 
 # Run application using gunicorn with uvicorn worker (ASGI-compatible)
 # For pure uvicorn, uncomment and use: CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--bind", "0.0.0.0:8000", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--workers", "4", "--bind", "0.0.0.0:8000", "backend.main:app"]
