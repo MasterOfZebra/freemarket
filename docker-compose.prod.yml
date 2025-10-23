@@ -34,25 +34,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+    ports:
+      - "80:80"
     volumes:
       - ./frontend/build:/app/build
     networks:
       - freemarket
     depends_on:
       - backend
-    restart: unless-stopped
-
-  nginx:
-    build:
-      context: .
-      dockerfile: ./nginx/Dockerfile
-    ports:
-      - "80:80"
-    networks:
-      - freemarket
-    depends_on:
-      - backend
-      - frontend
     restart: always
 
   bot:
