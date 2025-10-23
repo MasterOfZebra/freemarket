@@ -4,6 +4,12 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 import os
+import sys
+
+# Add parent directories to sys.path for imports
+# This ensures alembic can import backend modules whether in Docker or locally
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.dirname(__file__))
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
