@@ -20,9 +20,10 @@ if PROJECT_ROOT not in sys.path:
 if os.path.basename(PROJECT_ROOT) == 'app' and '/app' in os.path.abspath(__file__):
     import importlib.util
     spec = importlib.util.spec_from_loader('backend', loader=None)
-    backend_module = importlib.util.module_from_spec(spec)
-    backend_module.__path__ = [PROJECT_ROOT]
-    sys.modules['backend'] = backend_module
+    if spec is not None:
+        backend_module = importlib.util.module_from_spec(spec)
+        backend_module.__path__ = [PROJECT_ROOT]
+        sys.modules['backend'] = backend_module
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
