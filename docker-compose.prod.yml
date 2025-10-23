@@ -35,7 +35,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     volumes:
-      - frontend_build:/usr/share/nginx/html
+      - ./frontend/build:/app/build
     networks:
       - freemarket
     depends_on:
@@ -68,7 +68,6 @@ services:
 
 volumes:
   redis_data:
-  frontend_build:
 
 
 networks:
