@@ -6,10 +6,12 @@ from alembic import context
 import os
 import sys
 
-# Add parent directories to sys.path for imports
-# This ensures alembic can import backend modules whether in Docker or locally
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-sys.path.insert(0, os.path.dirname(__file__))
+# Ensure project root is on sys.path for imports.
+# In Docker, env.py lives at /app/alembic/env.py and project root is /app.
+# Locally, it may be backend/alembic/env.py and project root is one level up.
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -20,10 +22,14 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-from backend.database import Base
-from backend import models
+# add your model's MetaData object here for 'autogenerate' support
+# Try absolute package import first; fallback to flat module layout used in Docker.
+try:
+    from backend.database import Base  # type: ignore
+    from backend import models  # noqa: F401
+except ModuleNotFoundError:
+    from database import Base  # type: ignore
+    import models  # noqa: F401
 
 target_metadata = Base.metadata
 
