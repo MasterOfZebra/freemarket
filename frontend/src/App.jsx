@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './App.css';
+import MarketListings from './MarketListings';
 
 function App() {
     const [formData, setFormData] = useState({
@@ -96,6 +97,7 @@ function App() {
                 </label>
                 <button type="submit">Отправить</button>
             </form>
+            <MarketListings />
             <footer>
                 <p>Важно: деньги предоставляются в качестве возвратного кредита под 0 %. Например, вы меняете велосипед на n-сумму на месяц. В конце месяца вы отдаёте обратно ту же сумму, а ваш партнёр — велосипед в изначальном состоянии.</p>
             </footer>

@@ -83,3 +83,39 @@ export const submitRating = async (ratingData) => {
         throw error;
     }
 };
+
+// Market listings (wants/offers)
+export const getMarketListings = async (params = {}) => {
+    try {
+        const qs = new URLSearchParams(params).toString();
+        const url = `${API_BASE_URL}/market-listings/${qs ? `?${qs}` : ''}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to fetch market listings');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching market listings:', error);
+        throw error;
+    }
+};
+
+export const getWants = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/market-listings/wants/all`);
+        if (!response.ok) throw new Error('Failed to fetch wants');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching wants:', error);
+        throw error;
+    }
+};
+
+export const getOffers = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/market-listings/offers/all`);
+        if (!response.ok) throw new Error('Failed to fetch offers');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching offers:', error);
+        throw error;
+    }
+};
