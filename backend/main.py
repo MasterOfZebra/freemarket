@@ -1114,6 +1114,7 @@ def list_offers(
 
 
 @app.get("/health")
+@app.head("/health")
 def health_check(db: Session = Depends(get_db)):
     """Health check endpoint"""
     try:
