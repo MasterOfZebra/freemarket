@@ -26,7 +26,7 @@ WORKDIR /app
 # Copy requirements file
 COPY backend/requirements.txt .
 
-# Install PyTorch CPU versions from official index first (to get wheels, not build from source) 
+# Install PyTorch CPU versions from official index first (to get wheels, not build from source)
 RUN /opt/venv/bin/pip install --no-cache-dir torch==2.1.2 torchvision==0.16.2 \
     -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
