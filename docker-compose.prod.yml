@@ -1,24 +1,4 @@
-version: '3.8'
-
 services:
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: freemarket_db
-      POSTGRES_USER: freemarket_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./backend/schema.sql:/docker-entrypoint-initdb.d/schema.sql
-    networks:
-      - freemarket
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U freemarket_user -d freemarket_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     volumes:
@@ -31,32 +11,28 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    command: gunicorn -k uvicorn.workers.UvicornWorker --workers 4 --bind 0.0.0.0:8000 backend.main:app
     environment:
-      DATABASE_URL: postgresql://freemarket_user:${DB_PASSWORD}@db/freemarket_db
+      DATABASE_URL: postgresql://assistadmin_pg:${DB_PASSWORD}@192.168.1.9:5432/assistance_kz
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       REDIS_URL: redis://redis:6379/0
     networks:
       - freemarket
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
+      - redis
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
-    volumes:
-      - ./backend:/app/backend
-      - ./alembic.ini:/app/alembic.ini
-      - ./alembic:/app/alembic
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+    volumes:
+      - frontend_build:/usr/share/nginx/html
     networks:
       - freemarket
     depends_on:
@@ -67,16 +43,15 @@ services:
     image: nginx:alpine
     ports:
       - "80:80"
-      - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/ssl/certs:ro
+      - ./backend/freemarket.nginx:/etc/nginx/conf.d/default.conf:ro
+      - frontend_build:/usr/share/nginx/html:ro
     networks:
       - freemarket
     depends_on:
       - backend
       - frontend
-    restart: unless-stopped
+    restart: always
 
   bot:
     build:
@@ -84,18 +59,14 @@ services:
       dockerfile: Dockerfile.bot
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      DATABASE_URL: postgresql://freemarket_user:${DB_PASSWORD}@db/freemarket_db
+      DATABASE_URL: postgresql://assistadmin_pg:${DB_PASSWORD}@192.168.1.9:5432/assistance_kz
     networks:
       - freemarket
-    depends_on:
-      db:
-        condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  postgres_data:
   redis_data:
-
+  frontend_build:
 
 networks:
   freemarket:
