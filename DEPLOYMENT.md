@@ -279,4 +279,51 @@ Ensure all services are running and healthy.
 
 ---
 
+## Frontend Build Fixes
+
+If you encounter the following error during the frontend build:
+
+```
+The `npm ci` command can only install with an existing package-lock.json or npm-shrinkwrap.json...
+```
+
+Follow these steps to resolve it:
+
+1. **Generate `package-lock.json` Locally**:
+   - Navigate to the `src` directory:
+     ```bash
+     cd src
+     ```
+   - Run `npm install` to generate the `package-lock.json` file:
+     ```bash
+     npm install
+     ```
+
+2. **Update the Dockerfile**:
+   - Ensure the `Dockerfile.frontend` includes the following line to copy the `package-lock.json` file:
+     ```dockerfile
+     COPY src/package*.json src/package-lock.json ./
+     ```
+
+3. **Rebuild the Docker Image**:
+   - Run the following command to rebuild the frontend image:
+     ```bash
+     docker compose build frontend
+     ```
+
+4. **Restart Services**:
+   - Restart all services to apply the changes:
+     ```bash
+     docker compose up -d
+     ```
+
+5. **Verify Services**:
+   - Check the status of all containers:
+     ```bash
+     docker compose ps
+     ```
+   - Ensure all services are running and healthy.
+
+---
+
 Last updated: 2025-10-25
