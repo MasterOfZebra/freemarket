@@ -57,10 +57,11 @@ jobs:
           exit 0;
         fi
 
-    - name: Set up Node.js
+    - name: Set up Node.js (required >= 20.19 for Vite)
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        # Use 20.19.x explicitly to match Vite's minimum Node requirement
+        node-version: '20.19'
         cache: 'npm'
         cache-dependency-path: src/package-lock.json
 
