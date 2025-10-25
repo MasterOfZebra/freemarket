@@ -7,7 +7,7 @@ export default defineConfig(async () => {
     return {
         plugins: [react()],
         build: {
-            outDir: 'build',
+            outDir: 'dist', // Changed from 'build' to 'dist' to match Dockerfile
         },
         esbuild: {
             charset: 'utf8',
