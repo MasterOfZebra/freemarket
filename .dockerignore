@@ -1,0 +1,11 @@
+node_modules
+.git
+*.log
+test.db
+*.sqlite
+*.pyc
+__pycache__/
+frontend/
+Dockerfile.frontend
+package.json
+frontend/package.json

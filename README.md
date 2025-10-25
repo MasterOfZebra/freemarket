@@ -5,7 +5,7 @@ Open-source платформа обмена товарами и услугами
 ## 🚀 Стек технологий
 - Backend: FastAPI (Python), SQLAlchemy
 - Database: PostgreSQL (локально может использоваться SQLite)
-- Frontend: React (CRA)
+- Frontend: React (Vite)
 - Containerization: Docker, Docker Compose
 - Monitoring: Prometheus, Alertmanager
 - Bot: Aiogram (Telegram)
@@ -23,10 +23,11 @@ FreeMarket/
 │  ├─ requirements.txt   # Зависимости бэкенда
 │  ├─ schema.sql         # Инициализация БД
 │  └─ bot.py             # Telegram-бот (Aiogram)
-├─ src/                  # React frontend (dev из корня через package.json)
+├─ src/                  # React frontend (Vite, запускать из src/)
 ├─ monitoring/           # Prometheus/Alertmanager конфиги
 ├─ Dockerfile.backend    # Backend образ
-├─ Dockerfile.frontend   # Frontend образ
+├─ docker/
+│  ├─ Dockerfile.frontend # Frontend образ
 ├─ docker-compose.prod.yml
 ├─ docs/
 │  ├─ ARCHITECTURE.md    # Архитектура
@@ -48,17 +49,20 @@ python -m uvicorn backend.main:app --reload --port 8000
 curl http://127.0.0.1:8000/health
 ```
 
-Frontend (из корня):
+Frontend (из src/):
 ```bash
+cd src
 npm install
-npm start
+npm run dev
 ```
-Откройте http://localhost:3000
+Откройте http://localhost:5173
 
 ## 🐳 Продакшен (Docker)
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 ```
+(Фронтенд собирается через docker/Dockerfile.frontend, исходники — src/)
+
 Подробнее: см. `docs/DEPLOYMENT.md`.
 
 ## 🔒 Переменные окружения

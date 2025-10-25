@@ -191,11 +191,9 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ## Updated File Structure
 
-The Dockerfiles have been moved to the `docker/` directory for better organization. Ensure the following paths are used in your `docker-compose.prod.yml`:
-
-- Backend: `docker/Dockerfile.backend`
-- Frontend: `docker/Dockerfile.frontend`
-- Bot: `docker/Dockerfile.bot`
+- Frontend: `src/` (Vite, React)
+- Dockerfile for frontend: `docker/Dockerfile.frontend`
+- No more `frontend/` or root `Dockerfile.frontend`
 
 Additionally, the Nginx configuration file is now located in the `config/` directory:
 
@@ -256,9 +254,8 @@ Ensure all services are running and healthy.
 ---
 
 ## Frontend Build Issues
-- Added missing "build" script to `src/package.json` for Vite.
-- Created `frontend/vite.config.js` with basic React configuration.
-- Updated `docker/Dockerfile.frontend` to copy from `frontend/` instead of `src/`.
+- Фронтенд теперь в `src/`, точка входа — `src/index.html`, основной скрипт — `src/main.jsx`.
+- Dockerfile для фронта: `docker/Dockerfile.frontend`.
 
 ### Commands to Rebuild and Restart
 1. Rebuild the images:
