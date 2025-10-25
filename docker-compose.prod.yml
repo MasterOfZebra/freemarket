@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
 
   backend:
+    image: freemarket_backend:latest
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
@@ -29,6 +30,7 @@ services:
       retries: 3
 
   frontend:
+    image: freemarket_frontend:latest
     build:
       context: .
       dockerfile: docker/Dockerfile.frontend
@@ -55,6 +57,7 @@ services:
     restart: always
 
   bot:
+    image: freemarket_bot:latest
     build:
       context: .
       dockerfile: docker/Dockerfile.bot
