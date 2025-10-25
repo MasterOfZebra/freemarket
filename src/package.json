@@ -2,6 +2,7 @@
   "name": "freemarket-frontend",
   "version": "1.0.0",
   "description": "Frontend for FreeMarket application",
+  "type": "module",
   "main": "index.jsx",
   "scripts": {
     "dev": "vite",
