@@ -23,11 +23,11 @@ RUN /opt/venv/bin/pip install --upgrade pip wheel setuptools
 WORKDIR /app
 
 # Copy requirements and install Python dependencies (bot-only)
-COPY requirements.bot.txt ./requirements.txt
+COPY backend/requirements.bot.txt ./requirements.txt
 RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY bot.py .
+COPY backend/bot.py .
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash bot \

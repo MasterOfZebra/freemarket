@@ -225,4 +225,34 @@ Ensure all services are running and healthy.
 
 ---
 
+## Fixes for Build Errors
+
+### Bot Service
+- Ensure the `Dockerfile.bot` references the correct paths:
+  - `COPY backend/requirements.bot.txt ./requirements.txt`
+  - `COPY backend/bot.py .`
+
+### Frontend Service
+- Ensure the `Dockerfile.frontend` references the correct Nginx configuration:
+  - `COPY backend/freemarket.nginx /etc/nginx/conf.d/default.conf`
+
+### Commands to Rebuild and Restart
+1. Rebuild the images:
+   ```bash
+   docker compose -f docker-compose.prod.yml build
+   ```
+2. Restart the services:
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d
+   ```
+
+### Verify Services
+- Check the status of all containers:
+  ```bash
+  docker compose -f docker-compose.prod.yml ps
+  ```
+- Ensure all services are running and healthy.
+
+---
+
 Last updated: 2025-10-25
