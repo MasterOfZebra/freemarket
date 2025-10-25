@@ -1,71 +1,56 @@
-# FreeMarket Server Deployment Guide
+# FreeMarket Deployment Guide
 
-## Pre-Deployment Checklist
+## Overview
 
-Before running the deployment, ensure:
+This guide explains how to deploy the FreeMarket application using Docker and Docker Compose in a production environment.
 
-- [ ] SSH access to production server
-- [ ] Docker and docker-compose installed on server
-- [ ] `.env` file exists on server with all required variables:
-  - `DB_PASSWORD` (PostgreSQL password)
-  - `TELEGRAM_BOT_TOKEN` (Telegram bot token)
-  - `REDIS_URL` (Redis connection string)
-- [ ] Sufficient disk space for Docker images and database
-- [ ] Database backup created (optional but recommended)
-- [ ] Git repository cloned at `/opt/freemarket` (or your custom path)
+---
 
-## Deployment Steps
+## Prerequisites
 
-### 1. SSH into Production Server
+1. **Server Requirements**:
+   - Docker and Docker Compose installed.
+   - At least 4GB of RAM and sufficient disk space.
+2. **Environment Variables**:
+   - Create a `.env` file in the project root with the following variables:
+     ```env
+     DB_PASSWORD=your_postgres_password
+     TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+     REDIS_URL=redis://redis:6379/0
+     DATABASE_URL=postgresql://user:password@db/freemarket_db
+     ```
+3. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/MasterOfZebra/freemarket.git
+   cd freemarket
+   ```
 
+---
+
+## Building and Running Containers
+
+### Step 1: Build Docker Images
+
+Use the following command to build all services:
 ```bash
-ssh user@your-server-ip
-cd /opt/freemarket
+docker-compose -f docker-compose.prod.yml build
 ```
 
-### 2. Verify .env Configuration
+### Step 2: Start Services
 
+Start all services in detached mode:
 ```bash
-cat .env | grep DB_PASSWORD
-cat .env | grep TELEGRAM_BOT_TOKEN
-cat .env | grep REDIS_URL
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
-Ensure all critical variables are set.
+### Step 3: Verify Services
 
-### 3. Run Deployment Script
-
-```bash
-bash deploy-server.sh
-```
-
-This script will:
-1. Pull latest code from git
-2. Validate `.env` file
-3. Build Docker images with `--no-cache`
-4. Start containers using `docker-compose.prod.yml`
-5. Wait for services to be healthy
-6. Apply database migrations (alembic)
-7. Run smoke tests
-
-Expected output:
-```
-✓ Code pulled successfully
-✓ Docker images built successfully
-✓ Containers started
-✓ Migrations completed
-✓ Health check passed
-✓ Deployment completed successfully!
-```
-
-### 4. Verify Deployment
-
-Check container status:
+Check the status of all containers:
 ```bash
 docker-compose -f docker-compose.prod.yml ps
 ```
 
-Expected output (all containers should be "Up"):
+Expected output:
 ```
 NAME                           STATUS
 freemarket_backend_1           Up (healthy)
@@ -76,168 +61,168 @@ freemarket_nginx_1             Up
 freemarket_bot_1               Up
 ```
 
-### 5. Run Smoke Tests
+---
 
+## Health Checks
+
+### Backend Health Check
+
+The backend exposes a health check endpoint:
 ```bash
-bash smoke-tests.sh http://your-server-ip:8000
+curl -X GET http://localhost:8000/health
 ```
 
-Or if using Nginx on port 80:
-```bash
-bash smoke-tests.sh http://your-server-ip
+Expected response:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-10-25T12:34:56.789123"
+}
 ```
 
-Expected tests:
-- ✓ Health Check (HTTP 200)
-- ✓ Create User (HTTP 200)
-- ✓ Get User by Username (HTTP 200)
-- ✓ Create Profile (HTTP 200)
-- ✓ Get Profile (HTTP 200)
-- ✓ Get Categories (HTTP 200)
-- ✓ List Market Listings (HTTP 200)
-- ✓ List Wants (HTTP 200)
-- ✓ List Offers (HTTP 200)
+### Nginx Health Check
 
-### 6. Monitor Logs
-
-Watch real-time logs:
+Verify Nginx is serving the frontend:
 ```bash
-# Backend logs
-docker-compose -f docker-compose.prod.yml logs -f backend
+curl -X GET http://localhost/
+```
 
-# Frontend logs
-docker-compose -f docker-compose.prod.yml logs -f frontend
+---
 
-# Database logs
-docker-compose -f docker-compose.prod.yml logs -f db
+## Applying Database Migrations
 
-# All services
+Run Alembic migrations to ensure the database schema is up-to-date:
+```bash
+docker-compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+```
+
+---
+
+## Logs and Monitoring
+
+### View Logs
+
+View logs for all services:
+```bash
 docker-compose -f docker-compose.prod.yml logs -f
 ```
 
-## Rollback Procedure
+View logs for a specific service (e.g., backend):
+```bash
+docker-compose -f docker-compose.prod.yml logs -f backend
+```
 
-If deployment fails or issues arise:
+### Monitor Resource Usage
 
-### 1. Stop Services
+Check container resource usage:
+```bash
+docker stats
+```
 
+---
+
+## Backup and Restore
+
+### Backup Database
+
+Create a database backup:
+```bash
+docker-compose -f docker-compose.prod.yml exec db pg_dump \
+  -U freemarket_user -d freemarket_db > /backup/freemarket/backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+### Restore Database
+
+Restore the database from a backup:
+```bash
+docker-compose -f docker-compose.prod.yml exec db psql \
+  -U freemarket_user -d freemarket_db < /backup/freemarket/backup_<timestamp>.sql
+```
+
+---
+
+## Stopping and Restarting Services
+
+### Stop All Services
+
+Stop all running containers:
 ```bash
 docker-compose -f docker-compose.prod.yml down
 ```
 
-### 2. Run Rollback Script
+### Restart Services
 
+Restart all services:
 ```bash
-bash rollback.sh
+docker-compose -f docker-compose.prod.yml restart
 ```
-
-### 3. Manual Rollback (if needed)
-
-```bash
-# Restore database from backup
-docker-compose -f docker-compose.prod.yml up -d db
-docker-compose -f docker-compose.prod.yml exec db \
-  psql -U freemarket_user -d freemarket_db < /backup/freemarket/backup_<timestamp>.sql
-```
-
-### 4. Restart Services
-
-```bash
-git checkout HEAD~1  # Go back to previous version
-docker-compose -f docker-compose.prod.yml build
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-## Troubleshooting
-
-### Health Check Fails
-
-```bash
-# Check backend logs
-docker-compose -f docker-compose.prod.yml logs backend
-
-# Check database connection
-docker-compose -f docker-compose.prod.yml exec backend \
-  python -c "from backend.database import SessionLocal; db = SessionLocal(); print('DB OK')"
-```
-
-### Container Crashes
-
-```bash
-# View detailed logs
-docker-compose -f docker-compose.prod.yml logs --tail 100
-
-# Restart specific service
-docker-compose -f docker-compose.prod.yml restart backend
-```
-
-### Database Connection Issues
-
-```bash
-# Test database connectivity
-docker-compose -f docker-compose.prod.yml exec db \
-  pg_isready -U freemarket_user -d freemarket_db
-
-# Check database logs
-docker-compose -f docker-compose.prod.yml logs db
-```
-
-### Out of Disk Space
-
-```bash
-# Clean up Docker resources
-docker system prune -a
-
-# Remove old images
-docker image prune -a
-
-# Check disk usage
-df -h
-docker system df
-```
-
-## Health Check Endpoint
-
-The `/health` endpoint returns:
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-10-22T12:34:56.789123"
-}
-```
-
-If database or Redis is down, it returns HTTP 503.
-
-## Environment Variables Reference
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@db/freemarket_db` |
-| `REDIS_URL` | Redis connection string | `redis://redis:6379/0` |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot API token | `123456789:ABCD...` |
-| `ENV` | Environment name | `production` |
-| `LOG_LEVEL` | Logging level | `info` |
-
-## Post-Deployment Checklist
-
-- [ ] All containers are healthy (`docker-compose ps`)
-- [ ] Smoke tests pass (`bash smoke-tests.sh`)
-- [ ] Health endpoint returns 200 OK
-- [ ] Frontend loads in browser
-- [ ] Can create user and profile
-- [ ] Can view market listings
-- [ ] Monitor logs for 5-10 minutes for any errors
-- [ ] Database has applied migrations successfully
-- [ ] Redis is functioning (used for caching)
-
-## Support
-
-For issues or questions:
-1. Check logs: `docker-compose -f docker-compose.prod.yml logs`
-2. Review this guide's troubleshooting section
-3. Check GitHub issues: https://github.com/MasterOfZebra/freemarket
-4. Contact the development team
 
 ---
 
-Last updated: 2025-10-22
+## Troubleshooting
+
+### Check Container Status
+
+If a container is not running, check its logs:
+```bash
+docker-compose -f docker-compose.prod.yml logs <service_name>
+```
+
+### Rebuild and Restart
+
+If changes were made to the code or configuration:
+```bash
+docker-compose -f docker-compose.prod.yml build
+
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+---
+
+## Additional Notes
+
+- Ensure the `.env` file is properly configured before starting the services.
+- Regularly monitor logs and resource usage to ensure the application is running smoothly.
+- Use health checks to verify the availability of services.
+
+---
+
+# Updated Deployment Guide
+
+## Updated File Structure
+
+The Dockerfiles have been moved to the `docker/` directory for better organization. Ensure the following paths are used in your `docker-compose.prod.yml`:
+
+- Backend: `docker/Dockerfile.backend`
+- Frontend: `docker/Dockerfile.frontend`
+- Bot: `docker/Dockerfile.bot`
+
+Additionally, the Nginx configuration file is now located in the `config/` directory:
+
+- Nginx Config: `config/freemarket.nginx`
+
+## Updated Commands
+
+### Build Docker Images
+
+```bash
+docker-compose -f docker-compose.prod.yml build
+```
+
+### Start Services
+
+```bash
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+### Verify Services
+
+```bash
+docker-compose -f docker-compose.prod.yml ps
+```
+
+Ensure all services are running and healthy.
+
+---
+
+Last updated: 2025-10-25
