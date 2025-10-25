@@ -255,4 +255,28 @@ Ensure all services are running and healthy.
 
 ---
 
+## Frontend Build Issues
+- Added missing "build" script to `src/package.json` for Vite.
+- Created `frontend/vite.config.js` with basic React configuration.
+- Updated `docker/Dockerfile.frontend` to copy from `frontend/` instead of `src/`.
+
+### Commands to Rebuild and Restart
+1. Rebuild the images:
+   ```bash
+   docker compose -f docker-compose.prod.yml build
+   ```
+2. Restart the services:
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d
+   ```
+
+### Verify Services
+- Check the status of all containers:
+  ```bash
+  docker compose -f docker-compose.prod.yml ps
+  ```
+- Ensure all services are running and healthy.
+
+---
+
 Last updated: 2025-10-25
