@@ -829,7 +829,7 @@ async def list_categories(section: Optional[str] = None, db: Session = Depends(g
     """
     # Try to get from cache first
     cache_key = f"categories:tree:{section or 'all'}"
-    cached = await redis_client.get(cache_key)
+    cached = redis_client.get(cache_key)
     if cached:
         return json.loads(cached.decode('utf-8'))
 
@@ -869,7 +869,7 @@ async def list_categories(section: Optional[str] = None, db: Session = Depends(g
     tree = [build_tree(cat) for cat in sorted(root_cats, key=lambda x: x.sort_order)]
 
     # Cache for 5 minutes
-    await redis_client.setex(cache_key, 300, json.dumps(tree))
+    redis_client.setex(cache_key, 300, json.dumps(tree))
 
     return tree
 
@@ -905,7 +905,7 @@ async def create_market_listing_endpoint(
     """
     # Rate limit: max 10 listings per user per hour
     cache_key = f"ratelimit:listings:user:{listing.user_id}"
-    current_count = await redis_client.get(cache_key)
+    current_count = redis_client.get(cache_key)
     if current_count and int(current_count) >= 10:
         raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 listings per hour.")
 
@@ -914,9 +914,9 @@ async def create_market_listing_endpoint(
 
     # Increment rate limit counter (1 hour expiry)
     if current_count:
-        await redis_client.incr(cache_key)
+        redis_client.incr(cache_key)
     else:
-        await redis_client.setex(cache_key, 3600, 1)
+        redis_client.setex(cache_key, 3600, 1)
 
     return db_listing
 
