@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { getUserMatches, getUserProfiles, getUserRatings, submitRating } from './api';
+import { getOffers, getUserMatches, getUserProfiles, getUserRatings, getWants, submitRating } from './api';
 import './Dashboard.css';
 
 function Dashboard() {
+    const [wants, setWants] = useState([]);
+    const [offers, setOffers] = useState([]);
     const [profiles, setProfiles] = useState([]);
     const [matches, setMatches] = useState([]);
     const [ratings, setRatings] = useState([]);
@@ -21,6 +23,14 @@ function Dashboard() {
                 setProfiles(profilesData);
                 setMatches(matchesData);
                 setRatings(ratingsData);
+
+                // Загрузить wants и offers
+                const [wantsData, offersData] = await Promise.all([
+                    getWants(),
+                    getOffers()
+                ]);
+                setWants(wantsData);
+                setOffers(offersData);
             } catch (err) {
                 setError('Ошибка загрузки данных');
             } finally {
@@ -47,6 +57,38 @@ function Dashboard() {
     return (
         <div className="dashboard">
             <h1>Личный кабинет</h1>
+
+            <section>
+                <h2>Все wants</h2>
+                {wants.length === 0 ? (
+                    <p>Нет wants</p>
+                ) : (
+                    wants.map(item => (
+                        <div key={item.id} className="want-card">
+                            <h3>{item.title}</h3>
+                            <p>{item.description}</p>
+                            <p>Категория: {item.category_id}</p>
+                            <p>Пользователь: {item.user_id}</p>
+                        </div>
+                    ))
+                )}
+            </section>
+
+            <section>
+                <h2>Все offers</h2>
+                {offers.length === 0 ? (
+                    <p>Нет offers</p>
+                ) : (
+                    offers.map(item => (
+                        <div key={item.id} className="offer-card">
+                            <h3>{item.title}</h3>
+                            <p>{item.description}</p>
+                            <p>Категория: {item.category_id}</p>
+                            <p>Пользователь: {item.user_id}</p>
+                        </div>
+                    ))
+                )}
+            </section>
 
             <section>
                 <h2>Мои анкеты</h2>

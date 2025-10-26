@@ -1,6 +1,21 @@
 // api.js - API integration functions
 
-const API_BASE_URL = 'http://localhost:8000/api'; // Replace with actual backend URL
+const API_BASE_URL = '/api'; // Use relative path for nginx proxy
+// Get all wants
+export const getWants = async () => {
+    const response = await fetch(`${API_BASE_URL}/market-listings/wants/all`);
+    if (!response.ok) throw new Error('Failed to fetch wants');
+    const data = await response.json();
+    return data.items || [];
+};
+
+// Get all offers
+export const getOffers = async () => {
+    const response = await fetch(`${API_BASE_URL}/market-listings/offers/all`);
+    if (!response.ok) throw new Error('Failed to fetch offers');
+    const data = await response.json();
+    return data.items || [];
+};
 
 // Submit user profile
 export const submitProfile = async (profileData) => {
