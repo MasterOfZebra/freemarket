@@ -821,7 +821,7 @@ def get_sections():
 
 
 @app.get("/categories", response_model=List[CategoryTree])
-async def list_categories(section: Optional[str] = None, db: Session = Depends(get_db)):
+def list_categories(section: Optional[str] = None, db: Session = Depends(get_db)):
     """
     Get categories tree (with subcategories).
     Query params:
@@ -831,7 +831,12 @@ async def list_categories(section: Optional[str] = None, db: Session = Depends(g
     cache_key = f"categories:tree:{section or 'all'}"
     cached = redis_client.get(cache_key)
     if cached:
-        return json.loads(cached.decode('utf-8'))
+        if hasattr(cached, "__await__"):
+            # If redis_client.get is async, await it
+            import asyncio
+            cached = asyncio.get_event_loop().run_until_complete(cached)
+        cached_str = cached.decode('utf-8') if isinstance(cached, bytes) else str(cached)
+        return json.loads(cached_str)
 
     # Get root categories for section(s)
     if section:
@@ -906,8 +911,23 @@ async def create_market_listing_endpoint(
     # Rate limit: max 10 listings per user per hour
     cache_key = f"ratelimit:listings:user:{listing.user_id}"
     current_count = redis_client.get(cache_key)
-    if current_count and int(current_count) >= 10:
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 listings per hour.")
+    if hasattr(current_count, "__await__"):
+        import asyncio
+        current_count = asyncio.get_event_loop().run_until_complete(current_count)
+    if isinstance(current_count, bytes):
+        current_count = current_count.decode("utf-8")
+    # Check if we have a count and convert to int
+    if current_count:
+        if isinstance(current_count, bytes):
+            current_count = current_count.decode("utf-8")
+        if not isinstance(current_count, str):
+            current_count = str(current_count)
+        try:
+            count_val = int(current_count)
+        except (TypeError, ValueError):
+            count_val = 0
+        if count_val >= 10:
+            raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 listings per hour.")
 
     # Create listing
     db_listing = create_market_listing(db, listing)
