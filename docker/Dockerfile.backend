@@ -35,7 +35,10 @@ RUN /opt/venv/bin/pip install --no-cache-dir torch==2.1.2 torchvision==0.16.2 \
 RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY backend/ .
+COPY backend /app/backend
+
+# Ensure package root is in PYTHONPATH (so `import backend` resolves)
+ENV PYTHONPATH=/app
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app \
