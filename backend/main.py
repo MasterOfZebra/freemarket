@@ -945,6 +945,12 @@ def list_market_listings(
     if limit > 100:
         limit = 100
 
+    # Normalize listing_type to match ENUM values in DB
+    if listing_type:
+        listing_type = listing_type.lower()
+        if listing_type in ("offer", "want"):
+            listing_type += "s"
+
     listings, total = get_market_listings(
         db,
         listing_type=listing_type,
