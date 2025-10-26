@@ -911,24 +911,21 @@ async def create_market_listing_endpoint(
     # Rate limit: max 10 listings per user per hour
     cache_key = f"ratelimit:listings:user:{listing.user_id}"
     current_count = redis_client.get(cache_key)
-    if hasattr(current_count, "__await__"):
-        import asyncio
-        current_count = asyncio.get_event_loop().run_until_complete(current_count)
-    if isinstance(current_count, bytes):
-        current_count = current_count.decode("utf-8")
-    # Check if we have a count and convert to int
-    if current_count:
+    count_val = 0
+    if current_count is not None:
         if isinstance(current_count, bytes):
-            current_count = current_count.decode("utf-8")
-        if not isinstance(current_count, str):
-            current_count = str(current_count)
-        try:
-            count_val = int(current_count)
-        except (TypeError, ValueError):
-            count_val = 0
-        if count_val >= 10:
-            raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 listings per hour.")
-
+            try:
+                count_val = int(current_count.decode("utf-8"))
+            except Exception:
+                count_val = 0
+        elif isinstance(current_count, str):
+            try:
+                count_val = int(current_count)
+            except Exception:
+                count_val = 0
+        # Если current_count не bytes и не str, не пытаемся привести к int
+    if count_val >= 10:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 listings per hour.")
     # Create listing
     db_listing = create_market_listing(db, listing)
 
