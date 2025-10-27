@@ -57,11 +57,24 @@ npm run dev
 ```
 Откройте http://localhost:5173
 
-## 🐳 Продакшен (Docker)
+
+## 🐳 Продакшен (Docker, внешний PostgreSQL)
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 ```
-(Фронтенд собирается через docker/Dockerfile.frontend, исходники — src/)
+Фронтенд собирается через `docker/Dockerfile.frontend`, исходники — `src/`.
+
+**Важно:**
+- Для production используйте внешний PostgreSQL (например, 192.168.1.9) и укажите правильный `DATABASE_URL` в `.env`:
+  ```env
+  DATABASE_URL=postgresql://assistadmin_pg:assistMurzAdmin@192.168.1.9:5432/assistance_kz
+  ```
+- Проверьте, что nginx проксирует `/api/` на backend без лишнего префикса `/api` (см. `config/freemarket.nginx`).
+- После изменений конфига перезапустите nginx:
+  ```bash
+  docker compose -f docker-compose.prod.yml restart nginx
+  ```
+- Для диагностики ошибок БД и нехватки места см. раздел "Траблшутинг" в `DEPLOYMENT.md`.
 
 Подробнее: см. `docs/DEPLOYMENT.md`.
 

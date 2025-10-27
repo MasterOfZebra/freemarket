@@ -195,9 +195,88 @@ docker-compose -f docker-compose.prod.yml up -d
 - Dockerfile for frontend: `docker/Dockerfile.frontend`
 - No more `frontend/` or root `Dockerfile.frontend`
 
-Additionally, the Nginx configuration file is now located in the `config/` directory:
 
-- Nginx Config: `config/freemarket.nginx`
+## Nginx Proxy Configuration (Production)
+
+Nginx должен проксировать все запросы к API через путь `/api/` на backend без дополнительного префикса `/api`:
+
+```
+location /api/ {
+   proxy_pass http://backend:8000/;
+   proxy_set_header Host $host;
+   proxy_set_header X-Real-IP $remote_addr;
+   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+   proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+Файл конфига: `config/freemarket.nginx`. После изменений перезапустите nginx:
+```bash
+docker compose -f docker-compose.prod.yml restart nginx
+```
+
+## Использование внешнего PostgreSQL
+
+В продакшене может использоваться внешний сервер PostgreSQL (например, 192.168.1.9). В этом случае:
+
+- В `.env` или переменных окружения укажите:
+  ```env
+  DATABASE_URL=postgresql://assistadmin_pg:assistMurzAdmin@192.168.1.9:5432/assistance_kz
+  ```
+- Проверьте доступность порта 5432:
+  ```bash
+  nc -vz 192.168.1.9 5432
+  # или telnet 192.168.1.9 5432
+  ```
+- Проверьте подключение к базе:
+  ```bash
+  psql -h 192.168.1.9 -U assistadmin_pg assistance_kz
+  # пароль: assistMurzAdmin
+  ```
+
+## Диагностика ошибок Input/output error и нехватки места
+
+Если в логах backend или БД появляется ошибка `Input/output error`:
+
+1. Проверьте свободное место:
+  ```bash
+  df -h
+  ```
+2. Очистите место:
+  ```bash
+  sudo du -h --max-depth=2 / | sort -hr | head -30
+  sudo journalctl --vacuum-time=3d
+  sudo rm -rf /var/log/*.gz /var/log/*.[0-9]
+  docker system prune -af
+  ```
+3. После очистки перезапустите сервисы:
+  ```bash
+  docker compose -f docker-compose.prod.yml restart
+  ```
+4. Проверьте работу API и логи backend/postgres.
+
+## Восстановление и диагностика PostgreSQL (внешний сервер)
+
+1. Проверить процессы и конфиг на сервере БД:
+  ```bash
+  ps aux | grep postgres
+  sudo find / -name postgresql.conf 2>/dev/null
+  sudo ss -tlnp | grep 5432
+  ```
+2. Проверить логи PostgreSQL (на сервере БД):
+  ```bash
+  sudo tail -n 50 /var/log/postgresql/postgresql-*.log
+  ```
+3. Проверить состояние таблиц:
+  ```sql
+  \dt
+  SELECT count(*) FROM market_listings;
+  ```
+
+## Мониторинг и резервное копирование
+
+- Регулярно проверяйте место на диске и состояние БД.
+- Настройте автоматические бэкапы (скрипты, cron, pg_dump).
+- Используйте Prometheus/Alertmanager для мониторинга сервисов.
 
 ## Updated Commands
 
