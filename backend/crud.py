@@ -286,15 +286,52 @@ def get_market_listings(
 ):
     """Get market listings with filtering and pagination"""
     query = db.query(MarketListing)
+    # Normalize listing_type/status to DB enum values to avoid passing invalid strings
+    def _normalize_listing_type(val):
+        if not val:
+            return None
+        # Accept enum, string (any case), singular or plural
+        if isinstance(val, models.ListingSection):
+            return val
+        s = str(val).strip()
+        if s.upper() in ("WANT", "WANTS"):
+            return models.ListingSection.WANT
+        if s.upper() in ("OFFER", "OFFERS"):
+            return models.ListingSection.OFFER
+        s_low = s.lower()
+        if s_low in ("want", "wants"):
+            return models.ListingSection.WANT
+        if s_low in ("offer", "offers"):
+            return models.ListingSection.OFFER
+        return None
 
-    if listing_type:
-        query = query.filter(MarketListing.type == listing_type)
+    def _normalize_status(val):
+        if not val:
+            return None
+        if isinstance(val, models.ListingStatus):
+            return val
+        s = str(val).strip().lower()
+        if s == "active":
+            return models.ListingStatus.ACTIVE
+        if s == "archived":
+            return models.ListingStatus.ARCHIVED
+        # fallback for uppercase inputs
+        if s.upper() == "ACTIVE":
+            return models.ListingStatus.ACTIVE
+        if s.upper() == "ARCHIVED":
+            return models.ListingStatus.ARCHIVED
+        return None
+
+    lt_enum = _normalize_listing_type(listing_type)
+    if lt_enum:
+        query = query.filter(MarketListing.type == lt_enum)
     if category_id:
         query = query.filter(MarketListing.category_id == category_id)
     if subcategory_id:
         query = query.filter(MarketListing.subcategory_id == subcategory_id)
-    if status:
-        query = query.filter(MarketListing.status == status)
+    status_enum = _normalize_status(status)
+    if status_enum:
+        query = query.filter(MarketListing.status == status_enum)
     if search_query:
         search_pattern = f"%{search_query}%"
         query = query.filter(
