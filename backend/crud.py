@@ -381,7 +381,13 @@ def create_market_listing(db: Session, listing: MarketListingCreate):
             raise HTTPException(status_code=400, detail="Subcategory is invalid for this category")
             raise HTTPException(status_code=400, detail="Subcategory is invalid for this category")
 
-    db_listing = MarketListing(**listing.model_dump())
+    listing_dict = listing.model_dump()
+    # Ensure 'type' is always ListingSection Enum
+    if isinstance(listing_dict["type"], str):
+        listing_dict["type"] = models.ListingSection(listing_dict["type"])
+    elif not isinstance(listing_dict["type"], models.ListingSection):
+        raise ValueError("Invalid type for MarketListing")
+    db_listing = MarketListing(**listing_dict)
     db.add(db_listing)
     db.commit()
     db.refresh(db_listing)
