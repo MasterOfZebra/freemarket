@@ -959,14 +959,19 @@ def list_market_listings(
     - skip: pagination offset
     - limit: pagination limit (max 100)
     """
+
     if limit > 100:
         limit = 100
 
     # Normalize listing_type to match ENUM values in DB
     if listing_type:
-        listing_type = listing_type.lower()
-        if listing_type in ("offer", "want"):
-            listing_type += "s"
+        # If Enum, use .value
+        if hasattr(listing_type, "value"):
+            listing_type = listing_type.value
+        elif isinstance(listing_type, str):
+            listing_type = listing_type.lower()
+            if listing_type in ("offer", "want"):
+                listing_type += "s"
 
     listings, total = get_market_listings(
         db,
