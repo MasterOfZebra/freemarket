@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
+import logging
+logger = logging.getLogger(__name__)
 from backend import models
 from backend import schemas
 User = models.User
@@ -333,8 +335,9 @@ def get_market_listings(
 
     lt_value = _normalize_listing_type(listing_type)
     status_value = _normalize_status(status)
-    # Debug print to verify normalization (remove in production)
-    print(f"[DEBUG] get_market_listings: listing_type={listing_type} normalized={lt_value}, status={status} normalized={status_value}")
+
+    # Debug logging to verify normalization (visible in container logs)
+    logger.info(f"get_market_listings: listing_type={listing_type} normalized={lt_value}, status={status} normalized={status_value}")
 
     if lt_value:
         query = query.filter(MarketListing.type == lt_value)
