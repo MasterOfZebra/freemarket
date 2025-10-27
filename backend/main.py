@@ -821,7 +821,7 @@ def get_sections():
 
 
 @app.get("/categories", response_model=List[CategoryTree])
-def list_categories(section: Optional[str] = None, db: Session = Depends(get_db)):
+async def list_categories(section: Optional[str] = None, db: Session = Depends(get_db)):
     """
     Get categories tree (with subcategories).
     Query params:
@@ -829,7 +829,7 @@ def list_categories(section: Optional[str] = None, db: Session = Depends(get_db)
     """
     # Try to get from cache first
     cache_key = f"categories:tree:{section or 'all'}"
-    cached = redis_client.get(cache_key)
+    cached = await redis_client.get(cache_key)
     if cached:
         if hasattr(cached, "__await__"):
             # If redis_client.get is async, await it
@@ -874,7 +874,7 @@ def list_categories(section: Optional[str] = None, db: Session = Depends(get_db)
     tree = [build_tree(cat) for cat in sorted(root_cats, key=lambda x: x.sort_order)]
 
     # Cache for 5 minutes
-    redis_client.setex(cache_key, 300, json.dumps(tree))
+    await redis_client.setex(cache_key, 300, json.dumps(tree))
 
     return tree
 
@@ -910,7 +910,7 @@ async def create_market_listing_endpoint(
     """
     # Rate limit: max 10 listings per user per hour
     cache_key = f"ratelimit:listings:user:{listing.user_id}"
-    current_count = redis_client.get(cache_key)
+    current_count = await redis_client.get(cache_key)
     count_val = 0
     if current_count is not None:
         if isinstance(current_count, bytes):
@@ -931,9 +931,9 @@ async def create_market_listing_endpoint(
 
     # Increment rate limit counter (1 hour expiry)
     if current_count:
-        redis_client.incr(cache_key)
+        await redis_client.incr(cache_key)
     else:
-        redis_client.setex(cache_key, 3600, 1)
+        await redis_client.setex(cache_key, 3600, 1)
 
     return db_listing
 
@@ -1137,14 +1137,14 @@ def list_offers(
 
 
 @app.get("/health")
-def health_check(db: Session = Depends(get_db)):
+async def health_check(db: Session = Depends(get_db)):
     """Health check endpoint"""
     try:
         # Check DB connection
         from sqlalchemy import text
         db.execute(text("SELECT 1"))
         # Check Redis connection
-        redis_client.ping()
+        await redis_client.ping()
         return {"status": "healthy", "timestamp": datetime.utcnow()}
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Service unavailable: {str(e)}")

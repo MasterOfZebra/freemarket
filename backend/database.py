@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
-import redis
+import redis.asyncio as redis
 
 # Database URL - set via environment variable
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./exchange.db")
