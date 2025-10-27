@@ -292,52 +292,46 @@ def get_market_listings(
             return None
         # Accept enum, string (any case), singular or plural
         if isinstance(val, models.ListingSection):
-            return val
+            return val.value
         s = str(val).strip()
         if s.upper() in ("WANT", "WANTS"):
-            return models.ListingSection.WANT
+            return models.ListingSection.WANT.value
         if s.upper() in ("OFFER", "OFFERS"):
-            return models.ListingSection.OFFER
+            return models.ListingSection.OFFER.value
         s_low = s.lower()
         if s_low in ("want", "wants"):
-            return models.ListingSection.WANT
+            return models.ListingSection.WANT.value
         if s_low in ("offer", "offers"):
-            return models.ListingSection.OFFER
+            return models.ListingSection.OFFER.value
         return None
 
     def _normalize_status(val):
         if not val:
             return None
         if isinstance(val, models.ListingStatus):
-            return val
+            return val.value
         s = str(val).strip().lower()
         if s == "active":
-            return models.ListingStatus.ACTIVE
+            return models.ListingStatus.ACTIVE.value
         if s == "archived":
-            return models.ListingStatus.ARCHIVED
+            return models.ListingStatus.ARCHIVED.value
         # fallback for uppercase inputs
         if s.upper() == "ACTIVE":
-            return models.ListingStatus.ACTIVE
+            return models.ListingStatus.ACTIVE.value
         if s.upper() == "ARCHIVED":
-            return models.ListingStatus.ARCHIVED
+            return models.ListingStatus.ARCHIVED.value
         return None
 
-    lt_enum = _normalize_listing_type(listing_type)
-    # If normalization returned a Python Enum member, use its .value (the DB string)
-    if isinstance(lt_enum, models.ListingSection):
-        query = query.filter(MarketListing.type == lt_enum.value)
-    elif lt_enum:
-        query = query.filter(MarketListing.type == lt_enum)
+    lt_value = _normalize_listing_type(listing_type)
+    if lt_value:
+        query = query.filter(MarketListing.type == lt_value)
     if category_id:
         query = query.filter(MarketListing.category_id == category_id)
     if subcategory_id:
         query = query.filter(MarketListing.subcategory_id == subcategory_id)
-    status_enum = _normalize_status(status)
-    # Use .value for enum members to ensure SQL uses the correct enum string
-    if isinstance(status_enum, models.ListingStatus):
-        query = query.filter(MarketListing.status == status_enum.value)
-    elif status_enum:
-        query = query.filter(MarketListing.status == status_enum)
+    status_value = _normalize_status(status)
+    if status_value:
+        query = query.filter(MarketListing.status == status_value)
     if search_query:
         search_pattern = f"%{search_query}%"
         query = query.filter(
