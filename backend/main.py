@@ -1046,7 +1046,7 @@ def list_wants(
 
     listings, total = get_market_listings(
         db,
-        listing_type="wants",
+        listing_type="wants",  # Always pass lowercase plural
         category_id=category_id,
         subcategory_id=subcategory_id,
         status="active",
