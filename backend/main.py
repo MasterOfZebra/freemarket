@@ -1103,7 +1103,7 @@ def list_offers(
 
     listings, total = get_market_listings(
         db,
-        listing_type="offers",
+        listing_type="offers",  # Always pass lowercase plural to match DB enum
         category_id=category_id,
         subcategory_id=subcategory_id,
         status="active",
