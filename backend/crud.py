@@ -323,14 +323,20 @@ def get_market_listings(
         return None
 
     lt_enum = _normalize_listing_type(listing_type)
-    if lt_enum:
+    # If normalization returned a Python Enum member, use its .value (the DB string)
+    if isinstance(lt_enum, models.ListingSection):
+        query = query.filter(MarketListing.type == lt_enum.value)
+    elif lt_enum:
         query = query.filter(MarketListing.type == lt_enum)
     if category_id:
         query = query.filter(MarketListing.category_id == category_id)
     if subcategory_id:
         query = query.filter(MarketListing.subcategory_id == subcategory_id)
     status_enum = _normalize_status(status)
-    if status_enum:
+    # Use .value for enum members to ensure SQL uses the correct enum string
+    if isinstance(status_enum, models.ListingStatus):
+        query = query.filter(MarketListing.status == status_enum.value)
+    elif status_enum:
         query = query.filter(MarketListing.status == status_enum)
     if search_query:
         search_pattern = f"%{search_query}%"
