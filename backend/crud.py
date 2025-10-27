@@ -287,6 +287,7 @@ def get_market_listings(
     """Get market listings with filtering and pagination"""
     query = db.query(MarketListing)
     # Normalize listing_type/status to DB enum values to avoid passing invalid strings
+
     def _normalize_listing_type(val):
         if not val:
             return None
@@ -294,15 +295,19 @@ def get_market_listings(
         if isinstance(val, models.ListingSection):
             return val.value
         s = str(val).strip()
-        if s.upper() in ("WANT", "WANTS"):
-            return models.ListingSection.WANT.value
-        if s.upper() in ("OFFER", "OFFERS"):
-            return models.ListingSection.OFFER.value
         s_low = s.lower()
         if s_low in ("want", "wants"):
             return models.ListingSection.WANT.value
         if s_low in ("offer", "offers"):
             return models.ListingSection.OFFER.value
+        # Accept enum names (upper case)
+        if s.upper() == "WANT":
+            return models.ListingSection.WANT.value
+        if s.upper() == "OFFER":
+            return models.ListingSection.OFFER.value
+        # Accept enum values directly
+        if s in (models.ListingSection.WANT.value, models.ListingSection.OFFER.value):
+            return s
         return None
 
     def _normalize_status(val):
@@ -310,26 +315,33 @@ def get_market_listings(
             return None
         if isinstance(val, models.ListingStatus):
             return val.value
-        s = str(val).strip().lower()
-        if s == "active":
+        s = str(val).strip()
+        s_low = s.lower()
+        if s_low == "active":
             return models.ListingStatus.ACTIVE.value
-        if s == "archived":
+        if s_low == "archived":
             return models.ListingStatus.ARCHIVED.value
-        # fallback for uppercase inputs
+        # Accept enum names (upper case)
         if s.upper() == "ACTIVE":
             return models.ListingStatus.ACTIVE.value
         if s.upper() == "ARCHIVED":
             return models.ListingStatus.ARCHIVED.value
+        # Accept enum values directly
+        if s in (models.ListingStatus.ACTIVE.value, models.ListingStatus.ARCHIVED.value):
+            return s
         return None
 
     lt_value = _normalize_listing_type(listing_type)
+    status_value = _normalize_status(status)
+    # Debug print to verify normalization (remove in production)
+    print(f"[DEBUG] get_market_listings: listing_type={listing_type} normalized={lt_value}, status={status} normalized={status_value}")
+
     if lt_value:
         query = query.filter(MarketListing.type == lt_value)
     if category_id:
         query = query.filter(MarketListing.category_id == category_id)
     if subcategory_id:
         query = query.filter(MarketListing.subcategory_id == subcategory_id)
-    status_value = _normalize_status(status)
     if status_value:
         query = query.filter(MarketListing.status == status_value)
     if search_query:
