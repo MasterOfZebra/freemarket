@@ -1,11 +1,17 @@
 server {
     listen 80;
     server_name _;
+    
+    # Set charset UTF-8 for all responses
+    charset UTF-8;
+    charset_types text/html text/xml text/plain text/css text/javascript application/javascript application/json;
 
     # Статика фронта
     location / {
         root /usr/share/nginx/html;
         try_files $uri $uri/ /index.html;
+        # Ensure UTF-8 for HTML
+        add_header Content-Type "text/html; charset=UTF-8";
     }
 
 
@@ -17,6 +23,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # Ensure UTF-8 for JSON responses
+        add_header Content-Type "application/json; charset=UTF-8";
     }
 
     # Прокси health-check backend
@@ -31,6 +39,6 @@ server {
     # Healthcheck для nginx
     location /nginx-health {
         return 200 'ok';
-        add_header Content-Type text/plain;
+        add_header Content-Type "text/plain; charset=UTF-8";
     }
 }
