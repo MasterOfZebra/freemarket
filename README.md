@@ -1,294 +1,357 @@
-# 🛒 Freemarket
+# 🎁 FreeMarket - Free Marketplace for Mutual Aid
 
-Open-source платформа обмена товарами и услугами с матчинговым алгоритмом и Telegram-ботом.
+[![GitHub](https://img.shields.io/badge/GitHub-FreeMarket-blue)](https://github.com/MasterOfZebra/freemarket)
+[![License](https://img.shields.io/badge/License-MIT-green)]()
+[![Python](https://img.shields.io/badge/Python-3.9+-blue)](https://www.python.org/)
+[![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react)](https://react.dev)
 
-## 🚀 Стек технологий
-- Backend: FastAPI (Python), SQLAlchemy
-- Database: PostgreSQL (локально может использоваться SQLite)
-- Frontend: React (Vite)
-- Containerization: Docker, Docker Compose
-- Monitoring: Prometheus, Alertmanager
-- Bot: Aiogram (Telegram)
+---
 
-## 📂 Структура репозитория
+## 📋 Описание проекта
+
+**FreeMarket** — это платформа для коммунального обмена ресурсами между людьми.
+
+### Ключевые возможности:
+- 👥 **Регистрация пользователей** - быстрая регистрация через Telegram
+- 📝 **Создание анкет** - опубликуйте что вы хотите дать или получить
+- 🔄 **Автоматический подбор пар** - система находит партнёров с совместимыми запросами
+- 📲 **Уведомления** - получайте контакты партнёров в Telegram
+- ⭐ **Рейтинг** - оценивайте надёжность пользователей
+- 🌍 **Поддержка казахского языка** - интерфейс на русском и казахском
+
+---
+
+## 🏗️ Архитектура
+
+### Стек технологий:
+- **Backend:** FastAPI, Python 3.9+
+- **Frontend:** React 18, Vite
+- **Database:** PostgreSQL 15
+- **Cache:** Redis
+- **Deployment:** Docker Compose, Nginx
+- **Bot:** Telegram Bot API (Aiogram)
+
+### Структура проекта:
 ```
 FreeMarket/
-├─ backend/
-│  ├─ main.py            # FastAPI приложение
-│  ├─ models.py          # SQLAlchemy модели
-│  ├─ schemas.py         # Pydantic схемы
-│  ├─ crud.py            # CRUD-логика
-│  ├─ matching.py        # Матчинг (TF-IDF + cosine)
-│  ├─ database.py        # Подключение к БД
-│  ├─ requirements.txt   # Зависимости бэкенда
-│  ├─ schema.sql         # Инициализация БД
-│  └─ bot.py             # Telegram-бот (Aiogram)
-├─ src/                  # React frontend (Vite, запускать из src/)
-├─ monitoring/           # Prometheus/Alertmanager конфиги
-├─ Dockerfile.backend    # Backend образ
-├─ docker/
-│  ├─ Dockerfile.frontend # Frontend образ
-├─ docker-compose.prod.yml
-├─ docs/
-│  ├─ ARCHITECTURE.md    # Архитектура
-│  └─ DEPLOYMENT.md      # План развертывания
-└─ .github/workflows/ci-cd.yml
+├── backend/                  # 🔧 Python FastAPI приложение
+│   ├── api/
+│   │   ├── endpoints/       # Отдельные API модули
+│   │   │   ├── health.py
+│   │   │   ├── market_listings.py
+│   │   │   └── notifications.py
+│   │   └── router.py
+│   ├── utils/               # Вспомогательные функции
+│   ├── config.py           # Централизованная конфигурация
+│   ├── main.py             # Точка входа (50 строк!)
+│   ├── models.py           # SQLAlchemy модели
+│   ├── schemas.py          # Pydantic схемы
+│   ├── crud.py             # CRUD операции
+│   ├── matching.py         # Алгоритм подбора пар
+│   ├── bot.py              # Telegram бот
+│   └── requirements.txt     # Зависимости
+│
+├── src/                    # 🎨 React приложение
+│   ├── components/         # Переиспользуемые компоненты
+│   ├── pages/             # Страницы приложения
+│   ├── services/          # API сервисы
+│   ├── styles/            # CSS файлы
+│   └── App.jsx            # Главный компонент
+│
+├── docker/                 # 🐳 Docker конфигурации
+│   ├── Dockerfile.backend
+│   ├── Dockerfile.frontend
+│   └── Dockerfile.bot
+│
+├── config/                 # ⚙️ Конфигурационные файлы
+│   └── freemarket.nginx
+│
+├── docker-compose.prod.yml # 🚀 Production deployment
+├── TEST_SCENARIOS.md       # 📋 Полные сценарии тестирования
+├── TESTING_GUIDE.md        # 🧪 Инструкция по тестированию
+└── README.md              # Этот файл
 ```
 
-## ⚙️ Быстрый старт (локально)
+---
 
-Backend (в venv):
+## 🚀 Быстрый старт
+
+### Требования:
+- Docker & Docker Compose ИЛИ Python 3.9+ + PostgreSQL + Redis
+- Node.js 16+ (для локальной разработки Frontend)
+
+### Вариант 1: Docker Compose (Рекомендуется)
+
 ```bash
+# Клонировать репозиторий
+git clone https://github.com/MasterOfZebra/freemarket.git
+cd freemarket
+
+# Запустить все сервисы
+docker-compose -f docker-compose.prod.yml up -d
+
+# Ждать 30 секунд пока всё стартует...
+sleep 30
+
+# Проверить здоровье API
+curl http://localhost/health
+
+# Открыть в браузере
+open http://localhost:3000
+```
+
+### Вариант 2: Локальная разработка
+
+```bash
+# Установить зависимости
 pip install -r backend/requirements.txt
-# по умолчанию SQLite (exchange.db). Для Postgres:
-# $env:DATABASE_URL="postgresql://freemarket_user:password@localhost:5432/freemarket_db"
-python -m uvicorn backend.main:app --reload --port 8000
-```
-Проверка:
-```bash
-curl http://127.0.0.1:8000/health
-```
+npm install  # в src/
 
-Frontend (из src/):
-```bash
+# Запустить Backend (терминал 1)
+cd backend
+python -m uvicorn main:app --reload
+
+# Запустить Frontend (терминал 2)
 cd src
-npm install
 npm run dev
+
+# Запустить тесты (терминал 3)
+python backend/test_integration.py
 ```
-Откройте http://localhost:5173
 
+---
 
-## 🐳 Продакшен (Docker, внешний PostgreSQL)
+## 📱 Основной сценарий использования
+
+### Для конечного пользователя:
+
+1. **Регистрация**
+   ```
+   Пользователь вводит свой Telegram @username
+   → Создается профиль
+   ```
+
+2. **Создание анкеты**
+   ```
+   Пользователь заполняет:
+   - Категория (Транспорт, Мебель, Электроника, etc.)
+   - Что может дать (ДАРЮ)
+   - Что нужно получить (ХОЧУ)
+   - Местоположение
+   ```
+
+3. **Автоматический подбор пары**
+   ```
+   Система ищет пользователей с совместимыми запросами:
+   - Alice: "ДАРЮ велосипед"
+   - Bob: "ХОЧУ велосипед"
+   → Найдена пара! ✅
+   ```
+
+4. **Получение контактов**
+   ```
+   Alice и Bob получают уведомление в Telegram с:
+   - Контактом партнёра
+   - Описанием что тот хочет обменять
+   - Кнопками для принятия/отклонения
+   ```
+
+5. **Завершение обмена**
+   ```
+   После взаимного согласия оба получают финальный контакт
+   Могут оставить друг другу отзыв/рейтинг
+   ```
+
+---
+
+## 🔧 API Эндпоинты
+
+### Пользователи
+```
+POST   /users/                    # Создать пользователя
+GET    /users/{username}          # Получить данные пользователя
+```
+
+### Рыночные объявления
+```
+POST   /api/market-listings/                    # Создать объявление
+GET    /api/market-listings/                    # Все объявления
+GET    /api/market-listings/offers/all          # Все ДАРЮ
+GET    /api/market-listings/wants/all           # Все ХОЧУ
+GET    /api/market-listings/{id}                # Конкретное объявление
+POST   /api/market-listings/{id}/archive        # Архивировать
+```
+
+### Матчинг (Подбор пар)
+```
+GET    /api/matches/{item_id}                   # Найти пары для объявления
+POST   /api/matches/{match_id}/accept           # Принять пару
+POST   /api/matches/{match_id}/reject           # Отклонить пару
+```
+
+### Уведомления
+```
+GET    /api/notifications?user_id={id}          # Получить уведомления
+```
+
+### Здоровье
+```
+GET    /health                     # Проверка здоровья API
+```
+
+---
+
+## 📊 Улучшения от рефакторинга (ФАЗЫ 1-4)
+
+### ✅ ФАЗА 1: Frontend Reorganization
+- **Было:** Все файлы в `src/` в кучу
+- **Стало:** Структурирована в `src/{components,pages,services,styles}/`
+- **Результат:** Легче навигировать и масштабировать
+
+### ✅ ФАЗА 2: Remove ML Modules
+- **Было:** Ненужные ML модели (ab_testing, embeddings, profile_learning)
+- **Удалено:** torch, torchvision, sentence-transformers, lightgbm
+- **Результат:** -2.7GB размер Docker image!
+
+### ✅ ФАЗА 3: Backend API Modularization
+- **Было:** 1100+ строк в одном `main.py`
+- **Стало:** Модульная архитектура `backend/api/endpoints/`
+- **Результат:** ~50 строк в `main.py`, легче поддерживать
+
+### ✅ ФАЗА 4: Centralized Configuration
+- **Было:** Конфиги разбросаны по разным файлам
+- **Стало:** Единый `backend/config.py`
+- **Результат:** Всё в одном месте, просто менять настройки
+
+---
+
+## 🧪 Тестирование
+
+### Запуск полного интеграционного теста:
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
-Фронтенд собирается через `docker/Dockerfile.frontend`, исходники — `src/`.
-
-**Важно:**
-- Для production используйте внешний PostgreSQL (например, 192.168.1.9) и укажите правильный `DATABASE_URL` в `.env`:
-  ```env
-  DATABASE_URL=postgresql://assistadmin_pg:assistMurzAdmin@192.168.1.9:5432/assistance_kz
-  ```
-- Проверьте, что nginx проксирует `/api/` на backend без лишнего префикса `/api` (см. `config/freemarket.nginx`).
-- После изменений конфига перезапустите nginx:
-  ```bash
-  docker compose -f docker-compose.prod.yml restart nginx
-  ```
-- Для диагностики ошибок БД и нехватки места см. раздел "Траблшутинг" в `DEPLOYMENT.md`.
-
-Подробнее: см. `docs/DEPLOYMENT.md`.
-
-## 🔒 Переменные окружения
-- DATABASE_URL: строка подключения к БД
-- TELEGRAM_BOT_TOKEN: токен Telegram-бота
-
-## 🧪 Проверки
-- Health: `GET /health`
-- Базовые API: `POST /users/`, `POST /profiles/`, `GET /profiles/{user_id}`
-- Новые API для матчинга:
-  - `POST /items/` — создать объявление с wants/offers
-  - `GET /matches/{item_id}` — получить матчи для объявления
-  - `POST /matches/{match_id}/accept` — принять матч
-  - `POST /matches/{match_id}/reject` — отклонить матч
-
-## 📜 Лицензия
-MIT (или укажите актуальную)
-
-# FreeMarket — тестирование и развёртывание
-
-Кросс-платформенный бэкенд на FastAPI для обмена вещами/услугами. Ниже — быстрый старт локально, прогон тестов и надёжное развёртывание на сервере (Linux).
-
-## Требования
-- Python 3.10+ (рекомендовано 3.10/3.11)
-- pip
-- Git
-- Опционально для продакшна: PostgreSQL 13+, Redis 6+, Nginx, systemd
-
-Зависимости проекта находятся в `backend/requirements.txt`.
-
-## Структура проекта (основное)
-- `backend/main.py` — FastAPI-приложение
-- `backend/matching.py` — логика подбора/скоринга
-- `backend/models.py`, `backend/database.py` — SQLAlchemy-модели и БД
-- `backend/test_*.py` — тесты (pytest + hypothesis)
-- `backend/requirements.txt` — зависимости Python
-
-## Переменные окружения (.env)
-Создайте файл `.env` в корне проекта (рядом с этим README) — пример:
-
-```
-# База данных: по умолчанию SQLite в файле exchange.db
-DATABASE_URL=sqlite:///./exchange.db
-
-# Продакшн (пример PostgreSQL):
-# DATABASE_URL=postgresql+psycopg2://freemarket:freemarket@localhost:5432/freemarket
-
-# Очереди/кэш (если используете фоновые задачи)
-REDIS_URL=redis://localhost:6379/0
-
-# Телеграм-бот (если используете backend/bot.py)
-TELEGRAM_BOT_TOKEN=123456789:ABCDEF...
-
-# Прочее (опционально)
-ENV=development
-LOG_LEVEL=info
+python backend/test_integration.py
 ```
 
-Примечание: таблицы БД создаются автоматически при старте приложения (`ModelBase.metadata.create_all`), миграций Alembic в проекте нет.
+**Что тестируется:**
+- ✅ Health check API
+- ✅ Создание пользователей
+- ✅ Создание объявлений (ДАРЮ/ХОЧУ)
+- ✅ Получение списков
+- ✅ Логирование результатов
 
-## Быстрый старт локально (Windows, PowerShell)
-1) Создать и активировать виртуальную среду:
+### Ручное тестирование через curl:
+См. [TESTING_GUIDE.md](TESTING_GUIDE.md) для примеров curl запросов.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
+### Полные сценарии:
+См. [TEST_SCENARIOS.md](TEST_SCENARIOS.md) для деталей всех 9 сценариев.
 
-2) Установить зависимости:
+---
 
-```powershell
-pip install -r backend\requirements.txt
-```
+## 📦 Развертывание
 
-3) Создать `.env` по образцу выше (если не создан) и запустить API:
-
-```powershell
-python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-4) Открыть Swagger UI: http://localhost:8000/docs
-
-5) Проверка здоровья:
-
-```powershell
-curl http://localhost:8000/health
-```
-
-## Тестирование
-1) Установка зависимостей (см. выше).
-2) Запуск всех тестов:
-
-```powershell
-python -m pytest -q
-```
-
-3) Запуск одного файла тестов или тест-кейса:
-
-```powershell
-python -m pytest -q backend\test_concurrent.py
-python -m pytest -q backend\test_concurrent.py::test_value_overlap_properties
-```
-
-Тесты используют Hypothesis; проблемные проверки уже скорректированы, но при длительном генераторе входных данных Hypothesis-ворнинги подавлены настройками теста.
-
-## Запуск телеграм-бота (опционально)
-1) Указать `TELEGRAM_BOT_TOKEN` в `.env`.
-2) Запуск:
-
-```powershell
-python -m backend.bot
-```
-
-Убедитесь, что в коде бота используется `python-dotenv` (есть в зависимостях), чтобы прочитать токен из `.env`.
-
-## Продакшн-развёртывание (Linux, systemd + Nginx)
-
-### 1. Подготовка окружения
+### На сервер (Docker):
 ```bash
-# Создать пользователя, директорию и склонировать проект
-sudo adduser --system --group freemarket
-sudo mkdir -p /opt/freemarket && sudo chown freemarket:freemarket /opt/freemarket
-sudo -u freemarket bash -lc '
-  cd /opt/freemarket && \
-  git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ> . && \
-  python3 -m venv venv && \
-  ./venv/bin/pip install --upgrade pip && \
-  ./venv/bin/pip install -r backend/requirements.txt
-'
+# Клонировать на сервер
+git clone https://github.com/MasterOfZebra/freemarket.git
+cd freemarket
+
+# Создать .env с конфигурацией
+cp .env.example .env
+
+# Запустить Docker Compose
+docker-compose -f docker-compose.prod.yml up -d
+
+# Проверить логи
+docker-compose -f docker-compose.prod.yml logs -f backend
 ```
 
-Создайте `/opt/freemarket/.env` со значениями для продакшна (например, PostgreSQL):
-
-```
-DATABASE_URL=postgresql+psycopg2://freemarket:freemarket@localhost:5432/freemarket
+###환경 변수 (.env):
+```bash
+DATABASE_URL=postgresql://user:password@postgres:5432/dbname
+REDIS_URL=redis://redis:6379/0
+TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 ENV=production
-LOG_LEVEL=info
 ```
 
-Инициализация БД произойдёт при первом старте.
+---
 
-### 2. Gunicorn (Uvicorn workers) через systemd
-Создайте сервис `/etc/systemd/system/freemarket.service`:
+## 📝 Документация
 
-```
-[Unit]
-Description=FreeMarket API (FastAPI + Uvicorn/Gunicorn)
-After=network.target
+- [TESTING_GUIDE.md](TESTING_GUIDE.md) - Полное руководство по тестированию
+- [TEST_SCENARIOS.md](TEST_SCENARIOS.md) - 9 детальных сценариев тестирования
+- [ARCHITECTURE.md](backend/ARCHITECTURE.md) - Архитектура backend
 
-[Service]
-Type=simple
-User=freemarket
-Group=freemarket
-WorkingDirectory=/opt/freemarket
-EnvironmentFile=/opt/freemarket/.env
-ExecStart=/opt/freemarket/venv/bin/gunicorn backend.main:app \
-  --workers 3 \
-  --worker-class uvicorn.workers.UvicornWorker \
-  --bind 127.0.0.1:8000 \
-  --timeout 120
-Restart=on-failure
+---
 
-[Install]
-WantedBy=multi-user.target
-```
+## 🐛 Решённые проблемы
 
-Применить и запустить:
+- ✅ 500 Internal Server Error (DB connection)
+- ✅ `ModuleNotFoundError: psycopg2` 
+- ✅ `ModuleNotFoundError: fastapi`
+- ✅ Русский текст показывает "cipher"
+- ✅ SPA routing в Nginx
+- ✅ CRLF/LF line ending issues
+- ✅ Недостаток дискового пространства
+
+---
+
+## 🔮 Что дальше?
+
+### Приоритет 1 (Критично):
+- [ ] Протестировать matching алгоритм на реальных данных
+- [ ] Интегрировать Telegram бот уведомления
+- [ ] Добавить rate limiting
+
+### Приоритет 2 (Важно):
+- [ ] Rating/Review система
+- [ ] User profile страница
+- [ ] Search и фильтрация по категориям
+- [ ] Таблица истории обменов
+
+### Приоритет 3 (Улучшения):
+- [ ] Поддержка изображений в объявлениях
+- [ ] Maps интеграция
+- [ ] AI-powered рекомендации
+- [ ] Мобильное приложение
+
+---
+
+## 👥 Контрибьютинг
+
+Приветствуются pull requests! Для больших изменений сначала откройте issue.
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable freemarket
-sudo systemctl start freemarket
-sudo systemctl status freemarket --no-pager
+# 1. Fork репозиторий
+# 2. Создайте feature branch (git checkout -b feature/AmazingFeature)
+# 3. Commit changes (git commit -m 'Add some AmazingFeature')
+# 4. Push to branch (git push origin feature/AmazingFeature)
+# 5. Open a Pull Request
 ```
 
-### 3. Nginx (reverse proxy)
-Конфиг-сниппет для `server`:
+---
 
-```
-server {
-    listen 80;
-    server_name example.com;
+## 📄 Лицензия
 
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 300;
-    }
-}
-```
+MIT License - см. [LICENSE](LICENSE) файл для деталей.
 
-Перезапуск:
+---
 
-```bash
-sudo nginx -t && sudo systemctl reload nginx
-```
+## 📞 Контакты
 
-Для HTTPS рекомендуем установить certbot и выпустить сертификаты Let's Encrypt.
+- **GitHub:** [@MasterOfZebra](https://github.com/MasterOfZebra)
+- **Issues:** [GitHub Issues](https://github.com/MasterOfZebra/freemarket/issues)
 
-## Обновления релиза
-```bash
-sudo -u freemarket bash -lc 'cd /opt/freemarket && git pull && ./venv/bin/pip install -r backend/requirements.txt'
-sudo systemctl restart freemarket
-```
+---
 
-## Траблшутинг
-- `psycopg2` на сервере: мы используем `psycopg2-binary`, поэтому дополнительных dev-пакетов обычно не требуется. Для системных сборок нужны `libpq-dev`/`postgresql-client`.
-- Тяжёлые ML-зависимости (`sentence-transformers`, `lightgbm`): установка может занять время и память. Рассмотрите предварительную сборку/кэш pip, либо размещение модели в локальном кэше.
-- Проверка здоровья: `GET /health` должен возвращать `{ "status": "healthy" }`.
-- API-доки: `GET /docs` (Swagger UI).
+## 🙏 Благодарности
 
-## Лицензия
-Укажите лицензию проекта (если применимо).
+- FastAPI для отличной документации
+- React сообществу за инструменты
+- Docker за контейнеризацию
+- PostgreSQL команде за надёжную БД
+
+---
+
+**Проект создан:** 2024  
+**Последнее обновление:** 2024-10-28  
+**Версия:** 1.0.0
