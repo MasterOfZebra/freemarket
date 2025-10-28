@@ -37,6 +37,10 @@ RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY backend /app/backend
 
+# Copy alembic configuration and migrations
+COPY alembic.ini /app/
+COPY backend/alembic /app/alembic
+
 # Ensure package root is in PYTHONPATH (so `import backend` resolves)
 ENV PYTHONPATH=/app
 
