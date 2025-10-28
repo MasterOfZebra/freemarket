@@ -5,9 +5,9 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import Message
 from sqlalchemy.orm import Session
-from .database import SessionLocal
-from .crud import get_pending_notifications, mark_notification_sent
-from .models import User
+from backend.database import SessionLocal
+from backend.crud import get_pending_notifications, mark_notification_sent
+from backend.models import User
 from dotenv import load_dotenv
 
 load_dotenv()
