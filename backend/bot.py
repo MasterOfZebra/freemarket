@@ -49,10 +49,26 @@ def _resolve_chat_id(db: Session, user_id: int) -> int | None:
 
 async def send_notifications():
     """Background task to send pending notifications"""
+    retry_delay = 5  # Start with 5 seconds
+    max_retry_delay = 60  # Max 60 seconds
+    
     while True:
         try:
             db: Session = SessionLocal()
-            notifications = get_pending_notifications(db)
+            
+            try:
+                notifications = get_pending_notifications(db)
+            except Exception as db_error:
+                # Handle database connection errors gracefully
+                db.close()
+                print(f"⚠️  Database connection error (will retry in {retry_delay}s): {type(db_error).__name__}")
+                await asyncio.sleep(retry_delay)
+                # Increase retry delay up to max
+                retry_delay = min(retry_delay * 1.5, max_retry_delay)
+                continue
+
+            # Reset retry delay on success
+            retry_delay = 5
 
             for notification in notifications:
                 try:
@@ -116,7 +132,7 @@ async def send_notifications():
             db.close()
 
         except Exception as e:
-            print(f"Notification loop error: {e}")
+            print(f"⚠️  Notification loop error: {type(e).__name__}: {e}")
 
         await asyncio.sleep(60)  # Check every minute
 
