@@ -88,7 +88,7 @@ function ProfileForm() {
                     <input type="text" name="food" value={formData.resources.food} onChange={handleChange} />
                 </label>
                 <label>
-                    Вычислительные мощности:
+                    Компьютерные услуги:
                     <input type="text" name="compute" value={formData.resources.compute} onChange={handleChange} />
                 </label>
                 <label>
@@ -100,27 +100,13 @@ function ProfileForm() {
                     <input type="text" name="tools" value={formData.resources.tools} onChange={handleChange} />
                 </label>
                 <label>
-                    Прочее:
+                    Другое:
                     <input type="text" name="other" value={formData.resources.other} onChange={handleChange} />
                 </label>
-                <button type="submit">Отправить</button>
+                <button type="submit">Отправить анкету</button>
             </form>
-            <footer>
-                <p>Важно: деньги предоставляются в качестве возвратного кредита под 0 %. Например, вы меняете велосипед на сумму на месяц. В конце месяца вы отдаёте обратно ту же сумму, а ваш партнёр — велосипед в изначальном состоянии.</p>
-            </footer>
         </div>
     );
 }
 
-function App() {
-    return (
-        <Router>
-            <Routes>
-                <Route path="/" element={<ProfileForm />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-            </Routes>
-        </Router>
-    );
-}
-
-export default App;
+export default ProfileForm;
