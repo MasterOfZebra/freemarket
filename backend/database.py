@@ -1,19 +1,21 @@
+"""
+Database configuration and session management
+"""
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
 import redis.asyncio as redis
 
-# Database URL - set via environment variable
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./exchange.db")
+from backend.config import DATABASE_URL, REDIS_URL
 
+# Create engine
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Declarative base for models
 Base = declarative_base()
 
 # Redis for caching and queues
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 redis_client = redis.from_url(REDIS_URL)
 
 if __name__ == "__main__":
