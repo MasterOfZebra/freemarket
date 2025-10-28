@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional, cast, Dict, Any
 import uvicorn
@@ -41,7 +42,22 @@ from backend.crud import get_categories, get_category_by_id, get_category_by_slu
 from backend.matching import find_matches, match_for_item
 from backend.tasks import enqueue_task
 
-app = FastAPI(title="FreeMarket API", version="1.0.0")
+# Custom JSON Response that uses UTF-8 encoding without escaping
+class UTF8JSONResponse(JSONResponse):
+    def render(self, content: Any) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,  # This preserves UTF-8 characters instead of \uXXXX
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+app = FastAPI(
+    title="FreeMarket API",
+    version="1.0.0",
+    default_response_class=UTF8JSONResponse,  # Use UTF-8 JSON for all responses
+)
 
 # CORS middleware for frontend
 app.add_middleware(
@@ -965,13 +981,10 @@ def list_market_listings(
 
     # Normalize listing_type to match ENUM values in DB
     if listing_type:
-        # If Enum, use .value
-        if hasattr(listing_type, "value"):
-            listing_type = listing_type.value
-        elif isinstance(listing_type, str):
-            listing_type = listing_type.lower()
-            if listing_type in ("offer", "want"):
-                listing_type += "s"
+        # listing_type is always a string from the query parameter
+        listing_type = listing_type.lower()
+        if listing_type in ("offer", "want"):
+            listing_type += "s"
 
     listings, total = get_market_listings(
         db,
