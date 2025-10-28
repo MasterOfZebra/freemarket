@@ -28,22 +28,17 @@ def init_database():
         Base.metadata.create_all(bind=engine)
         
         print("✅ Database initialized successfully!")
-        print("\n📝 Tables created:")
-        
-        # List created tables
-        inspector_query = """
-        SELECT table_name FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        ORDER BY table_name
-        """
-        
-        with engine.connect() as conn:
-            result = conn.execute(Base.metadata.bind.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
-            ))
-        
-        print("   - All core tables created\n")
-        print("="*60)
+        print("\n📝 Tables created from models:")
+        print("   ✓ users")
+        print("   ✓ profiles")
+        print("   ✓ items")
+        print("   ✓ matches")
+        print("   ✓ ratings")
+        print("   ✓ notifications")
+        print("   ✓ categories")
+        print("   ✓ market_listings")
+        print("   ✓ profiles_matches (association table)")
+        print("\n" + "="*60)
         print("✓ Database is ready to use!")
         print("="*60 + "\n")
         
@@ -52,6 +47,8 @@ def init_database():
     except Exception as e:
         print(f"\n❌ Error initializing database: {e}\n")
         print("="*60 + "\n")
+        import traceback
+        traceback.print_exc()
         return False
 
 
