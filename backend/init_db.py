@@ -20,13 +20,13 @@ def init_database():
     print("\n" + "="*60)
     print("🗄️  Initializing FreeMarket Database...")
     print("="*60 + "\n")
-    
+
     try:
         print("📊 Creating all tables from SQLAlchemy models...")
-        
+
         # Create all tables defined in models
         Base.metadata.create_all(bind=engine)
-        
+
         print("✅ Database initialized successfully!")
         print("\n📝 Tables created from models:")
         print("   ✓ users")
@@ -41,9 +41,9 @@ def init_database():
         print("\n" + "="*60)
         print("✓ Database is ready to use!")
         print("="*60 + "\n")
-        
+
         return True
-        
+
     except Exception as e:
         print(f"\n❌ Error initializing database: {e}\n")
         print("="*60 + "\n")

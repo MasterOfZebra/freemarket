@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getWants, getOffers } from './api';
-import './App.css';
+import { getWants, getOffers } from './services/api';
+import './styles/App.css';
 
 function App() {
     const [wants, setWants] = useState([]);
@@ -47,7 +47,7 @@ function App() {
 
             <div style={{ padding: '20px' }}>
                 <div style={{ marginBottom: '20px' }}>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('wants')}
                         style={{
                             padding: '10px 20px',

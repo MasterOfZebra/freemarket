@@ -1,0 +1,18 @@
+warning: in the working copy of 'backend/bot.py', CRLF will be replaced by LF the next time Git touches it
+[1mdiff --git a/backend/bot.py b/backend/bot.py[m
+[1mindex fc7790f..ed8ba0b 100644[m
+[1m--- a/backend/bot.py[m
+[1m+++ b/backend/bot.py[m
+[36m@@ -5,9 +5,9 @@[m [mfrom aiogram.client.default import DefaultBotProperties[m
+ from aiogram.enums import ParseMode[m
+ from aiogram.types import Message[m
+ from sqlalchemy.orm import Session[m
+[31m-from .database import SessionLocal[m
+[31m-from .crud import get_pending_notifications, mark_notification_sent[m
+[31m-from .models import User[m
+[32m+[m[32mfrom backend.database import SessionLocal[m
+[32m+[m[32mfrom backend.crud import get_pending_notifications, mark_notification_sent[m
+[32m+[m[32mfrom backend.models import User[m
+ from dotenv import load_dotenv[m
+ [m
+ load_dotenv()[m

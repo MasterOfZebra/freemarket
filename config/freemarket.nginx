@@ -1,7 +1,7 @@
 server {
     listen 80;
     server_name _;
-    
+
     # Set charset UTF-8 for all responses
     charset UTF-8;
     charset_types text/html text/xml text/plain text/css text/javascript application/javascript application/json;

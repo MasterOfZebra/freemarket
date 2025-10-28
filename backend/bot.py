@@ -51,11 +51,11 @@ async def send_notifications():
     """Background task to send pending notifications"""
     retry_delay = 5  # Start with 5 seconds
     max_retry_delay = 60  # Max 60 seconds
-    
+
     while True:
         try:
             db: Session = SessionLocal()
-            
+
             try:
                 notifications = get_pending_notifications(db)
             except Exception as db_error:
