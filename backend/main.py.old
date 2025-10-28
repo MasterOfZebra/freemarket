@@ -1,0 +1,56 @@
+import sys
+import os
+
+# Add parent directory to sys.path to allow imports from package root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
+from typing import Any
+import json
+import uvicorn
+
+from backend.database import engine
+from backend.models import Base as ModelBase
+from backend.api import router as api_router
+
+# Custom JSON Response that uses UTF-8 encoding without escaping
+class UTF8JSONResponse(JSONResponse):
+    def render(self, content: Any) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,  # This preserves UTF-8 characters instead of \uXXXX
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+app = FastAPI(
+    title="FreeMarket API",
+    version="1.0.0",
+    default_response_class=UTF8JSONResponse,  # Use UTF-8 JSON for all responses
+)
+
+# CORS middleware for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost"],  # React dev server and production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include all API routers
+app.include_router(api_router)
+
+# Create database tables
+ModelBase.metadata.create_all(bind=engine)
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "backend.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+    )
