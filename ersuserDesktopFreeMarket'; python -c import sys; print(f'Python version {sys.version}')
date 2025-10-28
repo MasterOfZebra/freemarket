@@ -1,0 +1,10 @@
+[33m6308fac[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m FINAL: Add comprehensive refactoring summary - all 4 phases documented with statistics and conclusions
+[33m6577f01[m UPDATE: Complete comprehensive README with all documentation and project overview
+[33m56fe533[m ADD: Complete testing guide with Docker/Python setup instructions and curl examples
+[33m577701d[m ADD: Comprehensive test scenarios and integration test script - detailed user flow testing (users  listings  matching  notifications)
+[33mb5634fb[m REFACTOR Phase 4: Centralize backend configuration - create config.py, add utils with validators and logging, cleanup legacy files and duplicates
+[33m681a759[m REFACTOR Phase 3: Reorganize Backend API structure - split main.py into modular endpoints (health, market-listings, notifications), simplify main.py, reduce from 1100 lines to ~50
+[33m3b613ee[m CLEANUP Phase 2: Remove unused ML modules (ab_testing, embeddings, ml/), drop heavy dependencies (torch, sentence-transformers, lightgbm) - reduces image size by ~2GB
+[33m00e6af4[m REFACTOR Phase 1: Reorganize frontend structure - move api to services, styles to folder, update imports
+[33m01d8896[m Add nginx configuration to Dockerfile.frontend for proper SPA routing and UTF-8 MIME types
+[33m99c362a[m Add nginx configuration to Dockerfile.frontend for SPA routing and proper MIME types

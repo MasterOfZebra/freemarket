@@ -52,8 +52,16 @@ app.add_middleware(
 # Include all API routers
 app.include_router(api_router)
 
-# Create database tables
-ModelBase.metadata.create_all(bind=engine)
+
+# Create database tables on startup (not on import)
+@app.on_event("startup")
+def startup_event():
+    """Create database tables on app startup"""
+    try:
+        ModelBase.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"⚠️  Warning: Could not create DB tables on startup: {e}")
+        print("   This is OK for development. Tables should exist in production.")
 
 
 if __name__ == "__main__":
