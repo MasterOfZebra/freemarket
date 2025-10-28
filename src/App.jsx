@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getWants, getOffers } from './services/api';
+import { useEffect, useState } from 'react';
+import { getOffers, getWants } from './services/api';
 import './styles/App.css';
 
 function App() {

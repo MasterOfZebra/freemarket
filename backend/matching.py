@@ -38,8 +38,6 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from backend.database import redis_client  # Import Redis client
 import json
-from backend.ab_testing import get_ab_test_config  # Import from ab_testing module
-from backend.ml.embeddings import get_embedding
 
 # Set up logging
 logger = logging.getLogger(__name__)
