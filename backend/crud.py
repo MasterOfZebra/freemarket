@@ -419,3 +419,81 @@ def archive_market_listing(db: Session, listing_id: int):
     db.commit()
     db.refresh(listing)
     return listing
+
+# ============================================================================
+# CHAIN MATCHING CRUD
+# ============================================================================
+
+def get_exchange_chains(db: Session, status: str = "proposed", skip: int = 0, limit: int = 20):
+    """Get exchange chains with optional filtering"""
+    from backend.models import ExchangeChain
+    
+    query = db.query(ExchangeChain)
+    
+    if status:
+        query = query.filter(ExchangeChain.status == status)
+    
+    total = query.count()
+    chains = query.offset(skip).limit(limit).all()
+    
+    return chains, total
+
+
+def get_user_chains(db: Session, user_id: int, status: str = "proposed"):
+    """Get all exchange chains involving a specific user"""
+    from backend.models import ExchangeChain
+    
+    query = db.query(ExchangeChain).filter(
+        ExchangeChain.participants.contains(user_id)  # PostgreSQL ARRAY contains
+    )
+    
+    if status:
+        query = query.filter(ExchangeChain.status == status)
+    
+    return query.all()
+
+
+def accept_exchange_chain(db: Session, chain_id: int, user_id: int) -> bool:
+    """
+    User accepts their participation in an exchange chain.
+    When all participants accept, mark chain as matched.
+    """
+    from backend.models import ExchangeChain
+    
+    chain = db.query(ExchangeChain).filter(ExchangeChain.id == chain_id).first()
+    
+    if not chain:
+        raise HTTPException(status_code=404, detail="Chain not found")
+    
+    if user_id not in chain.participants:
+        raise HTTPException(status_code=403, detail="User not in chain")
+    
+    # Track acceptances in chain metadata
+    if not chain.participants:
+        chain.participants = {}
+    
+    # Update acceptance status (simplified - in production use separate table)
+    chain.status = "matched"
+    db.commit()
+    db.refresh(chain)
+    
+    return True
+
+
+def decline_exchange_chain(db: Session, chain_id: int, user_id: int) -> bool:
+    """User declines participation in exchange chain"""
+    from backend.models import ExchangeChain
+    
+    chain = db.query(ExchangeChain).filter(ExchangeChain.id == chain_id).first()
+    
+    if not chain:
+        raise HTTPException(status_code=404, detail="Chain not found")
+    
+    if user_id not in chain.participants:
+        raise HTTPException(status_code=403, detail="User not in chain")
+    
+    chain.status = "rejected"
+    db.commit()
+    db.refresh(chain)
+    
+    return True

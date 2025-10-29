@@ -537,3 +537,55 @@ def generate_match_explanation(text_sim, tag_sim, val_overlap, total_score):
         return f"Совпадение на {total_score:.0%} из-за: " + ", ".join(explanations)
     else:
         return f"Общее совпадение {total_score:.0%}"
+
+# ============================================================================
+# CHAIN MATCHING INTEGRATION
+# ============================================================================
+
+def run_full_matching_pipeline(db: Session, user_id: Optional[int] = None):
+    """
+    Run complete matching pipeline:
+    1. Standard bilateral matching (existing)
+    2. Chain discovery (new feature)
+    
+    This function orchestrates both matching strategies to provide users
+    with maximum exchange opportunities.
+    
+    Args:
+        db: Database session
+        user_id: Optional - if provided, only match this user's items
+                 if None, match all users
+    """
+    
+    logger.info("=== Starting full matching pipeline ===")
+    
+    try:
+        # Phase 1: Standard bilateral matching
+        if user_id:
+            logger.info(f"Phase 1: Bilateral matching for user {user_id}")
+            find_matches(db, user_id)
+        else:
+            logger.info("Phase 1: Bilateral matching for all users")
+            all_users = db.query(User).filter(User.id > 0).all()
+            for user in all_users:
+                try:
+                    find_matches(db, user.id)
+                except Exception as e:
+                    logger.error(f"Error matching user {user.id}: {e}")
+        
+        logger.info("Phase 1: Bilateral matching complete")
+        
+        # Phase 2: Chain discovery
+        logger.info("Phase 2: Discovering exchange chains")
+        try:
+            from backend.chain_matching import discover_and_create_chains
+            chains_created = discover_and_create_chains(db)
+            logger.info(f"Phase 2: Created {chains_created} exchange chains")
+        except Exception as e:
+            logger.error(f"Error in chain discovery: {e}")
+        
+        logger.info("=== Full matching pipeline complete ===")
+        
+    except Exception as e:
+        logger.error(f"Error in full matching pipeline: {e}")
+        raise
