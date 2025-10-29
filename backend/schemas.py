@@ -7,6 +7,7 @@ from decimal import Decimal
 class UserBase(BaseModel):
     username: Optional[str]
     contact: Optional[Dict[str, Any]] = None
+    locations: Optional[List[str]] = None  # Multiple locations: ["Алматы", "Астана", "Шымкент"]
 
 class UserCreate(UserBase):
     username: str

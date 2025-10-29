@@ -18,12 +18,21 @@ class ListingStatus(str, enum.Enum):
     ACTIVE = "active"
     ARCHIVED = "archived"
 
+
+# Enum for supported locations
+class Location(str, enum.Enum):
+    ALMATY = "Алматы"
+    ASTANA = "Астана"
+    SHYMKENT = "Шымкент"
+
+
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     contact = Column(JSON)
+    locations = Column(ARRAY(String), default=["Алматы"], nullable=False)  # Multiple cities: ["Алматы", "Астана", ...]
     trust_score = Column(Float, default=0.0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_active_at = Column(DateTime(timezone=True))

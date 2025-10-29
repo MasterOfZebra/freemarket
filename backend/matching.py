@@ -112,15 +112,30 @@ def find_matches(db: Session, user_id: int):
 
 def find_candidates(db: Session, item: Item):
     """Find candidate items for matching"""
-    # Simple rule-based filtering
+    # Get the item owner's locations
+    item_user = db.query(User).filter(User.id == item.user_id).first()
+    if not item_user or not item_user.locations:
+        return []
+    
+    # Find candidates in same category, opposite kind
     candidates = db.query(Item).filter(
         Item.category == item.category,  # Same category
         Item.user_id != item.user_id,    # Not own item
         Item.active == True,
         Item.kind != item.kind          # Opposite kind (offer vs want)
     ).all()
-
-    return candidates
+    
+    # Filter by location overlap: at least one location must match
+    matched_candidates = []
+    for candidate in candidates:
+        candidate_user = db.query(User).filter(User.id == candidate.user_id).first()
+        
+        # Check if there's at least one location overlap
+        if candidate_user and candidate_user.locations:
+            if any(loc in item_user.locations for loc in candidate_user.locations):
+                matched_candidates.append(candidate)
+    
+    return matched_candidates
 
 def score_candidates(item: Item, candidates):
     """Score candidates using text similarity"""
@@ -150,13 +165,21 @@ def score_candidates(item: Item, candidates):
         # Adjust score based on trust
         candidate_user = candidate.user
         trust_bonus = min(candidate_user.trust_score * 0.1, 0.2)  # Max 0.2 bonus
+        
+        # Get location bonus: 0.1 bonus for matching locations
+        item_user = db.query(User).filter(User.id == item.user_id).first()
+        location_bonus = 0.0
+        if item_user and item_user.locations and candidate_user.locations:
+            matching_locations = set(item_user.locations) & set(candidate_user.locations)
+            if matching_locations:
+                location_bonus = 0.1  # Bonus for location overlap
 
         # Get category-specific weights
         cat_key = str(getattr(item, 'category', 'default') or 'default').lower()
         weights = CATEGORY_WEIGHTS.get(cat_key, CATEGORY_WEIGHTS['default'])
 
-        # Calculate final score with category-specific weighting
-        final_score = score * weights['text'] + trust_bonus * weights['attributes']
+        # Calculate final score with category-specific weighting + bonuses
+        final_score = score * weights['text'] + trust_bonus * weights['attributes'] + location_bonus
 
         matches.append({
             "item_a": item.id,

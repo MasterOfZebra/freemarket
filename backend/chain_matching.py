@@ -62,6 +62,7 @@ def get_all_unilateral_edges(db: Session, category: Optional[str] = None) -> Lis
     Strategy:
     - Find all offers and wants
     - Calculate pairwise similarities
+    - Check location overlap (at least one matching city)
     - Return edges with score > threshold
     """
     
@@ -73,6 +74,11 @@ def get_all_unilateral_edges(db: Session, category: Optional[str] = None) -> Lis
     
     for item in items:
         if item.kind == 2:  # wants (wants to get something)
+            # Get item owner's locations
+            item_user = db.query(User).filter(User.id == item.user_id).first()
+            if not item_user or not item_user.locations:
+                continue
+            
             # Find items this user wants
             candidates = db.query(Item).filter(
                 and_(
@@ -84,6 +90,16 @@ def get_all_unilateral_edges(db: Session, category: Optional[str] = None) -> Lis
             ).all()
             
             for candidate in candidates:
+                # Check location overlap
+                candidate_user = db.query(User).filter(User.id == candidate.user_id).first()
+                if not candidate_user or not candidate_user.locations:
+                    continue
+                
+                # Must have at least one matching location
+                matching_locations = set(item_user.locations) & set(candidate_user.locations)
+                if not matching_locations:
+                    continue
+                
                 # Calculate similarity (simplified)
                 score = _calculate_similarity(item, candidate)
                 
@@ -91,7 +107,7 @@ def get_all_unilateral_edges(db: Session, category: Optional[str] = None) -> Lis
                     edge = create_unilateral_edge(db, item, candidate, score)
                     edges.append(edge)
     
-    logger.info(f"Found {len(edges)} unilateral edges")
+    logger.info(f"Found {len(edges)} unilateral edges (with location filtering)")
     return edges
 
 

@@ -33,13 +33,36 @@ def get_user_by_username(db: Session, username: str):
 
 def create_user(db: Session, user: UserCreate):
     db_user = User(
-    username=user.username,
-        contact=user.contact
+        username=user.username,
+        contact=user.contact,
+        locations=user.locations or ["Алматы"]  # Default to Almaty if not specified
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+def update_user_locations(db: Session, user_id: int, locations: list):
+    """Update user's selected locations"""
+    user = get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate locations
+    valid_locations = ["Алматы", "Астана", "Шымкент"]
+    for loc in locations:
+        if loc not in valid_locations:
+            raise HTTPException(status_code=400, detail=f"Invalid location: {loc}")
+    
+    # Require at least one location
+    if not locations:
+        raise HTTPException(status_code=400, detail="User must select at least one location")
+    
+    user.locations = locations
+    db.commit()
+    db.refresh(user)
+    return user
 
 # Profile CRUD
 def get_user_profiles(db: Session, user_id: int):
