@@ -348,7 +348,7 @@ D: offer "часы" → A: want
 1. Сохранить ВСЕ совпадения (не только двусторонние)
 2. Построить граф: узлы = (user, want), ребра = (offer_совпадает_с_want)
 3. Для каждого узла запустить DFS поиск:
-   - Ищем цикл длины 3+ 
+   - Ищем цикл длины 3+
    - Проверяем что каждый участник только 1 раз
    - Валидируем что score всех связей > threshold
 4. Когда найдена цепочка:
@@ -364,16 +364,16 @@ D: offer "часы" → A: want
 SELECT * FROM edges WHERE direction = 'unilateral' ORDER BY score DESC;
 
 -- Цепочка 3-х: Alice→Bob→Carol→Alice
-SELECT 
+SELECT
   e1.from_user as user_a,
-  e2.from_user as user_b, 
+  e2.from_user as user_b,
   e3.from_user as user_c,
   (e1.score + e2.score + e3.score)/3 as avg_score
 FROM edges e1
 JOIN edges e2 ON e1.to_user = e2.from_user
 JOIN edges e3 ON e2.to_user = e3.from_user
 WHERE e3.to_user = e1.from_user  -- Замыкаем цикл!
-  AND e1.from_user != e2.from_user 
+  AND e1.from_user != e2.from_user
   AND e2.from_user != e3.from_user;
 ```
 
@@ -473,7 +473,7 @@ Carol: offer "книга", want "ноутбук"
 
 ```
 A: offer "велосипед", want "камера"
-B: offer "ноутбук", want "велосипед"  
+B: offer "ноутбук", want "велосипед"
 C: offer "часы", want "ноутбук"
 D: offer "камера", want "часы"
 
@@ -489,7 +489,7 @@ D: offer "камера", want "часы"
 
 ```
 A: offer "велосипед", want "камера"
-B: offer "ноутбук", want "велосипед"  
+B: offer "ноутбук", want "велосипед"
 C: offer "часы", want "ноутбук"
 D: offer "другое", want "камера" (НЕ хочет часы!)
 

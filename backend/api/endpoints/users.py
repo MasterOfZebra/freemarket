@@ -29,7 +29,7 @@ def get_db():
 def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
     """
     Create a new user with locations.
-    
+
     Body:
     {
         "username": "alice",
@@ -40,7 +40,7 @@ def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
     existing = get_user_by_username(db, user.username)
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
-    
+
     return create_user(db, user)
 
 
@@ -50,7 +50,7 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
     user = get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     return user
 
 
@@ -60,7 +60,7 @@ def get_user_by_name(username: str, db: Session = Depends(get_db)):
     user = get_user_by_username(db, username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     return user
 
 
@@ -72,28 +72,28 @@ def update_locations(
 ):
     """
     Update user's selected locations.
-    
+
     Query Parameters:
         locations: List of selected cities
                   Example: ?locations=Алматы&locations=Астана
-    
+
     Valid locations:
         - Алматы
         - Астана
         - Шымкент
-    
+
     User must select at least one location.
     """
     try:
         updated_user = update_user_locations(db, user_id, locations)
-        
+
         return {
             "success": True,
             "user_id": user_id,
             "locations": updated_user.locations,
             "message": f"Успешно обновлены локации: {', '.join(updated_user.locations)}"
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:

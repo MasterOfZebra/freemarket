@@ -26,6 +26,17 @@ class Location(str, enum.Enum):
     SHYMKENT = "Шымкент"
 
 
+# NEW: Enum for exchange types (PERMANENT | TEMPORARY)
+class ExchangeType(str, enum.Enum):
+    """
+    Two exchange types with different equivalence logic:
+    - PERMANENT: value_a ≈ value_b (within ±15%)
+    - TEMPORARY: (value_a/days_a) ≈ (value_b/days_b) = daily_rate matching
+    """
+    PERMANENT = "permanent"
+    TEMPORARY = "temporary"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -36,6 +47,11 @@ class User(Base):
     trust_score = Column(Float, default=0.0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_active_at = Column(DateTime(timezone=True))
+
+    # NEW: Telegram integration fields for notifications
+    telegram_id = Column(Integer, unique=True, nullable=True)           # chat_id for Bot API
+    telegram_username = Column(String, nullable=True)                   # username (without @)
+    telegram_first_name = Column(String, nullable=True)                 # first_name from Telegram
 
     profiles = relationship("Profile", back_populates="user")
     items = relationship("Item", back_populates="user")
@@ -250,3 +266,137 @@ class ListingWant(Base):
     quantity = Column(String)
 
     listing = relationship("Listing", back_populates="wants")
+
+
+# ============================================================
+# NEW: ListingItem Model for Category-Based Matching
+# Supports both PERMANENT and TEMPORARY exchange types
+# ============================================================
+
+class ListingItemType(str, enum.Enum):
+    """Type of item in listing (want vs offer)"""
+    WANT = "want"
+    OFFER = "offer"
+
+
+class ListingItemCategory(str, enum.Enum):
+    """Available categories for both exchange types"""
+    ELECTRONICS = "electronics"      # 🏭 Техника
+    MONEY = "money"                  # 💰 Деньги
+    FURNITURE = "furniture"          # 🛋️ Мебель
+    TRANSPORT = "transport"          # 🚗 Транспорт
+    SERVICES = "services"            # 🔧 Услуги
+    OTHER = "other"                  # 📦 Прочее
+
+
+class ListingItem(Base):
+    """
+    Universal item model for both permanent and temporary exchanges.
+    
+    PERMANENT EXCHANGE:
+      - exchange_type = "permanent"
+      - duration_days = NULL
+      - value_tenge = equivalent monetary value
+      - Matching: value_a ≈ value_b (within ±15%)
+    
+    TEMPORARY EXCHANGE:
+      - exchange_type = "temporary"
+      - duration_days = 1-365 (rental duration)
+      - value_tenge = daily rate base
+      - Matching: (value_a/days_a) ≈ (value_b/days_b)
+    """
+    __tablename__ = "listing_items"
+    
+    __table_args__ = (
+        # Composite indexes for fast filtering
+        Index("ix_listing_exchange_type", "listing_id", "exchange_type"),
+        Index("ix_category_exchange_type", "category", "exchange_type"),
+        Index("ix_item_type_category", "item_type", "category"),
+        # For temporal queries
+        Index("ix_created_at_exchange", "created_at", "exchange_type"),
+        # For matching queries
+        Index("ix_category_value_exchange", "category", "value_tenge", "exchange_type"),
+    )
+    
+    id = Column(Integer, primary_key=True, index=True)
+    listing_id = Column(Integer, ForeignKey("listings.id"), nullable=False, index=True)
+    
+    # Item classification
+    item_type = Column(SQLEnum(ListingItemType), nullable=False)  # want | offer
+    category = Column(String(50), nullable=False)                 # electronics, money, furniture, etc.
+    
+    # Exchange type (NEW - core for Phase 1)
+    exchange_type = Column(
+        SQLEnum(ExchangeType), 
+        nullable=False, 
+        default=ExchangeType.PERMANENT,
+        index=True
+    )
+    
+    # Item details
+    item_name = Column(String(100), nullable=False)
+    value_tenge = Column(Integer, nullable=False)  # ₸ (Tenge) - always required
+    
+    # Duration for TEMPORARY exchange (NEW - core for Phase 1)
+    duration_days = Column(Integer, nullable=True)  # NULL for permanent, 1-365 for temporary
+    
+    description = Column(Text, nullable=True, default="")
+    
+    # Audit fields
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationship
+    listing = relationship("Listing", backref="items")
+    
+    def __repr__(self):
+        return (
+            f"<ListingItem "
+            f"id={self.id} "
+            f"type={self.item_type} "
+            f"category={self.category} "
+            f"exchange={self.exchange_type} "
+            f"value={self.value_tenge}₸"
+            f"{f' days={self.duration_days}' if self.duration_days else ''}"
+            f">"
+        )
+    
+    # ========== PROPERTIES FOR MATCHING ==========
+    
+    @property
+    def daily_rate(self) -> float:
+        """
+        Calculate daily rate for TEMPORARY exchange only.
+        For PERMANENT: returns None
+        Formula: value_tenge / duration_days
+        """
+        if self.exchange_type == ExchangeType.TEMPORARY and self.duration_days:
+            return self.value_tenge / self.duration_days
+        return None
+    
+    @property
+    def is_valid(self) -> bool:
+        """
+        Validate item data:
+        - value_tenge must be > 0
+        - TEMPORARY: duration_days must be 1-365
+        - PERMANENT: duration_days must be NULL
+        """
+        if self.value_tenge <= 0:
+            return False
+        
+        if self.exchange_type == ExchangeType.TEMPORARY:
+            return 1 <= self.duration_days <= 365 if self.duration_days else False
+        else:  # PERMANENT
+            return self.duration_days is None
+    
+    @property
+    def equivalence_key(self) -> tuple:
+        """
+        Create unique key for matching algorithm.
+        Used to identify duplicate matching criteria.
+        """
+        if self.exchange_type == ExchangeType.TEMPORARY:
+            return (self.category, self.exchange_type, round(self.daily_rate, 2))
+        else:  # PERMANENT
+            return (self.category, self.exchange_type, self.value_tenge)

@@ -98,15 +98,15 @@ ISSUE: Unclear which is used for what
 1. ❌ backend/init_db.sh
    REASON: Python version (init_db.py) exists
    STATUS: Shell script obsolete
-   
+
 2. ❌ backend/tasks.py
    REASON: No references in code, no usage
    STATUS: Abandoned experimental feature
-   
+
 3. ❌ backend/test_data/fixtures.py
    REASON: No tests use it, duplicates test_integration.py
    STATUS: Dead code
-   
+
 4. ❌ backend/matching/engine.py
    REASON: All matching logic in matching.py
    STATUS: Unused module folder
@@ -119,15 +119,15 @@ ISSUE: Unclear which is used for what
    LOCATION: C:\FreeMarket\bot.py
    REASON: Real one is backend/bot.py
    STATUS: Duplicate, never updated
-   
+
 6. ❌ check_data.py
    REASON: One-time debug script
    STATUS: No value, outdated
-   
+
 7. ❌ check_tables.py
    REASON: Another debug script
    STATUS: Replaced by quick_test.py
-   
+
 8. ❌ insert_test_item.py
    REASON: One-time test data insertion
    STATUS: Manual, non-repeatable
@@ -139,11 +139,11 @@ ISSUE: Unclear which is used for what
 9. ❌ src/api.js
    REASON: API logic moved to services/
    STATUS: Old, not used
-   
+
 10. ❌ src/Dashboard.js, Dashboard.css
     REASON: Replaced by components/
     STATUS: Legacy code
-    
+
 11. ❌ src/node.msi
     REASON: Node installer (???)
     STATUS: Completely misplaced

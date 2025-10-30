@@ -4,6 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import Message
+from aiogram.error import TelegramError
 from sqlalchemy.orm import Session
 from backend.database import SessionLocal
 from backend.crud import get_pending_notifications, mark_notification_sent
@@ -135,6 +136,61 @@ async def send_notifications():
             print(f"⚠️  Notification loop error: {type(e).__name__}: {e}")
 
         await asyncio.sleep(60)  # Check every minute
+
+async def send_match_notification(
+    user_telegram_id: int,
+    partner_username: str,
+    partner_wants: str,
+    your_offers: str,
+    score: float,
+    match_id: int = 0
+) -> bool:
+    """
+    Send a notification about a found match to Telegram user.
+
+    Args:
+        user_telegram_id: Telegram chat_id of the user
+        partner_username: Telegram username of the partner (@username)
+        partner_wants: What the partner is looking for
+        your_offers: What you can offer
+        score: Match score (0.0-1.0)
+        match_id: ID of the match for cabinet link
+
+    Returns:
+        True if notification was sent successfully, False otherwise
+    """
+    if not user_telegram_id:
+        print(f"⚠️  No telegram_id for notification")
+        return False
+
+    cabinet_url = f"https://freemarket.com/cabinet?match={match_id}" if match_id else "https://freemarket.com/cabinet"
+
+    message = f"""
+🎉 <b>Совпадение найдено!</b>
+
+👤 <b>Партнер:</b> {partner_username}
+🎯 <b>Он ищет:</b> {partner_wants}
+🎁 <b>Вы можете дать:</b> {your_offers}
+
+📊 <b>Оценка совпадения:</b> {int(score * 100)}%
+
+<a href="{cabinet_url}">👉 Смотреть в кабинете</a>
+"""
+
+    try:
+        await bot.send_message(
+            chat_id=user_telegram_id,
+            text=message,
+            parse_mode=ParseMode.HTML
+        )
+        print(f"✅ Match notification sent to {user_telegram_id}")
+        return True
+    except TelegramError as e:
+        print(f"❌ Failed to send match notification to {user_telegram_id}: {e}")
+        return False
+    except Exception as e:
+        print(f"❌ Unexpected error sending notification: {e}")
+        return False
 
 async def main():
     # Start notification sender

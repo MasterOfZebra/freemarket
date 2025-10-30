@@ -1,230 +1,561 @@
-# FreeMarket — Архитектура и Развертывание
+# 🚀 FreeMarket Deployment Guide
 
-## Архитектура проекта
+**Version:** 2.0 | **Last Updated:** January 2025
 
-FreeMarket — это полнофункциональное веб-приложение для обмена товарами/услугами с системой матчинга, Telegram-ботом и мониторингом. Проект построен на микросервисной архитектуре с использованием Docker для контейнеризации.
+---
 
-### Компоненты системы
+## 📋 Deployment Overview
 
-#### Backend (FastAPI)
-- **Файлы**: `backend/main.py`, `backend/models.py`, `backend/crud.py`, `backend/schemas.py`, `backend/matching.py`
-- **Функциональность**:
-  - REST API для управления пользователями, профилями, товарами, матчами и рейтингами
-  - Алгоритм матчинга на основе TF-IDF и косинусного сходства
-  - Интеграция с Telegram-ботом для уведомлений
-- **Технологии**: FastAPI, SQLAlchemy, PostgreSQL, Redis (для кэша), scikit-learn
-- **Эндпоинты**:
-  - `GET /health` — health check
-  - `POST /users/` — создание пользователя
-  - `GET /users/{id}` — получение пользователя
-  - `POST /profiles/` — создание профиля
-  - `GET /profiles/{user_id}` — получение профилей пользователя
-  - `GET /matches/{user_id}` — получение матчей
-  - `POST /ratings/` — создание рейтинга
+This guide covers production deployment using **Docker Compose**.
 
-#### Database (PostgreSQL)
-- **Версия**: PostgreSQL 15
-- **Схема**: `backend/schema.sql`
-- **Таблицы**:
-  - `users` — пользователи (id, telegram_id, username, contact, trust_score)
-  - `profiles` — профили (id, user_id, data, location, visibility)
-  - `items` — товары (id, user_id, kind, category, title, description, metadata, active)
-  - `matches` — матчи (id, item_a, item_b, score, computed_by)
-  - `ratings` — рейтинги (id, from_user, to_user, score, comment, tx_id)
-  - `notifications` — уведомления (id, user_id, channel, payload, status, sent_at)
+**Stack:**
+- 🐳 Docker & Docker Compose
+- 🖥️ Ubuntu/Linux Server
+- 🌐 Nginx (reverse proxy)
+- 🐘 PostgreSQL (database)
+- 🔴 Redis (caching)
+- 🤖 Telegram Bot (notifications)
 
-#### Bot (Aiogram)
-- **Файл**: `backend/bot.py`
-- **Функциональность**: Отправка уведомлений о матчах через Telegram
-- **Технологии**: Aiogram 3.x
+---
 
-#### Frontend (React)
-- **Файлы**: `src/` (исходники), `package.json`
-- **Функциональность**: Веб-интерфейс для пользователей
-- **Технологии**: React 18, React Router, Axios
-- **Сборка**: Create React App
+## 🛠️ Prerequisites
 
-#### Monitoring (Prometheus + Alertmanager)
-- **Файлы**: `monitoring/prometheus.yml`, `monitoring/alert_rules.yml`, `monitoring/alertmanager.yml`
-- **Метрики**: CPU, память, диск, статус сервисов, время отклика
-- **Алерты**: Email и Telegram webhook
+**Server Requirements:**
+- Ubuntu 20.04+ or similar Linux
+- Docker installed (`docker --version`)
+- Docker Compose installed (`docker-compose --version`)
+- Minimum: 2GB RAM, 10GB disk
+- Open ports: 80 (HTTP), 443 (HTTPS optional)
 
-#### Infrastructure
-- **Docker Compose**: `docker-compose.prod.yml` для продакшена, `backend/docker-compose.yml` для разработки
-- **Nginx**: Reverse proxy и статические файлы
-- **Redis**: Кэш и очереди задач
-- **Volumes**: `postgres_data`, `redis_data`
+**Database:**
+- PostgreSQL 12+ (can be external or containerized)
+- Database name: `assistance_kz`
+- User: `assistadmin_pg`
+- Password: `assistMurzAdmin` (or use env var)
 
-### Архитектурная диаграмма
+**Third-party Services:**
+- Telegram Bot Token (from @BotFather)
 
-```
-[Пользователь] <-> [Nginx (80/443)]
-                    |
-                    +-> [Frontend (React)] <-> [Backend (FastAPI)] <-> [PostgreSQL]
-                    |                                           |
-                    |                                           +-> [Redis]
-                    |
-                    +-> [Bot (Aiogram)] <-> [Telegram API]
-                    |
-                    +-> [Monitoring (Prometheus/Alertmanager)]
-```
+---
 
-### Поток данных
-1. Пользователь регистрируется через API или бота
-2. Создает профиль/товар
-3. Backend запускает алгоритм матчинга
-4. Находит подходящие матчи, создает уведомления
-5. Бот отправляет уведомления в Telegram
-6. Пользователи оценивают сделки, обновляется trust_score
+## 📦 Docker Setup
 
-## План развертывания на сервере
+### Step 1: Clone Repository
 
-### Предпосылки
-- Linux сервер (Ubuntu/Debian) с Docker и Docker Compose
-- Домен (например, freemarket.com) с DNS на сервер
-- TLS сертификаты (Let's Encrypt или Cloudflare)
-- Переменные окружения: `DB_PASSWORD`, `TELEGRAM_BOT_TOKEN`
-
-### Шаг 1: Подготовка сервера
 ```bash
-# Установка Docker и Docker Compose
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+# SSH into your server
+ssh user@your-server-ip
 
-# Клонирование репозитория
-git clone https://github.com/MasterOfZebra/user.git freemarket
+# Clone the repository
+git clone https://github.com/YourOrg/freemarket.git
 cd freemarket
+```
 
-# Создание .env файла
+### Step 2: Create Environment File
+
+```bash
+# Create .env for production
 cat > .env << EOF
-DB_PASSWORD=your_strong_password_here
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+# Database
+DATABASE_URL=postgresql://assistadmin_pg:assistMurzAdmin@postgres:5432/assistance_kz
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+
+# Environment
+ENV=production
+DEBUG=false
+
+# API Settings
+API_TITLE=FreeMarket API
+API_VERSION=1.0.0
+LOG_LEVEL=INFO
 EOF
+
+chmod 600 .env  # Restrict permissions
 ```
 
-### Шаг 2: Сборка и запуск
+### Step 3: Verify docker-compose.prod.yml
+
 ```bash
-# Сборка образов
-docker compose -f docker-compose.prod.yml build
-
-# Запуск всех сервисов
-docker compose -f docker-compose.prod.yml up -d
-
-# Проверка статуса
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs -f backend
+# Check production config
+cat docker/docker-compose.prod.yml
 ```
 
-### Шаг 3: Настройка Nginx и TLS
+**Expected services:**
+- `frontend` - React app (port 80)
+- `backend` - FastAPI (port 8000)
+- `bot` - Telegram bot
+- `postgres` - Database
+- `redis` - Cache
+
+### Step 4: Build Images
+
 ```bash
-# Получение сертификатов Let's Encrypt (опционально)
-sudo apt install certbot
-sudo certbot certonly --standalone -d freemarket.com
+# Build all Docker images
+docker-compose -f docker/docker-compose.prod.yml build
 
-# Копирование сертификатов в папку ssl/
-sudo cp /etc/letsencrypt/live/freemarket.com/fullchain.pem ssl/
-sudo cp /etc/letsencrypt/live/freemarket.com/privkey.pem ssl/
-
-# Перезапуск nginx
-docker compose -f docker-compose.prod.yml restart nginx
+# Or build specific service
+docker-compose -f docker/docker-compose.prod.yml build backend
 ```
 
-### Шаг 4: Инициализация базы данных
+**Expected output:**
+```
+Building backend
+Building frontend
+Building bot
+...
+Successfully built <hash>
+```
+
+### Step 5: Start Services
+
 ```bash
-# Проверка схемы
-docker compose -f docker-compose.prod.yml exec db psql -U freemarket_user -d freemarket_db -c "\dt"
+# Start all services in background
+docker-compose -f docker/docker-compose.prod.yml up -d
 
-# Создание тестового пользователя (опционально)
-docker compose -f docker-compose.prod.yml exec backend python -c "
-from backend.database import SessionLocal
-from backend.models import User
-db = SessionLocal()
-user = User(telegram_id=123456789, username='test')
-db.add(user)
-db.commit()
-print('Test user created')
-"
+# Verify services are running
+docker-compose -f docker/docker-compose.prod.yml ps
 ```
 
-### Шаг 5: Настройка мониторинга (опционально)
+**Expected output:**
+```
+NAME                  STATUS           PORTS
+freemarket-frontend   Up 2 minutes     0.0.0.0:80->80/tcp
+freemarket-backend    Up 2 minutes     0.0.0.0:8000->8000/tcp
+freemarket-bot        Up 2 minutes
+freemarket-postgres   Up 2 minutes     0.0.0.0:5432->5432/tcp
+freemarket-redis      Up 2 minutes     0.0.0.0:6379->6379/tcp
+```
+
+### Step 6: Initialize Database
+
 ```bash
-# Запуск Prometheus и Alertmanager
-docker compose -f monitoring/docker-compose.monitoring.yml up -d
+# Create tables
+docker-compose -f docker/docker-compose.prod.yml exec backend python backend/init_db.py
 
-# Проверка доступа
-curl http://localhost:9090  # Prometheus
-curl http://localhost:9093  # Alertmanager
+# Expected output:
+# Created table: users
+# Created table: items
+# Created table: matches
+# Created table: exchange_chains
+# Created table: notifications
 ```
 
-### Шаг 6: CI/CD (опционально)
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy to Production
-on:
-  push:
-    branches: [ main ]
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Deploy to server
-      run: |
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > key
-        chmod 600 key
-        scp -i key -o StrictHostKeyChecking=no docker-compose.prod.yml user@server:/path/to/freemarket/
-        ssh -i key user@server "cd /path/to/freemarket && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d --no-deps backend frontend bot"
-```
+---
 
-## Операционные задачи
+## ✅ Verify Deployment
 
-### Бэкапы
+### Test Backend API
+
 ```bash
-# Настройка cron для ежедневных бэкапов
-0 2 * * * /path/to/freemarket/pg_backup.sh
+# Health check
+curl http://your-server-ip:8000/health
+# Expected: {"status": "ok", "message": "FreeMarket API is running"}
+
+# Get API info
+curl http://your-server-ip:8000/
+# Expected: {"message": "FreeMarket API", "version": "1.0.0"}
 ```
 
-### Масштабирование
+### Test Frontend
+
 ```bash
-# Масштабирование backend
-docker compose -f docker-compose.prod.yml up -d --scale backend=3
+# Open in browser
+http://your-server-ip
 
-# Обновление образов
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d --no-deps backend frontend bot
+# Should show FreeMarket homepage
 ```
 
-### Мониторинг и логи
+### Check Database
+
 ```bash
-# Просмотр логов
-docker compose -f docker-compose.prod.yml logs -f backend
+# Connect to database
+docker-compose -f docker/docker-compose.prod.yml exec postgres \
+  psql -U assistadmin_pg -d assistance_kz
 
-# Метрики
-curl http://freemarket.com/metrics  # Через nginx
+# List tables
+\dt
+
+# Exit
+\q
 ```
 
-### Безопасность
-- Регулярные обновления образов
-- Ограничение доступа к портам 5432, 6379
-- Использование secrets для переменных окружения
-- Настройка firewall (ufw)
+### Check Logs
 
-## Чек-лист перед развертыванием
-- [ ] .env файл создан с корректными секретами
-- [ ] DNS настроен на сервер
-- [ ] Сертификаты TLS готовы
-- [ ] Docker и Docker Compose установлены
-- [ ] Репозиторий склонирован
-- [ ] docker compose up -d проходит без ошибок
-- [ ] /health возвращает 200
-- [ ] База данных инициализирована
-- [ ] Фронтенд доступен по домену
-- [ ] Бот получает токен и работает
+```bash
+# Backend logs
+docker-compose -f docker/docker-compose.prod.yml logs backend -f
 
-## Troubleshooting
-- **Backend не стартует**: Проверить DATABASE_URL и подключение к БД
-- **Frontend не загружается**: Проверить сборку образа и nginx конфиг
-- **Бот не отправляет сообщения**: Проверить TELEGRAM_BOT_TOKEN
-- **Высокая нагрузка**: Проверить метрики в Prometheus, оптимизировать запросы
+# Bot logs
+docker-compose -f docker/docker-compose.prod.yml logs bot -f
+
+# All logs
+docker-compose -f docker/docker-compose.prod.yml logs -f
+```
+
+---
+
+## 🔒 Security Configuration
+
+### SSL/HTTPS Setup (Optional)
+
+```bash
+# Install Certbot
+sudo apt-get install certbot python3-certbot-nginx
+
+# Generate certificate
+sudo certbot certonly --standalone -d your-domain.com
+
+# Update Nginx config to use SSL
+# Edit: config/freemarket.nginx
+# Add:
+#   listen 443 ssl;
+#   ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+#   ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+```
+
+### Firewall Rules
+
+```bash
+# Allow HTTP
+sudo ufw allow 80/tcp
+
+# Allow HTTPS (if using SSL)
+sudo ufw allow 443/tcp
+
+# Allow SSH
+sudo ufw allow 22/tcp
+
+# Deny everything else
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw enable
+```
+
+### Database Security
+
+```bash
+# Change default password
+docker-compose -f docker/docker-compose.prod.yml exec postgres \
+  psql -U assistadmin_pg -d assistance_kz \
+  -c "ALTER USER assistadmin_pg WITH PASSWORD 'new_secure_password';"
+
+# Update .env file
+sed -i 's/assistMurzAdmin/new_secure_password/g' .env
+```
+
+---
+
+## 📊 Monitoring & Maintenance
+
+### View Resource Usage
+
+```bash
+# CPU, Memory, Network stats
+docker stats
+
+# Specific service
+docker stats freemarket-backend
+```
+
+### Database Backup
+
+```bash
+# Backup database
+docker-compose -f docker/docker-compose.prod.yml exec postgres \
+  pg_dump -U assistadmin_pg assistance_kz > backup_$(date +%Y%m%d).sql
+
+# Restore from backup
+docker-compose -f docker/docker-compose.prod.yml exec -T postgres \
+  psql -U assistadmin_pg assistance_kz < backup_20250115.sql
+```
+
+### Clean Up Old Data
+
+```bash
+# Remove old Docker images
+docker image prune -a
+
+# Remove unused volumes
+docker volume prune
+
+# Remove stopped containers
+docker container prune
+```
+
+### Update Code
+
+```bash
+# Pull latest changes
+git pull origin main
+
+# Rebuild images
+docker-compose -f docker/docker-compose.prod.yml build
+
+# Restart services
+docker-compose -f docker/docker-compose.prod.yml up -d
+
+# Check status
+docker-compose -f docker/docker-compose.prod.yml ps
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Problem: Services won't start
+
+```bash
+# Check logs
+docker-compose -f docker/docker-compose.prod.yml logs
+
+# Verify images built
+docker images
+
+# Try rebuilding
+docker-compose -f docker/docker-compose.prod.yml build --no-cache
+docker-compose -f docker/docker-compose.prod.yml up -d
+```
+
+### Problem: Database connection error
+
+```bash
+# Verify PostgreSQL is running
+docker-compose -f docker/docker-compose.prod.yml ps postgres
+
+# Check connection
+docker-compose -f docker/docker-compose.prod.yml exec backend \
+  python -c "from backend.database import engine; print('Connected!' if engine.connect() else 'Failed')"
+
+# View connection string
+cat .env | grep DATABASE_URL
+```
+
+### Problem: Backend returns 500 errors
+
+```bash
+# Check backend logs
+docker-compose -f docker/docker-compose.prod.yml logs backend --tail=50
+
+# Restart backend
+docker-compose -f docker/docker-compose.prod.yml restart backend
+
+# Check health
+curl http://localhost:8000/health
+```
+
+### Problem: Telegram bot not sending notifications
+
+```bash
+# Verify bot token
+cat .env | grep TELEGRAM_BOT_TOKEN
+
+# Check bot logs
+docker-compose -f docker/docker-compose.prod.yml logs bot --tail=50
+
+# Restart bot
+docker-compose -f docker/docker-compose.prod.yml restart bot
+```
+
+---
+
+## 📈 Performance Optimization
+
+### Database Indexes
+
+```bash
+# Connect to database
+docker-compose -f docker/docker-compose.prod.yml exec postgres \
+  psql -U assistadmin_pg -d assistance_kz
+
+# Create indexes (in PostgreSQL console)
+CREATE INDEX idx_users_locations ON users USING gin(locations);
+CREATE INDEX idx_items_user_id ON items(user_id);
+CREATE INDEX idx_items_category ON items(category);
+CREATE INDEX idx_matches_users ON matches(user_a_id, user_b_id);
+CREATE INDEX idx_chains_status ON exchange_chains(status);
+
+# Verify indexes
+\d items
+```
+
+### Cache Configuration
+
+```bash
+# Check Redis connection
+docker-compose -f docker/docker-compose.prod.yml exec redis redis-cli ping
+# Expected: PONG
+
+# Monitor Redis
+docker-compose -f docker/docker-compose.prod.yml exec redis redis-cli monitor
+```
+
+### Nginx Optimization
+
+```bash
+# Edit config/freemarket.nginx
+# Increase worker processes:
+worker_processes auto;
+
+# Increase connections
+events {
+    worker_connections 2048;
+}
+
+# Add caching headers
+add_header Cache-Control "public, max-age=86400" for static files;
+```
+
+---
+
+## 🔄 Scaling
+
+### Horizontal Scaling
+
+```bash
+# Run multiple backend instances (Docker Swarm or Kubernetes)
+# Update docker-compose.prod.yml:
+
+services:
+  backend:
+    deploy:
+      replicas: 3  # Run 3 instances
+      
+  nginx:
+    ports:
+      - "80:80"
+    # Nginx will load-balance across 3 backend instances
+```
+
+### Vertical Scaling
+
+```bash
+# Increase resource limits in docker-compose.prod.yml
+
+services:
+  backend:
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+```
+
+---
+
+## 📋 Deployment Checklist
+
+```
+Pre-Deployment
+  ☐ Code pushed to repository
+  ☐ .env file created with all secrets
+  ☐ Backups of existing database taken
+  ☐ DNS records updated (if domain change)
+
+Docker Setup
+  ☐ Docker & Docker Compose installed
+  ☐ docker-compose.prod.yml verified
+  ☐ All images built successfully
+  ☐ Services start without errors
+
+Database
+  ☐ PostgreSQL running
+  ☐ Database tables created
+  ☐ Initial data loaded (if needed)
+  ☐ Backup configured
+
+API Verification
+  ☐ Health endpoint responds (200)
+  ☐ Create user works
+  ☐ Create listing works
+  ☐ Matching pipeline runs
+
+Bot Setup
+  ☐ Telegram bot token set
+  ☐ Bot receives messages
+  ☐ Notifications send correctly
+
+Monitoring
+  ☐ Logs accessible
+  ☐ Health checks configured
+  ☐ Backup script scheduled (cron)
+  ☐ Disk space monitor set up
+
+Security
+  ☐ Firewall rules configured
+  ☐ SSL certificate installed (optional)
+  ☐ Database password changed
+  ☐ SSH key-only access enabled
+  ☐ No secrets in code/logs
+```
+
+---
+
+## 🚀 Quick Deploy Script
+
+```bash
+#!/bin/bash
+# deploy.sh - Quick deployment script
+
+set -e  # Exit on error
+
+echo "🚀 Starting FreeMarket deployment..."
+
+# 1. Pull latest code
+echo "📥 Pulling latest code..."
+git pull origin main
+
+# 2. Build images
+echo "🔨 Building Docker images..."
+docker-compose -f docker/docker-compose.prod.yml build
+
+# 3. Stop old services
+echo "🛑 Stopping old services..."
+docker-compose -f docker/docker-compose.prod.yml down
+
+# 4. Start new services
+echo "🚀 Starting new services..."
+docker-compose -f docker/docker-compose.prod.yml up -d
+
+# 5. Initialize database
+echo "💾 Initializing database..."
+docker-compose -f docker/docker-compose.prod.yml exec backend \
+  python backend/init_db.py
+
+# 6. Verify
+echo "✅ Verifying deployment..."
+curl -s http://localhost:8000/health | grep -q "ok" && echo "✅ API OK" || echo "❌ API FAILED"
+
+echo "✅ Deployment complete!"
+```
+
+**Usage:**
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+---
+
+## 📞 Support
+
+**Common Issues:**
+- See [docs/TESTING.md](./TESTING.md) for debugging
+- Check logs: `docker-compose logs -f`
+- Reset database: `docker-compose down -v`
+
+**Documentation:**
+- [docs/ARCHITECTURE.md](./ARCHITECTURE.md) - System design
+- [docs/API_REFERENCE.md](./API_REFERENCE.md) - API endpoints
+- [docs/CONFIGURATION.md](./CONFIGURATION.md) - Environment variables
+
+---
+
+**Ready to deploy? Start with Step 1: Clone Repository ⬆️**

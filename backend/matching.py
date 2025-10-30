@@ -116,7 +116,7 @@ def find_candidates(db: Session, item: Item):
     item_user = db.query(User).filter(User.id == item.user_id).first()
     if not item_user or not item_user.locations:
         return []
-    
+
     # Find candidates in same category, opposite kind
     candidates = db.query(Item).filter(
         Item.category == item.category,  # Same category
@@ -124,17 +124,17 @@ def find_candidates(db: Session, item: Item):
         Item.active == True,
         Item.kind != item.kind          # Opposite kind (offer vs want)
     ).all()
-    
+
     # Filter by location overlap: at least one location must match
     matched_candidates = []
     for candidate in candidates:
         candidate_user = db.query(User).filter(User.id == candidate.user_id).first()
-        
+
         # Check if there's at least one location overlap
         if candidate_user and candidate_user.locations:
             if any(loc in item_user.locations for loc in candidate_user.locations):
                 matched_candidates.append(candidate)
-    
+
     return matched_candidates
 
 def score_candidates(item: Item, candidates):
@@ -165,7 +165,7 @@ def score_candidates(item: Item, candidates):
         # Adjust score based on trust
         candidate_user = candidate.user
         trust_bonus = min(candidate_user.trust_score * 0.1, 0.2)  # Max 0.2 bonus
-        
+
         # Get location bonus: 0.1 bonus for matching locations
         item_user = db.query(User).filter(User.id == item.user_id).first()
         location_bonus = 0.0
@@ -570,18 +570,18 @@ def run_full_matching_pipeline(db: Session, user_id: Optional[int] = None):
     Run complete matching pipeline:
     1. Standard bilateral matching (existing)
     2. Chain discovery (new feature)
-    
+
     This function orchestrates both matching strategies to provide users
     with maximum exchange opportunities.
-    
+
     Args:
         db: Database session
         user_id: Optional - if provided, only match this user's items
                  if None, match all users
     """
-    
+
     logger.info("=== Starting full matching pipeline ===")
-    
+
     try:
         # Phase 1: Standard bilateral matching
         if user_id:
@@ -595,9 +595,9 @@ def run_full_matching_pipeline(db: Session, user_id: Optional[int] = None):
                     find_matches(db, user.id)
                 except Exception as e:
                     logger.error(f"Error matching user {user.id}: {e}")
-        
+
         logger.info("Phase 1: Bilateral matching complete")
-        
+
         # Phase 2: Chain discovery
         logger.info("Phase 2: Discovering exchange chains")
         try:
@@ -606,9 +606,9 @@ def run_full_matching_pipeline(db: Session, user_id: Optional[int] = None):
             logger.info(f"Phase 2: Created {chains_created} exchange chains")
         except Exception as e:
             logger.error(f"Error in chain discovery: {e}")
-        
+
         logger.info("=== Full matching pipeline complete ===")
-        
+
     except Exception as e:
         logger.error(f"Error in full matching pipeline: {e}")
         raise

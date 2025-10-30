@@ -1,0 +1,20 @@
+[33m82eda81[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m AUDIT: Comprehensive project analysis - identify 25 duplicate/outdated files, 149MB space wasted, provide optimization plan
+[33mabd3b1c[m DOC: Add quick reference for locations feature
+[33m880c499[m FEATURE: Add multi-location support (Алматы, Астана, Шымкент) - location matching filter, score bonus, comprehensive documentation
+[33m397c86d[m DOC: Add quick reference guide for chain matching system
+[33m50fc7de[m DOC: Add complete integration summary for chain matching system
+[33m07372cd[m DOC: Add comprehensive integration checklist for chain matching system
+[33m901d589[m INTEGRATE: Complete chain matching system - unilateral edges, DFS cycle detection, exchange chain creation, and API endpoints
+[33mfd55da3[m ADD: Chain matching logic (3+ participants) - save unilateral edges, use DFS to find cycles, enable complex multi-way exchanges
+[33m02fa9aa[m CLARIFY: Document bidirectional matching logic - Match only created when BOTH wantoffer relationships are satisfied
+[33me575c4a[m SIMPLIFY: Streamlined README - minimal overview, pointing to DEVELOPMENT.md for all details
+[33mefa13f7[m REFACTOR: Unified documentation - created single DEVELOPMENT.md guide, removed redundant docs
+[33m0976fd4[m ADD: Local testing checklist - all structure tests PASSED, ready for integration testing with database
+[33m1de2278[m FIX: Move DB table creation to startup event instead of module import - allows testing without database connection
+[33m6308fac[m[33m ([m[1;31morigin/main[m[33m)[m FINAL: Add comprehensive refactoring summary - all 4 phases documented with statistics and conclusions
+[33m6577f01[m UPDATE: Complete comprehensive README with all documentation and project overview
+[33m56fe533[m ADD: Complete testing guide with Docker/Python setup instructions and curl examples
+[33m577701d[m ADD: Comprehensive test scenarios and integration test script - detailed user flow testing (users  listings  matching  notifications)
+[33mb5634fb[m REFACTOR Phase 4: Centralize backend configuration - create config.py, add utils with validators and logging, cleanup legacy files and duplicates
+[33m681a759[m REFACTOR Phase 3: Reorganize Backend API structure - split main.py into modular endpoints (health, market-listings, notifications), simplify main.py, reduce from 1100 lines to ~50
+[33m3b613ee[m CLEANUP Phase 2: Remove unused ML modules (ab_testing, embeddings, ml/), drop heavy dependencies (torch, sentence-transformers, lightgbm) - reduces image size by ~2GB

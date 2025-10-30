@@ -1,146 +1,204 @@
-# 🎁 FreeMarket - Free Marketplace for Mutual Aid
+# 🎁 FreeMarket - Free Marketplace for Mutual Aid & Exchange
 
-[![GitHub](https://img.shields.io/badge/GitHub-FreeMarket-blue)](https://github.com/MasterOfZebra/freemarket)
-[![License](https://img.shields.io/badge/License-MIT-green)]()
-[![Python](https://img.shields.io/badge/Python-3.9+-blue)](https://www.python.org/)
-
----
-
-## 📋 Что это?
-
-**FreeMarket** — платформа для коммунального обмена ресурсами между людьми.
-
-### Функционал:
-- 👥 Регистрация через Telegram
-- 📝 Создание объявлений (ДАРЮ/ХОЧУ)
-- 🔄 Автоматический подбор пар
-- 📲 Уведомления о совпадениях
-- ⭐ Система рейтинга
+**Version:** 2.0 (Phase 5 - Production Ready)
+**Status:** ✅ Clean, Unified, Tested
 
 ---
 
-## 🚀 Быстрый старт
+## 🚀 Quick Start
 
-```bash
-# 1. Структурная проверка (без БД)
-python backend/quick_test.py
+FreeMarket is a **peer-to-peer marketplace** for mutual aid and resource exchange with:
+- ✅ Multi-location support (Алматы, Астана, Шымкент)
+- ✅ Bilateral matching (2-way exchanges)
+- ✅ Chain matching (3+ participant exchanges)
+- ✅ Telegram bot notifications
+- ✅ Real-time status updates
 
-# 2. Запустить API (нужна PostgreSQL)
-cd backend
-pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 8000
+### 📚 Documentation
 
-# 3. Тестировать через Swagger UI
-# http://localhost:8000/docs
+**START HERE:** [📖 Documentation Index](./docs/INDEX.md)
+
+| Role | Quick Links |
+|------|------------|
+| **👥 Users** | [Getting Started](./docs/GETTING_STARTED.md) • [User Guide](./docs/USER_GUIDE.md) |
+| **👨‍💻 Developers** | [Architecture](./docs/ARCHITECTURE.md) • [API Reference](./docs/API_REFERENCE.md) • [Setup](./docs/DEVELOPMENT.md) |
+| **🚀 DevOps** | [Deployment](./docs/DEPLOYMENT.md) • [Configuration](./docs/CONFIGURATION.md) |
+| **🧪 QA/Testing** | [Test Guide](./docs/TESTING.md) • [Integration Tests](./docs/INTEGRATION_TESTS.md) |
+
+---
+
+## 🎯 Key Features
+
+### 1. User Registration
+```
+POST /api/users/
+- username
+- contact (Telegram)
+- locations (select 1-3 cities)
 ```
 
+### 2. Market Listings
+```
+POST /api/market-listings/
+- Type: wants (request) or offers (provide)
+- Category: food, tools, clothes, etc.
+- Description
+```
+
+### 3. Unified Matching Pipeline
+```
+POST /api/matching/run-pipeline
+
+5 Phases:
+1. Location-aware filtering
+2. Unified scoring
+3. Bilateral matching (2-way)
+4. Chain discovery (3+ way)
+5. Notifications sent
+```
+
+### 4. Exchange Execution
+- Users meet in shared location
+- Exchange items
+- Leave ratings
+
 ---
 
-## 📚 Документация
+## 📁 Project Structure
 
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Полное руководство локальной разработки
-- **[README.md](README.md)** - Этот файл (обзор)
-
-### В DEVELOPMENT.md найдёте:
-- ✅ Логика системы и цепочка операций
-- ✅ Как запустить локально
-- ✅ API маршруты и примеры (curl)
-- ✅ Структура данных (таблицы)
-- ✅ Сценарии тестирования
-- ✅ Чек-лист проверки логики
-
----
-
-## 🏗️ Архитектура
-
-### Стек:
-- **Backend:** FastAPI + Python 3.10
-- **Frontend:** React 18 + Vite (опционально)
-- **Database:** PostgreSQL 15
-- **Cache:** Redis
-- **Bot:** Telegram (Aiogram)
-
-### Структура:
 ```
 FreeMarket/
-├── backend/
-│   ├── api/endpoints/     # API модули
-│   ├── config.py          # Конфигурация
-│   ├── main.py            # Точка входа (50 строк)
-│   ├── models.py          # БД модели
-│   ├── matching.py        # Логика подбора
-│   └── quick_test.py      # Структурная проверка
-├── src/                   # React frontend
-├── docker/                # Docker образы
-└── DEVELOPMENT.md         # Подробное руководство
+├── docs/                       📚 UNIFIED DOCUMENTATION
+│   ├── INDEX.md               (Start here)
+│   ├── ARCHITECTURE.md        (System design)
+│   ├── API_REFERENCE.md       (All endpoints)
+│   ├── TESTING.md             (Test scenarios)
+│   └── ... (more in docs/)
+│
+├── backend/                    🔧 API & Logic
+│   ├── api/
+│   │   ├── endpoints/         (Modular endpoints)
+│   │   │   ├── health.py
+│   │   │   ├── users.py
+│   │   │   ├── market_listings.py
+│   │   │   ├── exchange_chains.py
+│   │   │   ├── notifications.py
+│   │   │   └── matching.py    (Unified pipeline)
+│   │   └── router.py
+│   ├── matching/
+│   │   ├── __init__.py
+│   │   └── flow.py            (MatchingEngine - core logic)
+│   ├── models.py              (DB models)
+│   ├── main.py                (FastAPI app)
+│   └── ...
+│
+├── src/                        🎨 Frontend
+│   ├── components/
+│   ├── pages/
+│   ├── services/
+│   ├── App.jsx
+│   └── ...
+│
+├── docker/                     🐳 Deployment
+│   ├── Dockerfile.backend
+│   ├── Dockerfile.frontend
+│   ├── Dockerfile.bot
+│   └── docker-compose.prod.yml
+│
+└── scripts/                    📜 Utilities
+    ├── deploy/
+    └── test/
 ```
 
 ---
 
-## 🔗 API (10 маршрутов)
+## 🔄 Core Algorithm: Unified Matching Engine
 
+**Single source of truth:** `backend/matching/flow.py`
+
+```python
+class MatchingEngine:
+    # Phase 1: Filter by location overlap
+    def find_location_aware_candidates(item) -> List[Item]
+
+    # Phase 2: Score with all factors
+    def calculate_score(item_a, item_b) -> float
+    # = text_similarity(0.7) + trust_bonus(0.2) + location_bonus(0.1)
+
+    # Phase 3: Find mutual exchanges
+    def find_bilateral_matches(item) -> List[Match]
+    # Alice.want ⊆ Bob.offer AND Bob.want ⊆ Alice.offer
+
+    # Phase 4: Discover chains
+    def discover_chains() -> int
+    # DFS graph search for cycles (3-10 participants)
+
+    # Phase 5: Notify participants
+    def notify_matches(matches) -> None
+
+    # Orchestrate all phases
+    def run_full_pipeline(user_id=None) -> Dict
 ```
-POST   /users/                      # Создать пользователя
-GET    /users/{username}            # Получить пользователя
-
-POST   /api/market-listings/        # Создать объявление
-GET    /api/market-listings/offers/all  # Все ДАРЮ
-GET    /api/market-listings/wants/all   # Все ХОЧУ
-GET    /api/market-listings/{id}        # Конкретное
-
-GET    /api/notifications?user_id=X    # Уведомления
-
-GET    /health                      # Проверка API
-```
-
-Полные примеры в **[DEVELOPMENT.md](DEVELOPMENT.md)**
 
 ---
 
-## 💻 Локальная разработка
+## 🚀 Getting Started
 
-### Требования:
-- Python 3.10+
-- PostgreSQL 12+ 
-- Node.js 18+ (опционально, для frontend)
-
-### Запуск:
-
-**1. Без БД (структурная проверка):**
+### For Development
 ```bash
-python backend/quick_test.py
-# ✅ All structure tests passed!
+# 1. Clone and setup
+git clone <repo>
+cd FreeMarket
+
+# 2. Follow docs/DEVELOPMENT.md
+# - Install dependencies
+# - Setup database
+# - Run locally
 ```
 
-**2. С БД (полный функционал):**
+### For Production
 ```bash
-# Терминал 1
-cd backend
-python -m uvicorn main:app --reload --port 8000
-
-# Терминал 2 (опционально)
-cd src
-npm run dev
+# Follow docs/DEPLOYMENT.md
+docker-compose -f docker/docker-compose.prod.yml up
 ```
 
-Подробнее: см. **[DEVELOPMENT.md](DEVELOPMENT.md)**
+---
+
+## 📞 Documentation
+
+**Everything is in `/docs/`:**
+- User guides
+- API reference
+- Architecture
+- Testing scenarios
+- Deployment guide
+- Configuration
+
+See [docs/INDEX.md](./docs/INDEX.md) for complete navigation.
 
 ---
 
-## ✅ Рефакторинг завершён
+## ✅ Current Status (Phase 5)
 
-✅ **ФАЗА 1:** Frontend структурирована  
-✅ **ФАЗА 2:** ML модули удалены (-2.7GB)  
-✅ **ФАЗА 3:** Backend API модулирован  
-✅ **ФАЗА 4:** Конфигурация централизована  
-✅ **ФАЗА 5:** Документация унифицирована  
-
----
-
-## 📝 Лицензия
-
-MIT License
+```
+✅ Code:           Unified & Clean
+✅ Architecture:   Production Ready
+✅ Matching:       5-Phase Pipeline
+✅ Locations:      Multi-city support
+✅ Documentation:  Consolidated
+✅ Testing:        Ready
+✅ Deployment:     Docker Compose
+```
 
 ---
 
-**Для полной информации и примеров см. [DEVELOPMENT.md](DEVELOPMENT.md) 📖**
+## 📊 Version History
+
+- **v2.0** (Jan 2025) - Phase 5: Unified architecture, clean codebase
+- **v1.0** - Initial MVP
+
+See [docs/CHANGELOG.md](./docs/CHANGELOG.md) for details.
+
+---
+
+**📖 Ready to start? Go to [docs/INDEX.md](./docs/INDEX.md)**
