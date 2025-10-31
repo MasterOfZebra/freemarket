@@ -1,37 +1,8 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
-export interface ListingData {
-  user_id: number;
-  locations: string[];
-  wants: Record<string, any[]>;
-  offers: Record<string, any[]>;
-}
-
-export interface Match {
-  match_id: number;
-  user_id: number;
-  partner_name: string;
-  partner_telegram: string;
-  partner_rating: number;
-  final_score: number;
-  quality: string;
-  location_overlap: boolean;
-  matching_categories: string[];
-  category_scores: Record<string, number>;
-  permanent_items: Record<string, any[]>;
-  temporary_items: Record<string, any[]>;
-}
-
-export interface MatchesResponse {
-  total_matches: number;
-  matches: Match[];
-}
-
 class ApiService {
-  private api: AxiosInstance;
-
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
@@ -44,7 +15,7 @@ class ApiService {
     // Response interceptor for error handling
     this.api.interceptors.response.use(
       (response) => response,
-      (error: AxiosError) => {
+      (error) => {
         console.error('API Error:', error.message);
         return Promise.reject(error);
       }
@@ -54,7 +25,7 @@ class ApiService {
   /**
    * Get user profile
    */
-  async getUser(userId: number) {
+  async getUser(userId) {
     try {
       const response = await this.api.get(`/users/${userId}`);
       return response.data;
@@ -66,7 +37,7 @@ class ApiService {
   /**
    * Get all user listings
    */
-  async getUserListings(userId: number) {
+  async getUserListings(userId) {
     try {
       const response = await this.api.get(`/listings/user/${userId}`);
       return response.data;
@@ -78,7 +49,7 @@ class ApiService {
   /**
    * Create listing with categories
    */
-  async createListing(data: ListingData) {
+  async createListing(data) {
     try {
       const response = await this.api.post(`/listings/create-by-categories`, data);
       return response.data;
@@ -90,7 +61,7 @@ class ApiService {
   /**
    * Create wants-only listing
    */
-  async createWantsOnly(userId: number, wants: Record<string, any[]>, locations?: string[]) {
+  async createWantsOnly(userId, wants, locations) {
     try {
       const response = await this.api.post(`/listings/wants-only`, {
         user_id: userId,
@@ -106,7 +77,7 @@ class ApiService {
   /**
    * Create offers-only listing
    */
-  async createOffersOnly(userId: number, offers: Record<string, any[]>, locations?: string[]) {
+  async createOffersOnly(userId, offers, locations) {
     try {
       const response = await this.api.post(`/listings/offers-only`, {
         user_id: userId,
@@ -122,7 +93,7 @@ class ApiService {
   /**
    * Find matches for user
    */
-  async findMatches(userId: number, exchangeType?: string, minScore?: number): Promise<MatchesResponse> {
+  async findMatches(userId, exchangeType, minScore) {
     try {
       let url = `/listings/find-matches/${userId}`;
       const params = new URLSearchParams();
@@ -148,7 +119,7 @@ class ApiService {
   /**
    * Find matches by category
    */
-  async findMatchesByCategory(userId: number, category: string): Promise<MatchesResponse> {
+  async findMatchesByCategory(userId, category) {
     try {
       const response = await this.api.get(
         `/listings/find-matches/${userId}/category/${category}`
@@ -162,7 +133,7 @@ class ApiService {
   /**
    * Get user ratings/statistics
    */
-  async getUserStats(userId: number) {
+  async getUserStats(userId) {
     try {
       const response = await this.api.get(`/users/${userId}/stats`);
       return response.data;
@@ -186,7 +157,7 @@ class ApiService {
   /**
    * Error handler
    */
-  private handleError(error: any) {
+  handleError(error) {
     if (axios.isAxiosError(error)) {
       const { response, message } = error;
       if (response) {
@@ -201,6 +172,31 @@ class ApiService {
     return { status: 0, message: String(error) };
   }
 }
+
+// Legacy API functions for backward compatibility
+export const getWants = async () => {
+  try {
+    const response = await fetch('/api/market-listings/wants/all');
+    if (!response.ok) throw new Error('Failed to fetch wants');
+    const data = await response.json();
+    return data.items || [];
+  } catch (error) {
+    console.error('Error fetching wants:', error);
+    throw error;
+  }
+};
+
+export const getOffers = async () => {
+  try {
+    const response = await fetch('/api/market-listings/offers/all');
+    if (!response.ok) throw new Error('Failed to fetch offers');
+    const data = await response.json();
+    return data.items || [];
+  } catch (error) {
+    console.error('Error fetching offers:', error);
+    throw error;
+  }
+};
 
 export const apiService = new ApiService();
 export default apiService;
