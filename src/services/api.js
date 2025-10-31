@@ -1,25 +1,11 @@
-import axios from 'axios';
-
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 class ApiService {
   constructor() {
-    this.api = axios.create({
-      baseURL: API_BASE_URL,
-      timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    // Response interceptor for error handling
-    this.api.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        console.error('API Error:', error.message);
-        return Promise.reject(error);
-      }
-    );
+    this.baseURL = API_BASE_URL;
+    this.defaultHeaders = {
+      'Content-Type': 'application/json',
+    };
   }
 
   /**
@@ -27,8 +13,14 @@ class ApiService {
    */
   async getUser(userId) {
     try {
-      const response = await this.api.get(`/users/${userId}`);
-      return response.data;
+      const response = await fetch(`${this.baseURL}/users/${userId}`, {
+        method: 'GET',
+        headers: this.defaultHeaders,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
     } catch (error) {
       throw this.handleError(error);
     }
@@ -39,8 +31,14 @@ class ApiService {
    */
   async getUserListings(userId) {
     try {
-      const response = await this.api.get(`/listings/user/${userId}`);
-      return response.data;
+      const response = await fetch(`${this.baseURL}/listings/user/${userId}`, {
+        method: 'GET',
+        headers: this.defaultHeaders,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
     } catch (error) {
       throw this.handleError(error);
     }
@@ -51,8 +49,15 @@ class ApiService {
    */
   async createListing(data) {
     try {
-      const response = await this.api.post(`/listings/create-by-categories`, data);
-      return response.data;
+      const response = await fetch(`${this.baseURL}/listings/create-by-categories`, {
+        method: 'POST',
+        headers: this.defaultHeaders,
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
     } catch (error) {
       throw this.handleError(error);
     }
@@ -63,12 +68,19 @@ class ApiService {
    */
   async createWantsOnly(userId, wants, locations) {
     try {
-      const response = await this.api.post(`/listings/wants-only`, {
-        user_id: userId,
-        wants,
-        locations,
+      const response = await fetch(`${this.baseURL}/listings/wants-only`, {
+        method: 'POST',
+        headers: this.defaultHeaders,
+        body: JSON.stringify({
+          user_id: userId,
+          wants,
+          locations,
+        }),
       });
-      return response.data;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
     } catch (error) {
       throw this.handleError(error);
     }
@@ -79,12 +91,19 @@ class ApiService {
    */
   async createOffersOnly(userId, offers, locations) {
     try {
-      const response = await this.api.post(`/listings/offers-only`, {
-        user_id: userId,
-        offers,
-        locations,
+      const response = await fetch(`${this.baseURL}/listings/offers-only`, {
+        method: 'POST',
+        headers: this.defaultHeaders,
+        body: JSON.stringify({
+          user_id: userId,
+          offers,
+          locations,
+        }),
       });
-      return response.data;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
     } catch (error) {
       throw this.handleError(error);
     }
@@ -109,8 +128,14 @@ class ApiService {
         url += `?${params.toString()}`;
       }
 
-      const response = await this.api.get(url);
-      return response.data;
+      const response = await fetch(`${this.baseURL}${url}`, {
+        method: 'GET',
+        headers: this.defaultHeaders,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
     } catch (error) {
       throw this.handleError(error);
     }
@@ -121,10 +146,14 @@ class ApiService {
    */
   async findMatchesByCategory(userId, category) {
     try {
-      const response = await this.api.get(
-        `/listings/find-matches/${userId}/category/${category}`
-      );
-      return response.data;
+      const response = await fetch(`${this.baseURL}/listings/find-matches/${userId}/category/${category}`, {
+        method: 'GET',
+        headers: this.defaultHeaders,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
     } catch (error) {
       throw this.handleError(error);
     }
@@ -135,8 +164,14 @@ class ApiService {
    */
   async getUserStats(userId) {
     try {
-      const response = await this.api.get(`/users/${userId}/stats`);
-      return response.data;
+      const response = await fetch(`${this.baseURL}/users/${userId}/stats`, {
+        method: 'GET',
+        headers: this.defaultHeaders,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
     } catch (error) {
       throw this.handleError(error);
     }
@@ -147,8 +182,14 @@ class ApiService {
    */
   async healthCheck() {
     try {
-      const response = await this.api.get('/health');
-      return response.data;
+      const response = await fetch(`${this.baseURL}/health`, {
+        method: 'GET',
+        headers: this.defaultHeaders,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
     } catch (error) {
       throw this.handleError(error);
     }
@@ -158,16 +199,9 @@ class ApiService {
    * Error handler
    */
   handleError(error) {
-    if (axios.isAxiosError(error)) {
-      const { response, message } = error;
-      if (response) {
-        return {
-          status: response.status,
-          message: response.data?.detail || response.statusText,
-          data: response.data,
-        };
-      }
-      return { status: 0, message };
+    if (error.message && error.message.includes('HTTP')) {
+      // Already formatted error from fetch
+      return { status: 0, message: error.message };
     }
     return { status: 0, message: String(error) };
   }
