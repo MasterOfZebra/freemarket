@@ -82,7 +82,7 @@ def list_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
                 "title": item.title,
                 "description": item.description,
                 "active": item.active,
-                "created_at": item.created_at.isoformat() if item.created_at else None
+                "created_at": (lambda dt: dt.isoformat() if dt is not None else None)(getattr(item, 'created_at', None))
             })
         return result
     except Exception as e:
@@ -109,7 +109,7 @@ def create_item_endpoint(item_data: dict, db: Session = Depends(get_db)):
             "title": created_item.title,
             "description": created_item.description,
             "active": created_item.active,
-            "created_at": created_item.created_at.isoformat() if created_item.created_at else None
+            "created_at": created_item.created_at.isoformat() if getattr(created_item, 'created_at', None) is not None else None
         }
     except Exception as e:
         return {"error": str(e)}
@@ -142,7 +142,7 @@ def get_wants_frontend(skip: int = 0, limit: int = 20, db: Session = Depends(get
                 "category": getattr(item, 'category', ''),
                 "price": getattr(item, 'price', 0),
                 "user_id": getattr(item, 'user_id', None),
-                "created_at": item.created_at.isoformat() if hasattr(item, 'created_at') and item.created_at else None
+                "created_at": (lambda dt: dt.isoformat() if dt is not None else None)(getattr(item, 'created_at', None))
             })
 
         return {
@@ -182,7 +182,7 @@ def get_offers_frontend(skip: int = 0, limit: int = 20, db: Session = Depends(ge
                 "category": getattr(item, 'category', ''),
                 "price": getattr(item, 'price', 0),
                 "user_id": getattr(item, 'user_id', None),
-                "created_at": item.created_at.isoformat() if hasattr(item, 'created_at') and item.created_at else None
+                "created_at": (lambda dt: dt.isoformat() if dt is not None else None)(getattr(item, 'created_at', None))
             })
 
         return {
