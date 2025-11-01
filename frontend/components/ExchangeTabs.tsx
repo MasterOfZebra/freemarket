@@ -114,6 +114,12 @@ export const PERMANENT_CATEGORIES = [
   }
 ];
 
+interface UserData {
+  name: string;
+  telegram: string;
+  city: 'Алматы' | 'Астана' | 'Шымкент';
+}
+
 interface ExchangeTabsProps {
   userId: number;
   onMatchesFound?: (count: number) => void;
@@ -125,7 +131,8 @@ interface ExchangeTabsProps {
  */
 const transformFormDataToApiFormat = (
   formData: any,
-  exchangeType: 'permanent' | 'temporary'
+  exchangeType: 'permanent' | 'temporary',
+  userData: UserData
 ) => {
   const transformItems = (items: Record<string, any[]>) => {
     const result: Record<string, any[]> = {};
@@ -155,7 +162,7 @@ const transformFormDataToApiFormat = (
   return {
     wants: transformItems(formData.wants || {}),
     offers: transformItems(formData.offers || {}),
-    locations: formData.locations || []
+    locations: [userData.city]
   };
 };
 
@@ -164,6 +171,18 @@ export default function ExchangeTabs({ userId, onMatchesFound }: ExchangeTabsPro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [userData, setUserData] = useState<UserData>({
+    name: '',
+    telegram: '',
+    city: 'Алматы'
+  });
+
+  const handleUserDataChange = (field: keyof UserData, value: string) => {
+    setUserData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   const handleTabChange = (value: string) => {
     setActiveTab(value as 'permanent' | 'temporary');
@@ -177,8 +196,16 @@ export default function ExchangeTabs({ userId, onMatchesFound }: ExchangeTabsPro
     setSuccess(false);
 
     try {
+      // Validate user data
+      if (!userData.name.trim()) {
+        throw new Error('Заполните ФИО');
+      }
+      if (!userData.telegram.trim()) {
+        throw new Error('Заполните телеграм контакт');
+      }
+
       // 1. Transform form data to API format
-      const apiData = transformFormDataToApiFormat(data, activeTab);
+      const apiData = transformFormDataToApiFormat(data, activeTab, userData);
 
       // Validate that we have at least some items
       const totalWants = Object.values(apiData.wants).reduce((sum, arr) => sum + arr.length, 0);
@@ -193,7 +220,12 @@ export default function ExchangeTabs({ userId, onMatchesFound }: ExchangeTabsPro
         user_id: userId,
         wants: apiData.wants,
         offers: apiData.offers,
-        locations: apiData.locations
+        locations: apiData.locations,
+        user_data: {
+          name: userData.name,
+          telegram: userData.telegram,
+          city: userData.city
+        }
       });
 
       console.log('Listing created:', response);
@@ -232,6 +264,53 @@ export default function ExchangeTabs({ userId, onMatchesFound }: ExchangeTabsPro
         <div className="pb-3">
           <h1 className="text-3xl font-bold">🎁 FreeMarket Exchange</h1>
           <p className="text-gray-600 mt-2">Выберите тип обмена и добавьте ваши предметы</p>
+        </div>
+
+        {/* User Data Form */}
+        <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border-2 border-orange-300">
+          <h2 className="text-xl font-bold mb-4 text-orange-800">👤 Ваши данные</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                ФИО *
+              </label>
+              <input
+                type="text"
+                value={userData.name}
+                onChange={(e) => handleUserDataChange('name', e.target.value)}
+                placeholder="Ваше полное имя"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Телеграм контакт *
+              </label>
+              <input
+                type="text"
+                value={userData.telegram}
+                onChange={(e) => handleUserDataChange('telegram', e.target.value)}
+                placeholder="@username или +7..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Город *
+              </label>
+              <select
+                value={userData.city}
+                onChange={(e) => handleUserDataChange('city', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="Алматы">Алматы</option>
+                <option value="Астана">Астана</option>
+                <option value="Шымкент">Шымкент</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div className="w-full">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getOffers, getWants, createListing } from './services/api';
+import { getOffers, getWants } from './services/api';
+import ExchangeTabs from './components/ExchangeTabs';
 import './styles/App.css';
 
 function App() {
@@ -8,317 +9,194 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('wants');
-    const [showForm, setShowForm] = useState(false);
-    const [formSubmitting, setFormSubmitting] = useState(false);
-    const [formData, setFormData] = useState({
-        user_id: 1,
-        listing_type: 'want',
-        title: '',
-        description: '',
-        category: '',
-        location: ''
-    });
+    const [showRegistration, setShowRegistration] = useState(false);
+    const [matchesFound, setMatchesFound] = useState(0);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [wantsData, offersData] = await Promise.all([
-                    getWants(),
-                    getOffers()
-                ]);
-                setWants(wantsData);
-                setOffers(offersData);
-            } catch (err) {
-                setError('Ошибка загрузки данных: ' + err.message);
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
-
-    const handleFormSubmit = async (e) => {
-        e.preventDefault();
-        setFormSubmitting(true);
+    const fetchData = async () => {
         try {
-            // Send form data to backend API
-            const result = await createListing(formData);
-            console.log('Listing created:', result);
-
-            // Show success message
-            alert('Объявление успешно создано!');
-
-            // Refresh the listings
             const [wantsData, offersData] = await Promise.all([
                 getWants(),
                 getOffers()
             ]);
             setWants(wantsData);
             setOffers(offersData);
-
-            // Close form and reset
-            setShowForm(false);
-            setFormData({
-                user_id: 1,
-                listing_type: 'want',
-                title: '',
-                description: '',
-                category: '',
-                location: ''
-            });
         } catch (err) {
-            console.error('Error submitting form:', err);
-            alert('Ошибка при создании объявления: ' + err.message);
+            setError('Ошибка загрузки данных: ' + err.message);
+            console.error(err);
         } finally {
-            setFormSubmitting(false);
+            setLoading(false);
         }
     };
 
-    const handleFormChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleMatchesFound = (count: number) => {
+        setMatchesFound(count);
+        // Refresh listings after successful registration
+        setTimeout(() => {
+            fetchData();
+        }, 2000);
     };
 
-    if (loading) {
+    if (loading && !showRegistration) {
         return <div style={{ padding: '20px', textAlign: 'center' }}>Загрузка...</div>;
+    }
+
+    if (showRegistration) {
+        return (
+            <div className="App">
+                <header className="App-header">
+                    <h1>🌍 FreeMarket - Платформа обмена ресурсами</h1>
+                    <button
+                        onClick={() => setShowRegistration(false)}
+                        style={{
+                            padding: '12px 30px',
+                            marginTop: '15px',
+                            backgroundColor: '#666',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        ← Назад к спискам
+                    </button>
+                </header>
+                <ExchangeTabs 
+                    userId={1} 
+                    onMatchesFound={handleMatchesFound}
+                />
+            </div>
+        );
     }
 
     return (
         <div className="App">
             <header className="App-header">
-                <h1>Добро пожаловать на FreeMarket!</h1>
-                <p>Платформа обмена ресурсами в городе Алматы</p>
+                <h1>🌍 FreeMarket - Платформа обмена ресурсами</h1>
+                <p>Город Алматы - обменивайтесь всем, что нужно!</p>
                 <button
-                    onClick={() => setShowForm(!showForm)}
+                    onClick={() => setShowRegistration(true)}
                     style={{
-                        padding: '10px 20px',
-                        marginTop: '10px',
+                        padding: '12px 30px',
+                        marginTop: '15px',
                         backgroundColor: '#ff9800',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '4px',
+                        borderRadius: '6px',
                         cursor: 'pointer',
-                        fontSize: '16px'
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                     }}
                 >
-                    {showForm ? 'Закрыть анкету' : 'Создать объявление'}
+                    ✏️ Заполнить анкету обмена
                 </button>
+                {matchesFound > 0 && (
+                    <div style={{
+                        marginTop: '15px',
+                        padding: '10px 20px',
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                    }}>
+                        ✅ Найдено совпадений: {matchesFound}
+                    </div>
+                )}
             </header>
 
-            {showForm && (
-                <div style={{ 
-                    padding: '20px', 
-                    backgroundColor: '#f5f5f5', 
-                    margin: '20px',
-                    borderRadius: '4px',
-                    border: '2px solid #ff9800'
-                }}>
-                    <h2>Создать новое объявление</h2>
-                    <form onSubmit={handleFormSubmit}>
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                Тип объявления *
-                            </label>
-                            <select
-                                name="listing_type"
-                                value={formData.listing_type}
-                                onChange={handleFormChange}
-                                required
-                                style={{
-                                    width: '100%',
-                                    padding: '10px',
-                                    borderRadius: '4px',
-                                    border: '1px solid #ddd'
-                                }}
-                            >
-                                <option value="want">Хочу (Want)</option>
-                                <option value="offer">Могу (Offer)</option>
-                            </select>
-                        </div>
-
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                Название *
-                            </label>
-                            <input
-                                type="text"
-                                name="title"
-                                value={formData.title}
-                                onChange={handleFormChange}
-                                placeholder="Введите название объявления"
-                                required
-                                style={{
-                                    width: '100%',
-                                    padding: '10px',
-                                    borderRadius: '4px',
-                                    border: '1px solid #ddd',
-                                    boxSizing: 'border-box'
-                                }}
-                            />
-                        </div>
-
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                Описание *
-                            </label>
-                            <textarea
-                                name="description"
-                                value={formData.description}
-                                onChange={handleFormChange}
-                                placeholder="Подробное описание"
-                                required
-                                rows="4"
-                                style={{
-                                    width: '100%',
-                                    padding: '10px',
-                                    borderRadius: '4px',
-                                    border: '1px solid #ddd',
-                                    boxSizing: 'border-box',
-                                    fontFamily: 'Arial, sans-serif'
-                                }}
-                            />
-                        </div>
-
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                Категория *
-                            </label>
-                            <input
-                                type="text"
-                                name="category"
-                                value={formData.category}
-                                onChange={handleFormChange}
-                                placeholder="Например: электроника, мебель, услуги"
-                                required
-                                style={{
-                                    width: '100%',
-                                    padding: '10px',
-                                    borderRadius: '4px',
-                                    border: '1px solid #ddd',
-                                    boxSizing: 'border-box'
-                                }}
-                            />
-                        </div>
-
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                Локация *
-                            </label>
-                            <input
-                                type="text"
-                                name="location"
-                                value={formData.location}
-                                onChange={handleFormChange}
-                                placeholder="Район или адрес в Алматы"
-                                required
-                                style={{
-                                    width: '100%',
-                                    padding: '10px',
-                                    borderRadius: '4px',
-                                    border: '1px solid #ddd',
-                                    boxSizing: 'border-box'
-                                }}
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={formSubmitting}
-                            style={{
-                                padding: '12px 24px',
-                                backgroundColor: formSubmitting ? '#ccc' : '#4CAF50',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: formSubmitting ? 'not-allowed' : 'pointer',
-                                fontSize: '16px',
-                                marginRight: '10px'
-                            }}
-                        >
-                            {formSubmitting ? 'Создание...' : 'Опубликовать'}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setShowForm(false)}
-                            style={{
-                                padding: '12px 24px',
-                                backgroundColor: '#f44336',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '16px'
-                            }}
-                        >
-                            Отмена
-                        </button>
-                    </form>
-                </div>
-            )}
-
             {error && (
-                <div style={{ color: 'red', padding: '10px', margin: '10px' }}>
+                <div style={{ color: 'red', padding: '10px', margin: '10px', textAlign: 'center' }}>
                     Ошибка: {error}
                 </div>
             )}
 
-            <div style={{ padding: '20px' }}>
-                <div style={{ marginBottom: '20px' }}>
+            <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+                <div style={{
+                    display: 'flex',
+                    gap: '10px',
+                    marginBottom: '20px',
+                    borderBottom: '3px solid #ddd'
+                }}>
                     <button
                         onClick={() => setActiveTab('wants')}
                         style={{
-                            padding: '10px 20px',
-                            marginRight: '10px',
-                            backgroundColor: activeTab === 'wants' ? '#007bff' : '#ccc',
-                            color: activeTab === 'wants' ? 'white' : 'black',
+                            padding: '12px 24px',
+                            backgroundColor: activeTab === 'wants' ? '#007bff' : '#eee',
+                            color: activeTab === 'wants' ? 'white' : '#333',
                             border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
+                            borderRadius: '4px 4px 0 0',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            fontWeight: 'bold'
                         }}
                     >
-                        Хочу (Wants) - {wants.length}
+                        🔵 НУЖНО (Wants) - {wants.length}
                     </button>
                     <button
                         onClick={() => setActiveTab('offers')}
                         style={{
-                            padding: '10px 20px',
-                            backgroundColor: activeTab === 'offers' ? '#28a745' : '#ccc',
-                            color: activeTab === 'offers' ? 'white' : 'black',
+                            padding: '12px 24px',
+                            backgroundColor: activeTab === 'offers' ? '#28a745' : '#eee',
+                            color: activeTab === 'offers' ? 'white' : '#333',
                             border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
+                            borderRadius: '4px 4px 0 0',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            fontWeight: 'bold'
                         }}
                     >
-                        Могу (Offers) - {offers.length}
+                        🟢 ПРЕДЛАГАЮ (Offers) - {offers.length}
                     </button>
                 </div>
 
                 {activeTab === 'wants' && (
                     <section>
-                        <h2>Хочу (Wants)</h2>
+                        <h2 style={{ color: '#007bff' }}>🔵 Что люди ищут (НУЖНО)</h2>
                         {wants.length === 0 ? (
-                            <p>Нет объявлений</p>
+                            <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
+                                Нет активных запросов
+                            </p>
                         ) : (
-                            <div style={{ display: 'grid', gap: '10px' }}>
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                                gap: '15px'
+                            }}>
                                 {wants.map(item => (
                                     <div
                                         key={item.id}
                                         style={{
-                                            border: '1px solid #ddd',
+                                            border: '2px solid #007bff',
                                             padding: '15px',
-                                            borderRadius: '4px',
-                                            backgroundColor: '#f9f9f9'
+                                            borderRadius: '6px',
+                                            backgroundColor: '#f0f7ff',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                                         }}
                                     >
-                                        <h3 style={{ margin: '0 0 10px 0' }}>{item.title}</h3>
-                                        <p style={{ margin: '5px 0', color: '#666' }}>{item.description}</p>
-                                        <p style={{ margin: '5px 0', fontSize: '12px', color: '#999' }}>
-                                            Категория ID: {item.category_id} | Пользователь ID: {item.user_id}
+                                        <h3 style={{ margin: '0 0 10px 0', color: '#007bff' }}>
+                                            {item.title}
+                                        </h3>
+                                        <p style={{ margin: '5px 0', color: '#555', fontSize: '14px' }}>
+                                            {item.description}
                                         </p>
+                                        {item.category && (
+                                            <p style={{
+                                                margin: '8px 0 0 0',
+                                                fontSize: '12px',
+                                                color: '#999',
+                                                padding: '8px',
+                                                backgroundColor: 'white',
+                                                borderRadius: '4px'
+                                            }}>
+                                                📁 {item.category}
+                                            </p>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -328,26 +206,46 @@ function App() {
 
                 {activeTab === 'offers' && (
                     <section>
-                        <h2>Могу (Offers)</h2>
+                        <h2 style={{ color: '#28a745' }}>🟢 Что люди предлагают (ПРЕДЛАГАЮ)</h2>
                         {offers.length === 0 ? (
-                            <p>Нет объявлений</p>
+                            <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
+                                Нет активных предложений
+                            </p>
                         ) : (
-                            <div style={{ display: 'grid', gap: '10px' }}>
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                                gap: '15px'
+                            }}>
                                 {offers.map(item => (
                                     <div
                                         key={item.id}
                                         style={{
-                                            border: '1px solid #ddd',
+                                            border: '2px solid #28a745',
                                             padding: '15px',
-                                            borderRadius: '4px',
-                                            backgroundColor: '#f0f9f0'
+                                            borderRadius: '6px',
+                                            backgroundColor: '#f0fff0',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                                         }}
                                     >
-                                        <h3 style={{ margin: '0 0 10px 0' }}>{item.title}</h3>
-                                        <p style={{ margin: '5px 0', color: '#666' }}>{item.description}</p>
-                                        <p style={{ margin: '5px 0', fontSize: '12px', color: '#999' }}>
-                                            Категория ID: {item.category_id} | Пользователь ID: {item.user_id}
+                                        <h3 style={{ margin: '0 0 10px 0', color: '#28a745' }}>
+                                            {item.title}
+                                        </h3>
+                                        <p style={{ margin: '5px 0', color: '#555', fontSize: '14px' }}>
+                                            {item.description}
                                         </p>
+                                        {item.category && (
+                                            <p style={{
+                                                margin: '8px 0 0 0',
+                                                fontSize: '12px',
+                                                color: '#999',
+                                                padding: '8px',
+                                                backgroundColor: 'white',
+                                                borderRadius: '4px'
+                                            }}>
+                                                📁 {item.category}
+                                            </p>
+                                        )}
                                     </div>
                                 ))}
                             </div>
