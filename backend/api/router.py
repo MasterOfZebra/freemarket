@@ -10,7 +10,7 @@ router = APIRouter()
 router.include_router(health.router)
 router.include_router(users.router)
 router.include_router(market_listings.router)
-router.include_router(items_router)  # Items endpoints for frontend compatibility
+router.include_router(items_router, prefix="/api")  # Items endpoints for frontend compatibility
 router.include_router(listings_exchange.router)
 router.include_router(notifications.router)
 router.include_router(exchange_chains.router)
