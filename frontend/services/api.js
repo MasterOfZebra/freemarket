@@ -207,10 +207,10 @@ class ApiService {
   }
 }
 
-// Legacy API functions for backward compatibility
+// API functions for listings
 export const getWants = async () => {
   try {
-    const response = await fetch('/api/market-listings/wants/all');
+    const response = await fetch('/api/wants/');
     if (!response.ok) throw new Error('Failed to fetch wants');
     const data = await response.json();
     return data.items || [];
@@ -222,7 +222,7 @@ export const getWants = async () => {
 
 export const getOffers = async () => {
   try {
-    const response = await fetch('/api/market-listings/offers/all');
+    const response = await fetch('/api/offers/');
     if (!response.ok) throw new Error('Failed to fetch offers');
     const data = await response.json();
     return data.items || [];

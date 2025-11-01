@@ -8,12 +8,12 @@ router = APIRouter()
 # Include all endpoint routers
 router.include_router(health.router)
 router.include_router(users.router)
-router.include_router(market_listings.router)
+router.include_router(market_listings.router, prefix="/market-listings")
 
 # Items endpoints for frontend compatibility
 try:
     from .endpoints.market_listings import items_router
-    router.include_router(items_router)  # NO prefix - nginx already strips /api/
+    router.include_router(items_router)
     print("✅ items_router loaded successfully")
 except Exception as e:
     print(f"❌ Failed to load items_router: {e}")

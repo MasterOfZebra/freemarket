@@ -8,7 +8,7 @@ from backend.models import MarketListing, Item
 from backend.schemas import MarketListingResponse, MarketListingCreate as MarketListingCreateSchema
 from backend.crud import get_market_listings, create_market_listing, get_items
 
-router = APIRouter(prefix="/api/market-listings", tags=["market-listings"])
+router = APIRouter(tags=["market-listings"])
 
 # Additional router for direct item access (frontend compatibility)
 items_router = APIRouter(tags=["items"])
