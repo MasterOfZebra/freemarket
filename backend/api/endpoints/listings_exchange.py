@@ -83,6 +83,23 @@ def create_listing_by_categories(
         if not user:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found")
 
+        # Update user data if provided
+        if listing.user_data:
+            user_data = listing.user_data
+            if user_data.get('name'):
+                user.username = user_data['name']
+            if user_data.get('telegram'):
+                telegram = user_data['telegram'].strip()
+                if telegram.startswith('@'):
+                    user.telegram_username = telegram
+                elif telegram.isdigit() or (telegram.startswith('+') and telegram[1:].isdigit()):
+                    user.telegram_id = int(telegram.replace('+', ''))
+                else:
+                    user.telegram_username = telegram
+            if user_data.get('city') and listing.locations:
+                user.locations = listing.locations
+            db.flush()
+
         # Create listing
         db_listing = Listing(user_id=user_id)
         db.add(db_listing)

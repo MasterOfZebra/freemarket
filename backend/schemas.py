@@ -366,9 +366,34 @@ class ListingItemsByCategoryCreate(BaseModel):
     }
     """
 
-    wants: Dict[str, List[ListingItemCreate]] = Field(..., min_length=1, description="Wants by category")
-    offers: Dict[str, List[ListingItemCreate]] = Field(..., min_length=1, description="Offers by category")
+class ListingItemsByCategoryCreate(BaseModel):
+    """
+    Listing items organized by category for both types.
+
+    Structure:
+    {
+      "wants": {
+        "electronics": [item1, item2, ...],
+        "transport": [...],
+        ...
+      },
+      "offers": {
+        "electronics": [...],
+        ...
+      },
+      "locations": ["Алматы", "Астана"],
+      "user_data": {
+        "name": "Иван Иванов",
+        "telegram": "@username",
+        "city": "Алматы"
+      }
+    }
+    """
+
+    wants: Dict[str, List[ListingItemCreate]] = Field(default_factory=dict, description="Wants by category")
+    offers: Dict[str, List[ListingItemCreate]] = Field(default_factory=dict, description="Offers by category")
     locations: Optional[List[str]] = Field(None, description="User locations")
+    user_data: Optional[Dict[str, str]] = Field(None, description="User data: name, telegram, city")
 
     @validator('wants', 'offers', pre=True)
     def validate_categories(cls, v):
