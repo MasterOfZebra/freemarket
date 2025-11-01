@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from backend.database import SessionLocal
 from backend.models import MarketListing, Item
-from backend.schemas import MarketListingResponse, MarketListingCreate as MarketListingCreateSchema, Item as ItemResponse, ItemCreate
+from backend.schemas import MarketListingResponse, MarketListingCreate as MarketListingCreateSchema
 from backend.crud import get_market_listings, create_market_listing, get_items
 
 router = APIRouter(prefix="/api/market-listings", tags=["market-listings"])
@@ -66,32 +66,63 @@ def create_listing(listing: MarketListingCreateSchema, db: Session = Depends(get
 
 
 # Items endpoints for frontend compatibility
-@items_router.get("/items/", response_model=List[ItemResponse])
+@items_router.get("/items/")
 def list_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Get all items (for frontend compatibility)"""
     try:
         items = get_items(db, skip=skip, limit=limit)
-        return [ItemResponse.from_orm(item).model_dump() for item in items]
+        # Convert to simple dict format
+        result = []
+        for item in items:
+            result.append({
+                "id": item.id,
+                "user_id": item.user_id,
+                "kind": item.kind,
+                "category": item.category,
+                "title": item.title,
+                "description": item.description,
+                "active": item.active,
+                "created_at": item.created_at.isoformat() if item.created_at else None
+            })
+        return result
     except Exception as e:
         # Return empty list if database error
         return []
 
 
-@items_router.post("/items/", response_model=ItemResponse)
-def create_item_endpoint(item: ItemCreate, db: Session = Depends(get_db)):
+@items_router.post("/items/")
+def create_item_endpoint(item_data: dict, db: Session = Depends(get_db)):
     """Create a new item (for frontend compatibility)"""
-    from backend.crud import create_item as crud_create_item
-    return crud_create_item(db, item)
+    try:
+        from backend.crud import create_item
+        from backend.schemas import ItemCreate
+
+        # Convert dict to ItemCreate schema
+        item = ItemCreate(**item_data)
+        created_item = create_item(db, item)
+
+        return {
+            "id": created_item.id,
+            "user_id": created_item.user_id,
+            "kind": created_item.kind,
+            "category": created_item.category,
+            "title": created_item.title,
+            "description": created_item.description,
+            "active": created_item.active,
+            "created_at": created_item.created_at.isoformat() if created_item.created_at else None
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 # Debug endpoint to test routing
-@items_router.get("/test/", response_model=dict)
+@items_router.get("/test/")
 def test_endpoint():
     """Test endpoint to verify routing works"""
     return {"message": "API routing works!", "status": "ok"}
 
 # Wants and offers endpoints for frontend compatibility
-@items_router.get("/wants/", response_model=dict)
+@items_router.get("/wants/")
 def get_wants_frontend(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     """Get all wants (for frontend compatibility)"""
     try:
@@ -101,8 +132,21 @@ def get_wants_frontend(skip: int = 0, limit: int = 20, db: Session = Depends(get
             limit=limit,
             listing_type="wants"
         )
+        # Convert to simple dict format
+        items_list = []
+        for item in items:
+            items_list.append({
+                "id": item.id if hasattr(item, 'id') else None,
+                "title": getattr(item, 'title', ''),
+                "description": getattr(item, 'description', ''),
+                "category": getattr(item, 'category', ''),
+                "price": getattr(item, 'price', 0),
+                "user_id": getattr(item, 'user_id', None),
+                "created_at": item.created_at.isoformat() if hasattr(item, 'created_at') and item.created_at else None
+            })
+
         return {
-            "items": [MarketListingResponse.from_orm(item).model_dump() if hasattr(item, '__table__') else item for item in items],
+            "items": items_list,
             "total": total,
             "skip": skip,
             "limit": limit
@@ -118,7 +162,7 @@ def get_wants_frontend(skip: int = 0, limit: int = 20, db: Session = Depends(get
         }
 
 
-@items_router.get("/offers/", response_model=dict)
+@items_router.get("/offers/")
 def get_offers_frontend(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     """Get all offers (for frontend compatibility)"""
     try:
@@ -128,8 +172,21 @@ def get_offers_frontend(skip: int = 0, limit: int = 20, db: Session = Depends(ge
             limit=limit,
             listing_type="offers"
         )
+        # Convert to simple dict format
+        items_list = []
+        for item in items:
+            items_list.append({
+                "id": item.id if hasattr(item, 'id') else None,
+                "title": getattr(item, 'title', ''),
+                "description": getattr(item, 'description', ''),
+                "category": getattr(item, 'category', ''),
+                "price": getattr(item, 'price', 0),
+                "user_id": getattr(item, 'user_id', None),
+                "created_at": item.created_at.isoformat() if hasattr(item, 'created_at') and item.created_at else None
+            })
+
         return {
-            "items": [MarketListingResponse.from_orm(item).model_dump() if hasattr(item, '__table__') else item for item in items],
+            "items": items_list,
             "total": total,
             "skip": skip,
             "limit": limit
