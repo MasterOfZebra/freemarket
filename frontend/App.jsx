@@ -8,6 +8,15 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('wants');
+    const [showForm, setShowForm] = useState(false);
+    const [formData, setFormData] = useState({
+        user_id: 1,
+        listing_type: 'want',
+        title: '',
+        description: '',
+        category: '',
+        location: ''
+    });
 
     useEffect(() => {
         const fetchData = async () => {
@@ -28,6 +37,34 @@ function App() {
         fetchData();
     }, []);
 
+    const handleFormSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            // TODO: Send form data to backend API
+            console.log('Form submitted:', formData);
+            setShowForm(false);
+            // Reset form
+            setFormData({
+                user_id: 1,
+                listing_type: 'want',
+                title: '',
+                description: '',
+                category: '',
+                location: ''
+            });
+        } catch (err) {
+            console.error('Error submitting form:', err);
+        }
+    };
+
+    const handleFormChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
     if (loading) {
         return <div style={{ padding: '20px', textAlign: 'center' }}>Загрузка...</div>;
     }
@@ -37,7 +74,172 @@ function App() {
             <header className="App-header">
                 <h1>Добро пожаловать на FreeMarket!</h1>
                 <p>Платформа обмена ресурсами в городе Алматы</p>
+                <button
+                    onClick={() => setShowForm(!showForm)}
+                    style={{
+                        padding: '10px 20px',
+                        marginTop: '10px',
+                        backgroundColor: '#ff9800',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '16px'
+                    }}
+                >
+                    {showForm ? 'Закрыть анкету' : 'Создать объявление'}
+                </button>
             </header>
+
+            {showForm && (
+                <div style={{ 
+                    padding: '20px', 
+                    backgroundColor: '#f5f5f5', 
+                    margin: '20px',
+                    borderRadius: '4px',
+                    border: '2px solid #ff9800'
+                }}>
+                    <h2>Создать новое объявление</h2>
+                    <form onSubmit={handleFormSubmit}>
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                Тип объявления *
+                            </label>
+                            <select
+                                name="listing_type"
+                                value={formData.listing_type}
+                                onChange={handleFormChange}
+                                required
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ddd'
+                                }}
+                            >
+                                <option value="want">Хочу (Want)</option>
+                                <option value="offer">Могу (Offer)</option>
+                            </select>
+                        </div>
+
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                Название *
+                            </label>
+                            <input
+                                type="text"
+                                name="title"
+                                value={formData.title}
+                                onChange={handleFormChange}
+                                placeholder="Введите название объявления"
+                                required
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ddd',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                Описание *
+                            </label>
+                            <textarea
+                                name="description"
+                                value={formData.description}
+                                onChange={handleFormChange}
+                                placeholder="Подробное описание"
+                                required
+                                rows="4"
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ddd',
+                                    boxSizing: 'border-box',
+                                    fontFamily: 'Arial, sans-serif'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                Категория *
+                            </label>
+                            <input
+                                type="text"
+                                name="category"
+                                value={formData.category}
+                                onChange={handleFormChange}
+                                placeholder="Например: электроника, мебель, услуги"
+                                required
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ddd',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                                Локация *
+                            </label>
+                            <input
+                                type="text"
+                                name="location"
+                                value={formData.location}
+                                onChange={handleFormChange}
+                                placeholder="Район или адрес в Алматы"
+                                required
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ddd',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            style={{
+                                padding: '12px 24px',
+                                backgroundColor: '#4CAF50',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                marginRight: '10px'
+                            }}
+                        >
+                            Опубликовать
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowForm(false)}
+                            style={{
+                                padding: '12px 24px',
+                                backgroundColor: '#f44336',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '16px'
+                            }}
+                        >
+                            Отмена
+                        </button>
+                    </form>
+                </div>
+            )}
 
             {error && (
                 <div style={{ color: 'red', padding: '10px', margin: '10px' }}>
