@@ -101,6 +101,11 @@ def create_profile(db: Session, profile: ProfileCreate):
 def get_user_items(db: Session, user_id: int):
     return db.query(Item).filter(Item.user_id == user_id).all()
 
+
+def get_items(db: Session, skip: int = 0, limit: int = 100):
+    """Get all items with pagination"""
+    return db.query(Item).offset(skip).limit(limit).all()
+
 def create_item(db: Session, item: ItemCreate):
     db_item = Item(
         user_id=item.user_id,

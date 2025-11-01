@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import Message
-from aiogram.error import TelegramError
+from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.orm import Session
 from backend.database import SessionLocal
 from backend.crud import get_pending_notifications, mark_notification_sent
@@ -185,7 +185,7 @@ async def send_match_notification(
         )
         print(f"✅ Match notification sent to {user_telegram_id}")
         return True
-    except TelegramError as e:
+    except TelegramBadRequest as e:
         print(f"❌ Failed to send match notification to {user_telegram_id}: {e}")
         return False
     except Exception as e:
