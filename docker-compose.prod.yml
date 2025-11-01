@@ -49,33 +49,21 @@ services:
       timeout: 10s
       retries: 3
 
-  frontend:
-    image: freemarket_frontend:latest
+  nginx:
+    image: freemarket_nginx:latest
     build:
       context: .
-      dockerfile: docker/Dockerfile.frontend
-    volumes:
-      - frontend_build:/usr/share/nginx/html
-    networks:
-      - freemarket
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
+      dockerfile: docker/Dockerfile.nginx
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./config/freemarket.nginx:/etc/nginx/conf.d/default.conf
       - ./certs:/etc/ssl:ro
-      - frontend_build:/usr/share/nginx/html:ro
     networks:
       - freemarket
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
     restart: always
 
   bot:
@@ -95,7 +83,6 @@ services:
 
 volumes:
   redis_data:
-  frontend_build:
   postgres_data:
 
 

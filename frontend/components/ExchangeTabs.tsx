@@ -1,0 +1,317 @@
+/**
+ * ExchangeTabs.tsx
+ * Main tab container for Permanent and Temporary Exchange
+ *
+ * Features:
+ * - Two-tab UI (Green for Permanent, Orange for Temporary)
+ * - Form validation
+ * - API integration
+ */
+import React, { useState } from 'react';
+import PermanentTab from './PermanentTab';
+import TemporaryTab from './TemporaryTab';
+import { apiService } from '../services/api';
+
+// ========== EXPANDED CATEGORY SYSTEM ==========
+
+// 🕒 TEMPORARY EXCHANGE (с возвратом)
+export const TEMPORARY_CATEGORIES = [
+  {
+    group: '🚗 Транспорт и мобильность', items: [
+      { value: 'bicycle', label: 'Велосипеды, самокаты, гироскутеры' },
+      { value: 'electric_transport', label: 'Электросамокаты, мопеды' },
+      { value: 'sports_transport', label: 'Спортивные и детские средства передвижения' }
+    ]
+  },
+  {
+    group: '🔧 Инструменты и оборудование', items: [
+      { value: 'hand_tools', label: 'Ручные инструменты' },
+      { value: 'power_tools', label: 'Электроинструменты' },
+      { value: 'industrial_equipment', label: '3D-принтеры, станки, проектное оборудование' }
+    ]
+  },
+  {
+    group: '📷 Фото-, видео-, аудио-техника', items: [
+      { value: 'photo_video', label: 'Фотоаппараты, объективы, дроны' },
+      { value: 'audio_equipment', label: 'Микрофоны, рекордеры, свет' }
+    ]
+  },
+  {
+    group: '⛷️ Спорт и активный отдых', items: [
+      { value: 'sports_gear', label: 'Спортивный инвентарь (лыжи, палатки, велосипеды)' },
+      { value: 'tourism_camping', label: 'Туристические наборы, кемпинг' }
+    ]
+  },
+  {
+    group: '🎮 Развлечения и хобби', items: [
+      { value: 'games_vr', label: 'Настольные игры, консоли, VR' },
+      { value: 'music_instruments', label: 'Музыкальные инструменты для сессий' }
+    ]
+  },
+  {
+    group: '👗 Одежда и аксессуары', items: [
+      { value: 'costumes', label: 'Костюмы, сценическая одежда' },
+      { value: 'event_accessories', label: 'Украшения, часы, сумки для мероприятий' }
+    ]
+  },
+  {
+    group: '💳 Цифровые и финансовые активы', items: [
+      { value: 'subscriptions', label: 'Подписки, лицензии, токены доступа' },
+      { value: 'temporary_loan', label: 'Временный займ (деньги ↔ предмет на срок)' }
+    ]
+  },
+  {
+    group: '📚 Услуги и навыки', items: [
+      { value: 'consulting', label: 'Временная помощь, репетиторство, консультация' }
+    ]
+  }
+];
+
+// 💰 PERMANENT EXCHANGE (без возврата)
+export const PERMANENT_CATEGORIES = [
+  {
+    group: '🚗 Транспорт', items: [
+      { value: 'cars', label: 'Автомобили, мотоциклы, спецтехника' }
+    ]
+  },
+  {
+    group: '🏠 Недвижимость', items: [
+      { value: 'real_estate', label: 'Квартиры, дома, участки, гаражи' }
+    ]
+  },
+  {
+    group: '💻 Техника и электроника', items: [
+      { value: 'electronics', label: 'Смартфоны, ноутбуки, бытовая техника' },
+      { value: 'entertainment_tech', label: 'ТВ, консоли, гаджеты' }
+    ]
+  },
+  {
+    group: '👕 Одежда и личные вещи', items: [
+      { value: 'everyday_clothes', label: 'Повседневная одежда, обувь' },
+      { value: 'accessories', label: 'Личные аксессуары' }
+    ]
+  },
+  {
+    group: '🛋️ Предметы быта и мебель', items: [
+      { value: 'kitchen_furniture', label: 'Кухонная техника, мебель, текстиль' }
+    ]
+  },
+  {
+    group: '🎨 Хобби и коллекции', items: [
+      { value: 'collectibles', label: 'Коллекционные предметы, картины, антиквариат' }
+    ]
+  },
+  {
+    group: '🐾 Живое и растения', items: [
+      { value: 'animals_plants', label: 'Домашние животные и растения (постоянная ответственность)' }
+    ]
+  },
+  {
+    group: '💰 Финансы и цифровые активы', items: [
+      { value: 'money_crypto', label: 'Деньги, криптовалюта, токены' },
+      { value: 'securities', label: 'Ценные бумаги, доли, активы' }
+    ]
+  }
+];
+
+interface ExchangeTabsProps {
+  userId: number;
+  onMatchesFound?: (count: number) => void;
+}
+
+/**
+ * Transform form data to API format
+ * Converts frontend form data structure to backend API expected format
+ */
+const transformFormDataToApiFormat = (
+  formData: any,
+  exchangeType: 'permanent' | 'temporary'
+) => {
+  const transformItems = (items: Record<string, any[]>) => {
+    const result: Record<string, any[]> = {};
+
+    for (const [category, itemList] of Object.entries(items)) {
+      if (!Array.isArray(itemList) || itemList.length === 0) {
+        continue;
+      }
+
+      result[category] = itemList
+        .filter(item => item.item_name && item.category && item.value_tenge)
+        .map(item => ({
+          category: item.category,
+          exchange_type: exchangeType,
+          item_name: item.item_name.trim(),
+          value_tenge: parseInt(item.value_tenge) || 0,
+          duration_days: exchangeType === 'temporary'
+            ? (parseInt(item.duration_days) || null)
+            : null,
+          description: (item.description || '').trim()
+        }));
+    }
+
+    return result;
+  };
+
+  return {
+    wants: transformItems(formData.wants || {}),
+    offers: transformItems(formData.offers || {}),
+    locations: formData.locations || []
+  };
+};
+
+export default function ExchangeTabs({ userId, onMatchesFound }: ExchangeTabsProps) {
+  const [activeTab, setActiveTab] = useState<'permanent' | 'temporary'>('permanent');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as 'permanent' | 'temporary');
+    setError(null);
+    setSuccess(false);
+  };
+
+  const handleSubmit = async (data: any) => {
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      // 1. Transform form data to API format
+      const apiData = transformFormDataToApiFormat(data, activeTab);
+
+      // Validate that we have at least some items
+      const totalWants = Object.values(apiData.wants).reduce((sum, arr) => sum + arr.length, 0);
+      const totalOffers = Object.values(apiData.offers).reduce((sum, arr) => sum + arr.length, 0);
+
+      if (totalWants === 0 && totalOffers === 0) {
+        throw new Error('Добавьте хотя бы один предмет в раздел "Хочу" или "Могу"');
+      }
+
+      // 2. Send to backend API
+      const response = await apiService.createListing({
+        user_id: userId,
+        wants: apiData.wants,
+        offers: apiData.offers,
+        locations: apiData.locations
+      });
+
+      console.log('Listing created:', response);
+
+      // 3. Automatically trigger matching
+      let matchesCount = 0;
+      try {
+        const matchesResponse = await apiService.findMatches(userId, activeTab);
+        matchesCount = matchesResponse.matches_found || matchesResponse.total_matches || 0;
+        console.log('Matches found:', matchesCount);
+      } catch (matchError) {
+        console.warn('Matching failed (listing still created):', matchError);
+        // Don't fail the whole operation if matching fails
+      }
+
+      // 4. Update UI
+      setSuccess(true);
+      if (onMatchesFound) {
+        onMatchesFound(matchesCount);
+      }
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccess(false), 5000);
+
+    } catch (err: any) {
+      console.error('Failed to submit listing:', err);
+      setError(err.message || 'Ошибка при создании объявления. Попробуйте еще раз.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-6xl mx-auto p-6">
+      <div className="border-0 shadow-lg bg-white rounded-lg p-6">
+        <div className="pb-3">
+          <h1 className="text-3xl font-bold">🎁 FreeMarket Exchange</h1>
+          <p className="text-gray-600 mt-2">Выберите тип обмена и добавьте ваши предметы</p>
+        </div>
+
+        <div className="w-full">
+          {/* Tab Triggers */}
+          <div className="grid w-full grid-cols-2 mb-6 bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => handleTabChange('permanent')}
+              className={`flex items-center gap-2 justify-center py-2 px-4 rounded transition-all ${activeTab === 'permanent' ? 'bg-green-500 text-white' : 'bg-transparent'
+                }`}
+            >
+              <span className="text-2xl">🟢</span>
+              <span className="hidden sm:inline">Постоянный обмен</span>
+              <span className="sm:hidden">Постоянный</span>
+            </button>
+
+            <button
+              onClick={() => handleTabChange('temporary')}
+              className={`flex items-center gap-2 justify-center py-2 px-4 rounded transition-all ${activeTab === 'temporary' ? 'bg-orange-500 text-white' : 'bg-transparent'
+                }`}
+            >
+              <span className="text-2xl">🟠</span>
+              <span className="hidden sm:inline">Временный обмен</span>
+              <span className="sm:hidden">Временный</span>
+            </button>
+          </div>
+
+          {/* Permanent Exchange Tab */}
+          {activeTab === 'permanent' && (
+            <div className="mt-6">
+              <PermanentTab
+                userId={userId}
+                onSubmit={handleSubmit}
+              />
+            </div>
+          )}
+
+          {/* Temporary Exchange Tab */}
+          {activeTab === 'temporary' && (
+            <div className="mt-6">
+              <TemporaryTab
+                userId={userId}
+                onSubmit={handleSubmit}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Status Messages */}
+      {error && (
+        <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+          <p className="text-sm text-red-700">
+          ❌ <strong>Ошибка:</strong> {error}
+          </p>
+        </div>
+      )}
+
+      {success && (
+        <div className="mt-6 p-4 bg-green-50 border-l-4 border-green-500 rounded">
+          <p className="text-sm text-green-700">
+          ✅ <strong>Успешно!</strong> Объявление создано. Система автоматически ищет совпадения.
+          </p>
+        </div>
+      )}
+
+      {loading && (
+        <div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+          <p className="text-sm text-blue-700">
+          ⏳ Обработка данных и поиск совпадений...
+          </p>
+        </div>
+      )}
+
+      {/* Info Box */}
+      <div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+        <p className="text-sm text-gray-700">
+          💡 <strong>Совет:</strong> Добавьте несколько предметов в обе категории (Хочу/Могу),
+          затем нажмите "Найти совпадения" чтобы найти партнеров для обмена.
+        </p>
+      </div>
+    </div>
+  );
+}

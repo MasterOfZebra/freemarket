@@ -5,7 +5,6 @@ test.db
 *.sqlite
 *.pyc
 __pycache__/
-frontend/
-Dockerfile.frontend
-package.json
-frontend/package.json
+# Exclude frontend from other builds, but include for nginx
+frontend/node_modules
+frontend/dist

@@ -6,12 +6,18 @@ server {
     charset UTF-8;
     charset_types text/html text/xml text/plain text/css text/javascript application/javascript application/json;
 
-    # Статика фронта
+    # Frontend static files
     location / {
         root /usr/share/nginx/html;
         try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-store";
     }
 
+    # Assets with long-term caching
+    location /assets/ {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
 
     # Прокси API
     location /api/ {
