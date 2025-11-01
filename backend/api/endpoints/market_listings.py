@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from backend.database import SessionLocal
 from backend.models import MarketListing, Item
-from backend.schemas import MarketListingResponse, MarketListingCreate as MarketListingCreateSchema, ItemResponse, ItemCreate
+from backend.schemas import MarketListingResponse, MarketListingCreate as MarketListingCreateSchema, Item as ItemResponse, ItemCreate
 from backend.crud import get_market_listings, create_market_listing, get_items
 
 router = APIRouter(prefix="/api/market-listings", tags=["market-listings"])
