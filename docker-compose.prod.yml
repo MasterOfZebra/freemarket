@@ -29,7 +29,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
-    command: gunicorn -k uvicorn.workers.UvicornWorker --workers 4 --bind 0.0.0.0:8000 backend.main:app
+    command: gunicorn -k uvicorn.workers.UvicornWorker --workers 4 --bind 127.0.0.1:8000 backend.main:app
     ports:
       - "8000:8000"  # TEMP: For testing direct access
     environment:
