@@ -232,5 +232,28 @@ export const getOffers = async () => {
   }
 };
 
+/**
+ * Create new listing
+ */
+export const createListing = async (listingData) => {
+  try {
+    const response = await fetch('/api/listings/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(listingData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating listing:', error);
+    throw error;
+  }
+};
+
 export const apiService = new ApiService();
 export default apiService;

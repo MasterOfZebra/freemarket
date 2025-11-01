@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getOffers, getWants } from './services/api';
+import { getOffers, getWants, createListing } from './services/api';
 import './styles/App.css';
 
 function App() {
@@ -9,6 +9,7 @@ function App() {
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('wants');
     const [showForm, setShowForm] = useState(false);
+    const [formSubmitting, setFormSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         user_id: 1,
         listing_type: 'want',
@@ -39,11 +40,25 @@ function App() {
 
     const handleFormSubmit = async (e) => {
         e.preventDefault();
+        setFormSubmitting(true);
         try {
-            // TODO: Send form data to backend API
-            console.log('Form submitted:', formData);
+            // Send form data to backend API
+            const result = await createListing(formData);
+            console.log('Listing created:', result);
+
+            // Show success message
+            alert('Объявление успешно создано!');
+
+            // Refresh the listings
+            const [wantsData, offersData] = await Promise.all([
+                getWants(),
+                getOffers()
+            ]);
+            setWants(wantsData);
+            setOffers(offersData);
+
+            // Close form and reset
             setShowForm(false);
-            // Reset form
             setFormData({
                 user_id: 1,
                 listing_type: 'want',
@@ -54,6 +69,9 @@ function App() {
             });
         } catch (err) {
             console.error('Error submitting form:', err);
+            alert('Ошибка при создании объявления: ' + err.message);
+        } finally {
+            setFormSubmitting(false);
         }
     };
 
@@ -209,18 +227,19 @@ function App() {
 
                         <button
                             type="submit"
+                            disabled={formSubmitting}
                             style={{
                                 padding: '12px 24px',
-                                backgroundColor: '#4CAF50',
+                                backgroundColor: formSubmitting ? '#ccc' : '#4CAF50',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '4px',
-                                cursor: 'pointer',
+                                cursor: formSubmitting ? 'not-allowed' : 'pointer',
                                 fontSize: '16px',
                                 marginRight: '10px'
                             }}
                         >
-                            Опубликовать
+                            {formSubmitting ? 'Создание...' : 'Опубликовать'}
                         </button>
                         <button
                             type="button"

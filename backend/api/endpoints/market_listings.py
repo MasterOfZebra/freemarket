@@ -2,9 +2,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pydantic import BaseModel
 
 from backend.database import SessionLocal
-from backend.models import MarketListing, Item
+from backend.models import MarketListing, Item, Category
 from backend.schemas import MarketListingResponse, MarketListingCreate as MarketListingCreateSchema
 from backend.crud import get_market_listings, create_market_listing, get_items
 
@@ -12,6 +13,16 @@ router = APIRouter(tags=["market-listings"])
 
 # Additional router for direct item access (frontend compatibility)
 items_router = APIRouter(tags=["items"])
+
+
+# Schema for creating listing from frontend form
+class CreateListingRequest(BaseModel):
+    user_id: int
+    listing_type: str  # "want" or "offer"
+    title: str
+    description: str
+    category: str  # category name, will be converted to category_id
+    location: str
 
 
 def get_db():
@@ -200,6 +211,61 @@ def get_offers_frontend(skip: int = 0, limit: int = 20, db: Session = Depends(ge
             "limit": limit,
             "error": str(e)
         }
+
+
+@items_router.post("/listings/")
+def create_listing(request: CreateListingRequest, db: Session = Depends(get_db)):
+    """Create a new listing from frontend form"""
+    try:
+        # Convert listing_type to proper format
+        listing_type = "wants" if request.listing_type.lower() == "want" else "offers"
+
+        # Find category by name (case insensitive)
+        category = db.query(Category).filter(
+            Category.name.ilike(request.category.strip())
+        ).first()
+
+        if not category:
+            raise HTTPException(status_code=400, detail=f"Category '{request.category}' not found")
+
+        # Check if category matches listing type
+        category_section = str(getattr(category.section, "value", category.section))
+        if category_section != listing_type:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Category '{request.category}' is for {category_section}, but you're creating a {listing_type} listing"
+            )
+
+        # Create the listing using the existing CRUD function
+        listing_data = MarketListingCreateSchema(
+            user_id=request.user_id,
+            type=listing_type,
+            title=request.title,
+            description=request.description,
+            category_id=category.id,
+            location=request.location,
+            contact=""  # Will be filled from user data later
+        )
+
+        new_listing = create_market_listing(db, listing_data)
+
+        return {
+            "success": True,
+            "message": "Listing created successfully",
+            "listing": {
+                "id": new_listing.id,
+                "title": new_listing.title,
+                "description": new_listing.description,
+                "category": category.name,
+                "location": new_listing.location,
+                "created_at": new_listing.created_at.isoformat()
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating listing: {str(e)}")
 
 
 # Export both routers
