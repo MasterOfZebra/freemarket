@@ -13,7 +13,7 @@ router.include_router(market_listings.router)
 # Items endpoints for frontend compatibility
 try:
     from .endpoints.market_listings import items_router
-    router.include_router(items_router, prefix="/api")
+    router.include_router(items_router)  # No prefix - nginx already adds /api/
     print("✅ items_router loaded successfully")
 except Exception as e:
     print(f"❌ Failed to load items_router: {e}")
