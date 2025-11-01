@@ -69,8 +69,12 @@ def create_listing(listing: MarketListingCreateSchema, db: Session = Depends(get
 @items_router.get("/items/", response_model=List[ItemResponse])
 def list_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Get all items (for frontend compatibility)"""
-    items = get_items(db, skip=skip, limit=limit)
-    return [ItemResponse.from_orm(item).model_dump() for item in items]
+    try:
+        items = get_items(db, skip=skip, limit=limit)
+        return [ItemResponse.from_orm(item).model_dump() for item in items]
+    except Exception as e:
+        # Return empty list if database error
+        return []
 
 
 @items_router.post("/items/", response_model=ItemResponse)
@@ -80,39 +84,65 @@ def create_item_endpoint(item: ItemCreate, db: Session = Depends(get_db)):
     return crud_create_item(db, item)
 
 
+# Debug endpoint to test routing
+@items_router.get("/test/", response_model=dict)
+def test_endpoint():
+    """Test endpoint to verify routing works"""
+    return {"message": "API routing works!", "status": "ok"}
+
 # Wants and offers endpoints for frontend compatibility
 @items_router.get("/wants/", response_model=dict)
 def get_wants_frontend(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     """Get all wants (for frontend compatibility)"""
-    items, total = get_market_listings(
-        db,
-        skip=skip,
-        limit=limit,
-        listing_type="wants"
-    )
-    return {
-        "items": [MarketListingResponse.from_orm(item).model_dump() if hasattr(item, '__table__') else item for item in items],
-        "total": total,
-        "skip": skip,
-        "limit": limit
-    }
+    try:
+        items, total = get_market_listings(
+            db,
+            skip=skip,
+            limit=limit,
+            listing_type="wants"
+        )
+        return {
+            "items": [MarketListingResponse.from_orm(item).model_dump() if hasattr(item, '__table__') else item for item in items],
+            "total": total,
+            "skip": skip,
+            "limit": limit
+        }
+    except Exception as e:
+        # Return empty result if database error
+        return {
+            "items": [],
+            "total": 0,
+            "skip": skip,
+            "limit": limit,
+            "error": str(e)
+        }
 
 
 @items_router.get("/offers/", response_model=dict)
 def get_offers_frontend(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     """Get all offers (for frontend compatibility)"""
-    items, total = get_market_listings(
-        db,
-        skip=skip,
-        limit=limit,
-        listing_type="offers"
-    )
-    return {
-        "items": [MarketListingResponse.from_orm(item).model_dump() if hasattr(item, '__table__') else item for item in items],
-        "total": total,
-        "skip": skip,
-        "limit": limit
-    }
+    try:
+        items, total = get_market_listings(
+            db,
+            skip=skip,
+            limit=limit,
+            listing_type="offers"
+        )
+        return {
+            "items": [MarketListingResponse.from_orm(item).model_dump() if hasattr(item, '__table__') else item for item in items],
+            "total": total,
+            "skip": skip,
+            "limit": limit
+        }
+    except Exception as e:
+        # Return empty result if database error
+        return {
+            "items": [],
+            "total": 0,
+            "skip": skip,
+            "limit": limit,
+            "error": str(e)
+        }
 
 
 # Export both routers
