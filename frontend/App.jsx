@@ -32,7 +32,7 @@ function App() {
         fetchData();
     }, []);
 
-    const handleMatchesFound = (count: number) => {
+    const handleMatchesFound = (count) => {
         setMatchesFound(count);
         // Refresh listings after successful registration
         setTimeout(() => {
