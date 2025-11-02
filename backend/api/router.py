@@ -18,7 +18,8 @@ try:
 except Exception as e:
     print(f"❌ Failed to load items_router: {e}")
 
-router.include_router(listings_exchange.router)
+# Listings exchange endpoints (permanent/temporary with categories)
+router.include_router(listings_exchange.router, prefix="/api")
 router.include_router(notifications.router)
 router.include_router(exchange_chains.router)
 router.include_router(matching.router)

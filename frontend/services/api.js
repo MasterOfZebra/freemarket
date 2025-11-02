@@ -240,7 +240,7 @@ export const createListing = async (listingData) => {
     // Extract user_id from data and send it as query parameter
     const { user_id, ...bodyData } = listingData;
 
-    const response = await fetch(`/api/create-by-categories?user_id=${user_id}`, {
+    const response = await fetch(`/api/listings/create-by-categories?user_id=${user_id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

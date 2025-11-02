@@ -24,7 +24,7 @@ from backend.language_normalization import get_normalizer
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api", tags=["listings"])
+router = APIRouter(prefix="/listings", tags=["listings"])
 
 # Initialize language normalizer for matching
 language_normalizer = get_normalizer()
