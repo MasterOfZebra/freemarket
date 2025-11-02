@@ -212,6 +212,155 @@ def create_listing_by_categories(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/create", response_model=Dict)
+def create_listing(
+    user_id: int = Query(..., description="User ID"),
+    listing: ListingItemsByCategoryCreate = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new listing with items organized by category.
+    
+    This is the main endpoint for creating listings from the frontend form.
+    
+    Request: POST /api/listings/create?user_id=1
+    Body:
+    {
+      "wants": {
+        "cars": [
+          {
+            "category": "cars",
+            "exchange_type": "permanent",
+            "item_name": "Honda Civic",
+            "value_tenge": 1000000,
+            "description": "Отличная машина"
+          }
+        ]
+      },
+      "offers": {},
+      "locations": ["Алматы"],
+      "user_data": {"name": "Иван", "telegram": "@ivan", "city": "Алматы"}
+    }
+    """
+    
+    try:
+        # Verify user exists
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+
+        # Update user data if provided
+        if listing.user_data:
+            user_data = listing.user_data
+            if user_data.get('name'):
+                user.username = user_data['name']
+            if user_data.get('telegram'):
+                telegram = user_data['telegram'].strip()
+                if telegram.startswith('@'):
+                    user.telegram_username = telegram
+                elif telegram.isdigit() or (telegram.startswith('+') and telegram[1:].isdigit()):
+                    try:
+                        user.telegram_id = int(telegram.replace('+', ''))
+                    except:
+                        pass
+                else:
+                    user.telegram_username = telegram
+            if user_data.get('city'):
+                user.locations = [user_data['city']]
+            db.flush()
+
+        # Create listing
+        db_listing = Listing(user_id=user_id)
+        db.add(db_listing)
+        db.flush()
+
+        total_items = 0
+        all_items_data = {'wants': {}, 'offers': {}}
+
+        # Process wants
+        if listing.wants:
+            for category, items_list in listing.wants.items():
+                if not items_list:
+                    continue
+                    
+                all_items_data['wants'][category] = []
+                
+                for item_data in items_list:
+                    # Create ListingItem
+                    list_item = ListingItem(
+                        listing_id=db_listing.id,
+                        user_id=user_id,
+                        item_type=ListingItemType.WANT,
+                        category=item_data.category,
+                        exchange_type=item_data.exchange_type,
+                        name=item_data.item_name,
+                        value=item_data.value_tenge,
+                        duration_days=item_data.duration_days,
+                        description=item_data.description
+                    )
+                    db.add(list_item)
+                    total_items += 1
+                    
+                    all_items_data['wants'][category].append({
+                        "id": list_item.id,
+                        "name": list_item.name,
+                        "value": list_item.value,
+                        "duration_days": list_item.duration_days,
+                        "description": list_item.description
+                    })
+
+        # Process offers
+        if listing.offers:
+            for category, items_list in listing.offers.items():
+                if not items_list:
+                    continue
+                    
+                all_items_data['offers'][category] = []
+                
+                for item_data in items_list:
+                    # Create ListingItem
+                    list_item = ListingItem(
+                        listing_id=db_listing.id,
+                        user_id=user_id,
+                        item_type=ListingItemType.OFFER,
+                        category=item_data.category,
+                        exchange_type=item_data.exchange_type,
+                        name=item_data.item_name,
+                        value=item_data.value_tenge,
+                        duration_days=item_data.duration_days,
+                        description=item_data.description
+                    )
+                    db.add(list_item)
+                    total_items += 1
+                    
+                    all_items_data['offers'][category].append({
+                        "id": list_item.id,
+                        "name": list_item.name,
+                        "value": list_item.value,
+                        "duration_days": list_item.duration_days,
+                        "description": list_item.description
+                    })
+
+        db.commit()
+
+        return {
+            "listing_id": db_listing.id,
+            "user_id": user_id,
+            "items_created": total_items,
+            "wants": all_items_data['wants'],
+            "offers": all_items_data['offers'],
+            "status": "success"
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating listing: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error creating listing: {str(e)}")
+
+
 # ============================================================
 # RETRIEVE LISTING ENDPOINTS
 # ============================================================
