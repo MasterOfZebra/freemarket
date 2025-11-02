@@ -114,28 +114,31 @@ export const PERMANENT_CATEGORIES = [
   }
 ];
 
-interface UserData {
-  name: string;
-  telegram: string;
-  city: 'Алматы' | 'Астана' | 'Шымкент';
-}
+// Type definitions for JavaScript
+/**
+ * @typedef {Object} UserData
+ * @property {string} name - User full name
+ * @property {string} telegram - Telegram contact
+ * @property {'Алматы'|'Астана'|'Шымкент'} city - User city
+ */
 
-interface ExchangeTabsProps {
-  userId: number;
-  onMatchesFound?: (count: number) => void;
-}
+/**
+ * @typedef {Object} ExchangeTabsProps
+ * @property {number} userId - User ID
+ * @property {function(number): void} [onMatchesFound] - Callback for matches found
+ */
 
 /**
  * Transform form data to API format
  * Converts frontend form data structure to backend API expected format
  */
 const transformFormDataToApiFormat = (
-  formData: any,
-  exchangeType: 'permanent' | 'temporary',
-  userData: UserData
+  formData,
+  exchangeType,
+  userData
 ) => {
-  const transformItems = (items: Record<string, any[]>) => {
-    const result: Record<string, any[]> = {};
+  const transformItems = (items) => {
+    const result = {};
 
     for (const [category, itemList] of Object.entries(items)) {
       if (!Array.isArray(itemList) || itemList.length === 0) {
@@ -177,20 +180,20 @@ export default function ExchangeTabs({ userId, onMatchesFound }: ExchangeTabsPro
     city: 'Алматы'
   });
 
-  const handleUserDataChange = (field: keyof UserData, value: string) => {
+  const handleUserDataChange = (field, value) => {
     setUserData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value as 'permanent' | 'temporary');
+  const handleTabChange = (value) => {
+    setActiveTab(value);
     setError(null);
     setSuccess(false);
   };
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data) => {
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -250,7 +253,7 @@ export default function ExchangeTabs({ userId, onMatchesFound }: ExchangeTabsPro
       // Clear success message after 5 seconds
       setTimeout(() => setSuccess(false), 5000);
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to submit listing:', err);
       setError(err.message || 'Ошибка при создании объявления. Попробуйте еще раз.');
     } finally {

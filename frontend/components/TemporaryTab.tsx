@@ -3,19 +3,20 @@ import { validateTemporaryItem } from '../utils/validators';
 import { TEMPORARY_CATEGORIES } from './ExchangeTabs';
 import { Alert, Button, Card, Input, Select, Textarea } from './ui';
 
-interface TemporaryItemForm {
-  category: string;
-  item_name: string;
-  value_tenge: string;
-  duration_days: string;
-  description: string;
-}
+/**
+ * @typedef {Object} TemporaryItemForm
+ * @property {string} category
+ * @property {string} item_name
+ * @property {string} value_tenge
+ * @property {string} duration_days
+ * @property {string} description
+ */
 
 // Flatten categories for Select component
 const getCategoryOptions = () => {
-  const options: { value: string; label: string }[] = [];
-  TEMPORARY_CATEGORIES.forEach((group: { group: string; items: { value: string; label: string }[] }) => {
-    group.items.forEach((item: { value: string; label: string }) => {
+  const options = [];
+  TEMPORARY_CATEGORIES.forEach((group) => {
+    group.items.forEach((item) => {
       options.push({ value: item.value, label: `${group.group} - ${item.label}` });
     });
   });
@@ -24,30 +25,31 @@ const getCategoryOptions = () => {
 
 const CATEGORY_OPTIONS = getCategoryOptions();
 
-interface TemporaryTabProps {
-  userId: number;
-  onSubmit: (data: { wants: Record<string, TemporaryItemForm[]>; offers: Record<string, TemporaryItemForm[]> }) => void;
-}
+/**
+ * @typedef {Object} TemporaryTabProps
+ * @property {number} userId
+ * @property {function(Object): void} onSubmit
+ */
 
-export default function TemporaryTab({ userId, onSubmit }: TemporaryTabProps) {
-  const [wants, setWants] = useState<TemporaryItemForm[]>([
+export default function TemporaryTab({ userId, onSubmit }) {
+  const [wants, setWants] = useState([
     { category: '', item_name: '', value_tenge: '', duration_days: '', description: '' }
   ]);
-  const [offers, setOffers] = useState<TemporaryItemForm[]>([
+  const [offers, setOffers] = useState([
     { category: '', item_name: '', value_tenge: '', duration_days: '', description: '' }
   ]);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const calculateDailyRate = (value: string, days: string): number => {
+  const calculateDailyRate = (value, days) => {
     const v = parseFloat(value) || 0;
     const d = parseInt(days) || 0;
     if (!d || d <= 0) return 0;
     return v / d;
   };
 
-  const handleAddItem = (type: 'wants' | 'offers') => {
-    const newItem: TemporaryItemForm = {
+  const handleAddItem = (type) => {
+    const newItem = {
       category: '',
       item_name: '',
       value_tenge: '',
@@ -61,7 +63,7 @@ export default function TemporaryTab({ userId, onSubmit }: TemporaryTabProps) {
     }
   };
 
-  const handleRemoveItem = (type: 'wants' | 'offers', index: number) => {
+  const handleRemoveItem = (type, index) => {
     if (type === 'wants') {
       setWants(wants.filter((_, i) => i !== index));
     } else {
@@ -70,10 +72,10 @@ export default function TemporaryTab({ userId, onSubmit }: TemporaryTabProps) {
   };
 
   const handleItemChange = (
-    type: 'wants' | 'offers',
-    index: number,
-    field: keyof TemporaryItemForm,
-    value: string
+    type,
+    index,
+    field,
+    value
   ) => {
     const items = type === 'wants' ? [...wants] : [...offers];
     items[index] = { ...items[index], [field]: value };
@@ -109,8 +111,8 @@ export default function TemporaryTab({ userId, onSubmit }: TemporaryTabProps) {
       }
 
       // Group by category
-      const wantsByCategory: Record<string, TemporaryItemForm[]> = {};
-      const offersByCategory: Record<string, TemporaryItemForm[]> = {};
+      const wantsByCategory = {};
+      const offersByCategory = {};
 
       wants.forEach(item => {
         if (item.item_name && item.category) {
@@ -140,10 +142,10 @@ export default function TemporaryTab({ userId, onSubmit }: TemporaryTabProps) {
   };
 
   const renderItemCard = (
-    item: TemporaryItemForm,
-    idx: number,
-    type: 'wants' | 'offers',
-    bgColor: string
+    item,
+    idx,
+    type,
+    bgColor
   ) => {
     const dailyRate = calculateDailyRate(item.value_tenge, item.duration_days);
 

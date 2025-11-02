@@ -3,16 +3,17 @@ import { validatePermanentItem } from '../utils/validators';
 import { PERMANENT_CATEGORIES } from './ExchangeTabs';
 import { Alert, Button, Card, Input, Select, Textarea } from './ui';
 
-interface ItemForm {
-  category: string;
-  item_name: string;
-  value_tenge: string;
-  description: string;
-}
+/**
+ * @typedef {Object} ItemForm
+ * @property {string} category
+ * @property {string} item_name
+ * @property {string} value_tenge
+ * @property {string} description
+ */
 
 // Flatten categories for Select component
 const getCategoryOptions = () => {
-  const options: { value: string; label: string }[] = [];
+  const options = [];
   PERMANENT_CATEGORIES.forEach(group => {
     group.items.forEach(item => {
       options.push({ value: item.value, label: `${group.group} - ${item.label}` });
@@ -23,18 +24,19 @@ const getCategoryOptions = () => {
 
 const CATEGORY_OPTIONS = getCategoryOptions();
 
-interface PermanentTabProps {
-  userId: number;
-  onSubmit: (data: { wants: Record<string, ItemForm[]>; offers: Record<string, ItemForm[]> }) => void;
-}
+/**
+ * @typedef {Object} PermanentTabProps
+ * @property {number} userId
+ * @property {function(Object): void} onSubmit
+ */
 
-export default function PermanentTab({ userId, onSubmit }: PermanentTabProps) {
-  const [wants, setWants] = useState<ItemForm[]>([{ category: '', item_name: '', value_tenge: '', description: '' }]);
-  const [offers, setOffers] = useState<ItemForm[]>([{ category: '', item_name: '', value_tenge: '', description: '' }]);
-  const [errors, setErrors] = useState<string[]>([]);
+export default function PermanentTab({ userId, onSubmit }) {
+  const [wants, setWants] = useState([{ category: '', item_name: '', value_tenge: '', description: '' }]);
+  const [offers, setOffers] = useState([{ category: '', item_name: '', value_tenge: '', description: '' }]);
+  const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const handleAddItem = (type: 'wants' | 'offers') => {
+  const handleAddItem = (type) => {
     const newItem = { category: '', item_name: '', value_tenge: '', description: '' };
     if (type === 'wants') {
       setWants([...wants, newItem]);
@@ -43,7 +45,7 @@ export default function PermanentTab({ userId, onSubmit }: PermanentTabProps) {
     }
   };
 
-  const handleRemoveItem = (type: 'wants' | 'offers', index: number) => {
+  const handleRemoveItem = (type, index) => {
     if (type === 'wants') {
       setWants(wants.filter((_, i) => i !== index));
     } else {
@@ -51,7 +53,7 @@ export default function PermanentTab({ userId, onSubmit }: PermanentTabProps) {
     }
   };
 
-  const handleItemChange = (type: 'wants' | 'offers', index: number, field: keyof ItemForm, value: string) => {
+  const handleItemChange = (type, index, field, value) => {
     const items = type === 'wants' ? [...wants] : [...offers];
     items[index] = { ...items[index], [field]: value };
     if (type === 'wants') {
@@ -86,8 +88,8 @@ export default function PermanentTab({ userId, onSubmit }: PermanentTabProps) {
       }
 
       // Group by category
-      const wantsByCategory: Record<string, ItemForm[]> = {};
-      const offersByCategory: Record<string, ItemForm[]> = {};
+      const wantsByCategory = {};
+      const offersByCategory = {};
 
       wants.forEach(item => {
         if (item.item_name && item.category) {
