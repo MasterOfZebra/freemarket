@@ -165,7 +165,7 @@ const transformFormDataToApiFormat = (
   return {
     wants: transformItems(formData.wants || {}),
     offers: transformItems(formData.offers || {}),
-    locations: userData.cities // Changed to userData.cities
+    locations: [userData.city] // Single city as array
   };
 };
 
