@@ -1,108 +1,119 @@
 import { useState } from 'react';
 import { validateTemporaryItem } from '../utils/validators';
 import { TEMPORARY_CATEGORIES } from './ExchangeTabs';
-import { Alert, Button, Card, Input, Select, Textarea } from './ui';
+import { Alert, Button, Card, Input } from './ui';
 
 /**
- * @typedef {Object} TemporaryItemForm
- * @property {string} category
- * @property {string} item_name
- * @property {string} value_tenge
- * @property {string} duration_days
- * @property {string} description
+ * Initialize categories structure for temporary exchange
  */
-
-// Flatten categories for Select component
-const getCategoryOptions = () => {
-  const options = [];
-  TEMPORARY_CATEGORIES.forEach((group) => {
-    group.items.forEach((item) => {
-      options.push({ value: item.value, label: `${group.group} - ${item.label}` });
+const initializeCategoriesByType = () => {
+  const result = {};
+  TEMPORARY_CATEGORIES.forEach(group => {
+    group.items.forEach(item => {
+      result[item.value] = {
+        label: item.label,
+        group: group.group,
+        enabled: false,
+        items: []
+      };
     });
   });
-  return options;
+  return result;
 };
 
-const CATEGORY_OPTIONS = getCategoryOptions();
-
-/**
- * @typedef {Object} TemporaryTabProps
- * @property {number} userId
- * @property {function(Object): void} onSubmit
- */
-
 export default function TemporaryTab({ userId, onSubmit }) {
-  const [wants, setWants] = useState([
-    { category: '', item_name: '', value_tenge: '', duration_days: '', description: '' }
-  ]);
-  const [offers, setOffers] = useState([
-    { category: '', item_name: '', value_tenge: '', duration_days: '', description: '' }
-  ]);
+  const [wants, setWants] = useState(initializeCategoriesByType());
+  const [offers, setOffers] = useState(initializeCategoriesByType());
   const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const calculateDailyRate = (value, days) => {
-    const v = parseFloat(value) || 0;
-    const d = parseInt(days) || 0;
-    if (!d || d <= 0) return 0;
-    return v / d;
+  // Toggle category enabled/disabled
+  const toggleCategory = (side, categoryKey) => {
+    const setter = side === 'wants' ? setWants : setOffers;
+    setter(prev => ({
+      ...prev,
+      [categoryKey]: {
+        ...prev[categoryKey],
+        enabled: !prev[categoryKey].enabled
+      }
+    }));
   };
 
-  const handleAddItem = (type) => {
-    const newItem = {
-      category: '',
-      item_name: '',
-      value_tenge: '',
-      duration_days: '',
-      description: ''
-    };
-    if (type === 'wants') {
-      setWants([...wants, newItem]);
-    } else {
-      setOffers([...offers, newItem]);
-    }
+  // Add item to category
+  const addItem = (side, categoryKey) => {
+    const setter = side === 'wants' ? setWants : setOffers;
+    setter(prev => ({
+      ...prev,
+      [categoryKey]: {
+        ...prev[categoryKey],
+        items: [...prev[categoryKey].items, { name: '', price: '', duration_days: '' }]
+      }
+    }));
   };
 
-  const handleRemoveItem = (type, index) => {
-    if (type === 'wants') {
-      setWants(wants.filter((_, i) => i !== index));
-    } else {
-      setOffers(offers.filter((_, i) => i !== index));
-    }
+  // Remove item from category
+  const removeItem = (side, categoryKey, index) => {
+    const setter = side === 'wants' ? setWants : setOffers;
+    setter(prev => {
+      const items = prev[categoryKey].items.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        [categoryKey]: { ...prev[categoryKey], items }
+      };
+    });
   };
 
-  const handleItemChange = (
-    type,
-    index,
-    field,
-    value
-  ) => {
-    const items = type === 'wants' ? [...wants] : [...offers];
-    items[index] = { ...items[index], [field]: value };
-    if (type === 'wants') {
-      setWants(items);
-    } else {
-      setOffers(items);
-    }
+  // Update item field
+  const updateItem = (side, categoryKey, index, field, value) => {
+    const setter = side === 'wants' ? setWants : setOffers;
+    setter(prev => {
+      const items = [...prev[categoryKey].items];
+      items[index] = { ...items[index], [field]: value };
+      return {
+        ...prev,
+        [categoryKey]: { ...prev[categoryKey], items }
+      };
+    });
   };
+
 
   const handleSubmit = async () => {
     setErrors([]);
     setLoading(true);
 
     try {
-      // Validate all items
-      const allItems = [...wants, ...offers];
+      // Validate items
       const newErrors = [];
 
-      allItems.forEach((item, idx) => {
-        if (item.item_name || item.category || item.value_tenge || item.duration_days) {
-          const validation = validateTemporaryItem(item);
-          if (!validation.valid) {
-            newErrors.push(`Item ${idx}: ${validation.error}`);
+      const validateCategory = (side, catData) => {
+        if (!catData.enabled) return;
+        catData.items.forEach((item, idx) => {
+          if (item.name && item.price && item.duration_days) {
+            if (item.name.length < 3) {
+              newErrors.push(`${side}: название слишком короткое`);
+            }
+            if (isNaN(parseInt(item.price)) || parseInt(item.price) < 1) {
+              newErrors.push(`${side}: некорректная стоимость`);
+            }
+            if (isNaN(parseInt(item.duration_days)) || parseInt(item.duration_days) < 1) {
+              newErrors.push(`${side}: некорректная длительность`);
+            }
+          } else if (item.name || item.price || item.duration_days) {
+            newErrors.push(`${side}: заполните название, стоимость и длительность`);
           }
-        }
-      });
+        });
+      };
+
+      Object.entries(wants).forEach(([key, cat]) => validateCategory('WANTS', cat));
+      Object.entries(offers).forEach(([key, cat]) => validateCategory('OFFERS', cat));
+
+      // Check that at least something is filled
+      const hasWants = Object.values(wants).some(cat => cat.items.length > 0);
+      const hasOffers = Object.values(offers).some(cat => cat.items.length > 0);
+
+      if (!hasWants && !hasOffers) {
+        throw new Error('Добавьте хотя бы один предмет');
+      }
 
       if (newErrors.length > 0) {
         setErrors(newErrors);
@@ -110,186 +121,174 @@ export default function TemporaryTab({ userId, onSubmit }) {
         return;
       }
 
-      // Group by category
-      const wantsByCategory = {};
-      const offersByCategory = {};
+      // Transform to submission format
+      const formattedWants = {};
+      const formattedOffers = {};
 
-      wants.forEach(item => {
-        if (item.item_name && item.category) {
-          if (!wantsByCategory[item.category]) {
-            wantsByCategory[item.category] = [];
-          }
-          wantsByCategory[item.category].push(item);
+      Object.entries(wants).forEach(([key, cat]) => {
+        if (cat.enabled && cat.items.length > 0) {
+          formattedWants[key] = cat.items.map(item => ({
+            name: item.name.trim(),
+            price: parseInt(item.price),
+            duration_days: parseInt(item.duration_days)
+          }));
         }
       });
 
-      offers.forEach(item => {
-        if (item.item_name && item.category) {
-          if (!offersByCategory[item.category]) {
-            offersByCategory[item.category] = [];
-          }
-          offersByCategory[item.category].push(item);
+      Object.entries(offers).forEach(([key, cat]) => {
+        if (cat.enabled && cat.items.length > 0) {
+          formattedOffers[key] = cat.items.map(item => ({
+            name: item.name.trim(),
+            price: parseInt(item.price),
+            duration_days: parseInt(item.duration_days)
+          }));
         }
       });
 
       onSubmit({
-        wants: wantsByCategory,
-        offers: offersByCategory
+        wants: formattedWants,
+        offers: formattedOffers
       });
+
     } finally {
       setLoading(false);
     }
   };
 
-  const renderItemCard = (
-    item,
-    idx,
-    type,
-    bgColor
-  ) => {
-    const dailyRate = calculateDailyRate(item.value_tenge, item.duration_days);
+  // Render category section
+  const renderCategorySection = (side, categoryKey, categoryData) => {
+    const isWants = side === 'wants';
+    const data = isWants ? wants : offers;
 
     return (
-      <div key={idx} className={`border rounded p-4 space-y-3 ${bgColor}`}>
-        <div className="grid grid-cols-1 gap-3">
-          <Select
-            label="Категория"
-            value={item.category}
-            onChange={(val) => handleItemChange(type, idx, 'category', val)}
-            options={CATEGORY_OPTIONS}
+      <div key={categoryKey} className="border rounded p-4 mb-3 bg-gray-50">
+        {/* Category Header */}
+        <div className="flex items-center gap-3 mb-3">
+          <input
+            type="checkbox"
+            checked={categoryData.enabled}
+            onChange={() => toggleCategory(side, categoryKey)}
+            className="w-5 h-5 rounded cursor-pointer"
           />
-          <Input
-            label="Название предмета"
-            placeholder="Е.г. Велосипед горный"
-            value={item.item_name}
-            onChange={(val) => handleItemChange(type, idx, 'item_name', val)}
-            minLength={3}
-            maxLength={100}
-          />
+          <label className="font-semibold text-sm cursor-pointer flex-1">
+            {categoryData.group} / {categoryData.label}
+          </label>
+          {categoryData.enabled && (
+            <button
+              type="button"
+              onClick={() => addItem(side, categoryKey)}
+              className="px-2 py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600"
+            >
+              ➕ Добавить
+            </button>
+          )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Базовая стоимость (₸)"
-            type="number"
-            placeholder="30000"
-            value={item.value_tenge}
-            onChange={(val) => handleItemChange(type, idx, 'value_tenge', val)}
-            min={1}
-            max={10000000}
-          />
-          <Input
-            label="Дней аренды"
-            type="number"
-            placeholder="7"
-            value={item.duration_days}
-            onChange={(val) => handleItemChange(type, idx, 'duration_days', val)}
-            min={1}
-            max={365}
-          />
-        </div>
+        {/* Items List */}
+        {categoryData.enabled && categoryData.items.length > 0 && (
+          <div className="space-y-2 ml-8">
+            {categoryData.items.map((item, idx) => {
+              const dailyRate = item.price && item.duration_days
+                ? (parseInt(item.price) / parseInt(item.duration_days)).toFixed(2)
+                : '0';
 
-        {/* Auto-calculated daily rate display */}
-        {item.value_tenge && item.duration_days && (
-          <div className="bg-gradient-to-r from-blue-100 to-purple-100 p-3 rounded border-2 border-blue-300">
-            <div className="text-sm text-gray-700">Дневной тариф:</div>
-            <div className="text-2xl font-bold text-blue-600">
-              {dailyRate.toFixed(2)} ₸/день
-            </div>
-            <div className="text-xs text-gray-600 mt-1">
-              Расчёт: {item.value_tenge} ₸ ÷ {item.duration_days} дн = {dailyRate.toFixed(2)} ₸/дн
-            </div>
+              return (
+                <div key={idx} className="flex gap-2 items-end">
+                  <input
+                    type="text"
+                    placeholder="Название предмета"
+                    value={item.name}
+                    onChange={(e) => updateItem(side, categoryKey, idx, 'name', e.target.value)}
+                    className="flex-1 px-3 py-2 border rounded text-sm"
+                    minLength={3}
+                    maxLength={100}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Стоимость ₸"
+                    value={item.price}
+                    onChange={(e) => updateItem(side, categoryKey, idx, 'price', e.target.value)}
+                    className="w-32 px-3 py-2 border rounded text-sm"
+                    min={1}
+                    max={10000000}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Дни"
+                    value={item.duration_days}
+                    onChange={(e) => updateItem(side, categoryKey, idx, 'duration_days', e.target.value)}
+                    className="w-20 px-3 py-2 border rounded text-sm"
+                    min={1}
+                    max={365}
+                  />
+                  <div className="text-xs text-gray-500 px-2 py-2">
+                    ~{dailyRate}₸/день
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(side, categoryKey, idx)}
+                    className="px-2 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                  >
+                    🗑
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        )}
-
-        <Textarea
-          label="Описание (опционально)"
-          placeholder="Состояние, комплектация..."
-          value={item.description}
-          onChange={(val) => handleItemChange(type, idx, 'description', val)}
-          maxLength={500}
-          rows={2}
-        />
-
-        {idx > 0 && (
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() => handleRemoveItem(type, idx)}
-          >
-            ✕ Удалить
-          </Button>
         )}
       </div>
     );
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <h2 className="text-2xl font-bold">🟠 Временный обмен (с возвратом)</h2>
-      <p className="text-gray-600">Предметы для краткосрочной аренды - укажите стоимость и период</p>
-
-      <div className="bg-orange-50 p-3 rounded border-l-4 border-orange-500">
-        <p className="text-sm text-orange-900">
-          🕒 <strong>Эквивалентность:</strong> Предметы сопоставляются по дневному тарифу (value ÷ duration)
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {errors.length > 0 && (
         <Alert type="error">
-          <ul className="list-disc pl-5">
-            {errors.map((err, i) => <li key={i}>{err}</li>)}
-          </ul>
+          {errors.map((err, i) => <div key={i}>• {err}</div>)}
         </Alert>
       )}
 
-      {/* WANTS Section */}
-      <Card className="p-4 border-l-4 border-orange-500">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">📦 Что вы хотите взять в аренду (Хочу)</h3>
-          <Button size="sm" onClick={() => handleAddItem('wants')}>+ Добавить</Button>
+      <div className="grid grid-cols-2 gap-6">
+        {/* WANTS Section */}
+        <div>
+          <h3 className="text-lg font-bold mb-4 text-blue-600">🔵 НУЖНО В АРЕНДУ (Wants)</h3>
+          <div className="space-y-2">
+            {Object.entries(wants).map(([key, cat]) =>
+              renderCategorySection('wants', key, cat)
+            )}
+          </div>
         </div>
 
-        <div className="space-y-4">
-          {wants.map((item, idx) => renderItemCard(item, idx, 'wants', 'bg-orange-50'))}
+        {/* OFFERS Section */}
+        <div>
+          <h3 className="text-lg font-bold mb-4 text-orange-600">🟠 ПРЕДЛАГАЮ В АРЕНДУ (Offers)</h3>
+          <div className="space-y-2">
+            {Object.entries(offers).map(([key, cat]) =>
+              renderCategorySection('offers', key, cat)
+            )}
+          </div>
         </div>
-      </Card>
-
-      {/* OFFERS Section */}
-      <Card className="p-4 border-l-4 border-green-500">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">📦 Что вы предлагаете в аренду (Могу)</h3>
-          <Button size="sm" onClick={() => handleAddItem('offers')}>+ Добавить</Button>
-        </div>
-
-        <div className="space-y-4">
-          {offers.map((item, idx) => renderItemCard(item, idx, 'offers', 'bg-green-50'))}
-        </div>
-      </Card>
+      </div>
 
       {/* Info Box */}
-      <Card className="p-4 bg-blue-50 border-l-4 border-blue-500">
-        <h4 className="font-semibold text-blue-900 mb-2">💡 Как работает расчёт</h4>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>✓ Введите базовую стоимость предмета и период аренды</li>
-          <li>✓ Дневной тариф рассчитывается автоматически</li>
+      <div className="bg-orange-50 p-4 rounded border-l-4 border-orange-500">
+        <h4 className="font-semibold text-orange-900 mb-2">💡 Как работает расчёт для временного обмена</h4>
+        <ul className="text-sm text-orange-800 space-y-1">
+          <li>✓ Введите стоимость предмета и желаемую длительность аренды</li>
+          <li>✓ Дневной тариф рассчитывается автоматически (стоимость ÷ дни)</li>
           <li>✓ Система подбирает партнёров с похожими дневными тарифами</li>
-          <li>✓ Допускается отклонение ±15% (система учтёт это при поиске)</li>
+          <li>✓ Допускается отклонение ±15% для гибкости поиска</li>
         </ul>
-      </Card>
-
-      {/* Action Buttons */}
-      <div className="flex gap-3 justify-end">
-        <Button variant="secondary">Сохранить черновик</Button>
-        <Button
-          variant="primary"
-          size="lg"
-          loading={loading}
-          onClick={handleSubmit}
-        >
-          🔍 Найти совпадения
-        </Button>
       </div>
+
+      {/* Submit Button */}
+      <button
+        onClick={handleSubmit}
+        disabled={loading}
+        className="w-full py-3 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 disabled:opacity-50"
+      >
+        {loading ? '⏳ Обработка...' : '🔍 Начать поиск'}
+      </button>
     </div>
   );
 }
