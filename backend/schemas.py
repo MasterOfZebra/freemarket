@@ -362,26 +362,7 @@ class ListingItemsByCategoryCreate(BaseModel):
         "electronics": [...],
         ...
       },
-      "locations": ["Алматы", "Астана"]
-    }
-    """
-
-class ListingItemsByCategoryCreate(BaseModel):
-    """
-    Listing items organized by category for both types.
-
-    Structure:
-    {
-      "wants": {
-        "electronics": [item1, item2, ...],
-        "transport": [...],
-        ...
-      },
-      "offers": {
-        "electronics": [...],
-        ...
-      },
-      "locations": ["Алматы", "Астана"],
+      "locations": ["Алматы"],
       "user_data": {
         "name": "Иван Иванов",
         "telegram": "@username",

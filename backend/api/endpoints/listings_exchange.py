@@ -93,11 +93,12 @@ def create_listing_by_categories(
                 if telegram.startswith('@'):
                     user.telegram_username = telegram
                 elif telegram.isdigit() or (telegram.startswith('+') and telegram[1:].isdigit()):
-                    user.telegram_id = int(telegram.replace('+', ''))
+                    try:
+                        user.telegram_id = int(telegram.replace('+', ''))
+                    except:
+                        pass
                 else:
                     user.telegram_username = telegram
-            if user_data.get('city') and listing.locations:
-                user.locations = listing.locations
             db.flush()
 
         # Create listing
@@ -220,9 +221,9 @@ def create_listing(
 ):
     """
     Create a new listing with items organized by category.
-    
+
     This is the main endpoint for creating listings from the frontend form.
-    
+
     Request: POST /api/listings/create?user_id=1
     Body:
     {
@@ -242,7 +243,7 @@ def create_listing(
       "user_data": {"name": "Иван", "telegram": "@ivan", "city": "Алматы"}
     }
     """
-    
+
     try:
         # Verify user exists
         user = db.query(User).filter(User.id == user_id).first()
@@ -265,10 +266,12 @@ def create_listing(
                         pass
                 else:
                     user.telegram_username = telegram
+            if user_data.get('city'):
+                user.locations = [user_data['city']]
             db.flush()
 
-        # Save locations from listing
-        if listing.locations:
+        # Save locations from listing if provided separately
+        if listing.locations and not (listing.user_data and listing.user_data.get('city')):
             user.locations = listing.locations
             db.flush()
 
@@ -285,9 +288,9 @@ def create_listing(
             for category, items_list in listing.wants.items():
                 if not items_list:
                     continue
-                    
+
                 all_items_data['wants'][category] = []
-                
+
                 for item_data in items_list:
                     # Create ListingItem
                     list_item = ListingItem(
@@ -303,7 +306,7 @@ def create_listing(
                     )
                     db.add(list_item)
                     total_items += 1
-                    
+
                     all_items_data['wants'][category].append({
                         "id": list_item.id,
                         "name": list_item.name,
@@ -317,9 +320,9 @@ def create_listing(
             for category, items_list in listing.offers.items():
                 if not items_list:
                     continue
-                    
+
                 all_items_data['offers'][category] = []
-                
+
                 for item_data in items_list:
                     # Create ListingItem
                     list_item = ListingItem(
@@ -335,7 +338,7 @@ def create_listing(
                     )
                     db.add(list_item)
                     total_items += 1
-                    
+
                     all_items_data['offers'][category].append({
                         "id": list_item.id,
                         "name": list_item.name,

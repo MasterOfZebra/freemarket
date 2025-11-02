@@ -177,17 +177,14 @@ export default function ExchangeTabs({ userId, onMatchesFound }) {
   const [userData, setUserData] = useState({
     name: '',
     telegram: '',
-    cities: [] // Changed to array
+    city: '' // Changed to single city
   });
 
   const handleUserDataChange = (field, value) => {
-    if (field === 'cities') {
-      // Handle checkbox array
+    if (field === 'city') {
       setUserData(prev => ({
         ...prev,
-        cities: prev.cities.includes(value)
-          ? prev.cities.filter(c => c !== value)
-          : [...prev.cities, value]
+        city: value
       }));
     } else {
       setUserData(prev => ({
@@ -216,8 +213,8 @@ export default function ExchangeTabs({ userId, onMatchesFound }) {
       if (!userData.telegram.trim()) {
         throw new Error('Заполните телеграм контакт');
       }
-      if (userData.cities.length === 0) {
-        throw new Error('Выберите хотя бы один город');
+      if (!userData.city) {
+        throw new Error('Выберите город');
       }
 
       // 1. Transform form data to API format
@@ -236,11 +233,11 @@ export default function ExchangeTabs({ userId, onMatchesFound }) {
         user_id: userId,
         wants: apiData.wants,
         offers: apiData.offers,
-        locations: apiData.locations,
+        locations: [userData.city], // Send as array with single city
         user_data: {
           name: userData.name,
           telegram: userData.telegram,
-          city: userData.cities.join(', ') // Join cities for API
+          city: userData.city
         }
       });
 
@@ -314,21 +311,19 @@ export default function ExchangeTabs({ userId, onMatchesFound }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Города * (выберите один или несколько)
+                Город *
               </label>
-              <div className="space-y-2">
-                {['Алматы', 'Астана', 'Шымкент'].map(city => (
-                  <label key={city} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={userData.cities.includes(city)}
-                      onChange={() => handleUserDataChange('cities', city)}
-                      className="w-4 h-4 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">{city}</span>
-                  </label>
-                ))}
-              </div>
+              <select
+                value={userData.city}
+                onChange={(e) => handleUserDataChange('city', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                required
+              >
+                <option value="">Выберите город</option>
+                <option value="Алматы">Алматы</option>
+                <option value="Астана">Астана</option>
+                <option value="Шымкент">Шымкент</option>
+              </select>
             </div>
           </div>
         </div>
