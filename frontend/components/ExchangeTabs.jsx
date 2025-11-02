@@ -169,12 +169,12 @@ const transformFormDataToApiFormat = (
   };
 };
 
-export default function ExchangeTabs({ userId, onMatchesFound }: ExchangeTabsProps) {
-  const [activeTab, setActiveTab] = useState<'permanent' | 'temporary'>('permanent');
+export default function ExchangeTabs({ userId, onMatchesFound }) {
+  const [activeTab, setActiveTab] = useState('permanent');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [userData, setUserData] = useState<UserData>({
+  const [userData, setUserData] = useState({
     name: '',
     telegram: '',
     city: 'Алматы'
