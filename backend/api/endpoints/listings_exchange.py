@@ -691,7 +691,7 @@ def _find_matches_internal(
                 if partner_user:
                     # Notification for partner (they have an item that matches user's want/offer)
                     partner_notification = NotificationCreate(
-                        user_id=partner_user_id,
+                        user_id=other_user.id,
                         payload={
                             "match_id": match["match_id"],
                             "match_type": match.get("type", "unknown"),
@@ -702,7 +702,12 @@ def _find_matches_internal(
                             "category": match.get("category", ""),
                             "exchange_type": match.get("exchange_type", ""),
                             "difference_percent": match.get("difference_percent", 0),
-                            "explanation": match.get("explanation", "")
+                            "explanation": match.get("explanation", ""),
+                            # Add partner contact info
+                            "partner_name": user.username,
+                            "partner_telegram": user.telegram_username or f"+{user.telegram_id}" if user.telegram_id else None,
+                            "partner_rating": round(user.trust_score, 2),
+                            "partner_exchanges": len([r for r in user.ratings_received]) if hasattr(user, 'ratings_received') else 0
                         }
                     )
                     create_notification(db, partner_notification)
@@ -717,7 +722,10 @@ def _find_matches_internal(
                         "your_item": match.get("my_want") or match.get("my_offer", {}),
                         "matched_with": match.get("their_offer") or match.get("their_want", {}),
                         "partner_user_id": partner_user_id,
-                        "partner_contact": match.get("partner_contact", ""),
+                        "partner_name": other_user.username,
+                        "partner_telegram": other_user.telegram_username or f"+{other_user.telegram_id}" if other_user.telegram_id else None,
+                        "partner_rating": round(other_user.trust_score, 2),
+                        "partner_exchanges": len([r for r in other_user.ratings_received]) if hasattr(other_user, 'ratings_received') else 0,
                         "score": match["score"],
                         "quality": match.get("score_category", "unknown"),
                         "category": match.get("category", ""),
