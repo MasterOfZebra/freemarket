@@ -237,12 +237,15 @@ export const getOffers = async () => {
  */
 export const createListing = async (listingData) => {
   try {
-    const response = await fetch('/api/listings/', {
+    // Extract user_id from data and send it as query parameter
+    const { user_id, ...bodyData } = listingData;
+
+    const response = await fetch(`/api/create-by-categories?user_id=${user_id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(listingData),
+      body: JSON.stringify(bodyData),
     });
     if (!response.ok) {
       const error = await response.json();
