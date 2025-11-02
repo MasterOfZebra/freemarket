@@ -14,9 +14,25 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Connection settings
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
         # Debug logging
         access_log /var/log/nginx/api_access.log;
-        error_log /var/log/nginx/api_error.log;
+        error_log /var/log/nginx/api_error.log debug;
+
+        # Handle proxy errors
+        proxy_intercept_errors on;
+        error_page 502 503 504 = @api_error;
+    }
+
+    # API error handler
+    location @api_error {
+        access_log /var/log/nginx/api_error.log;
+        return 502 '{"error": "Backend API unavailable", "status": 502}';
     }
 
     # Прокси health-check backend (ДОЛЖЕН БЫТЬ ПЕРЕД /)
