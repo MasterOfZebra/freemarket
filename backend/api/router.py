@@ -1,24 +1,15 @@
 """Main API router - combines all endpoint routers"""
 from fastapi import APIRouter
 
-from .endpoints import health, market_listings, notifications, exchange_chains, users, matching, listings_exchange
+from .endpoints import health, notifications, exchange_chains, users, matching, listings_exchange
 
 router = APIRouter()
 
 # Include all endpoint routers
 router.include_router(health.router)
 router.include_router(users.router)
-router.include_router(market_listings.router, prefix="/market-listings")
 
-# Items endpoints for frontend compatibility
-try:
-    from .endpoints.market_listings import items_router
-    router.include_router(items_router)
-    print("✅ items_router loaded successfully")
-except Exception as e:
-    print(f"❌ Failed to load items_router: {e}")
-
-# Listings exchange endpoints (permanent/temporary with categories)
+# Listings exchange endpoints (permanent/temporary with categories) - PRIMARY endpoint for listings
 router.include_router(listings_exchange.router, prefix="/api")
 router.include_router(notifications.router)
 router.include_router(exchange_chains.router)

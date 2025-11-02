@@ -40,6 +40,88 @@ def get_db():
 
 
 # ============================================================
+# GET LISTINGS - FOR FRONTEND DISPLAY
+# ============================================================
+
+@router.get("/wants", response_model=Dict)
+def get_wants_items(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+    """
+    Get all wants (what people need) from existing listings.
+    Grouped by category and exchange type.
+    """
+    try:
+        query = db.query(ListingItem).filter(
+            ListingItem.item_type == ListingItemType.WANT
+        ).order_by(ListingItem.created_at.desc())
+
+        total = query.count()
+        items = query.offset(skip).limit(limit).all()
+
+        items_list = []
+        for item in items:
+            items_list.append({
+                "id": item.id,
+                "item_name": item.item_name,
+                "category": item.category,
+                "value_tenge": item.value_tenge,
+                "duration_days": item.duration_days,
+                "daily_rate": item.daily_rate,
+                "exchange_type": item.exchange_type.value,
+                "description": item.description,
+                "created_at": item.created_at.isoformat() if item.created_at else None
+            })
+
+        return {
+            "items": items_list,
+            "total": total,
+            "skip": skip,
+            "limit": limit
+        }
+    except Exception as e:
+        logger.error(f"Error fetching wants: {e}")
+        return {"items": [], "total": 0, "skip": skip, "limit": limit, "error": str(e)}
+
+
+@router.get("/offers", response_model=Dict)
+def get_offers_items(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+    """
+    Get all offers (what people have) from existing listings.
+    Grouped by category and exchange type.
+    """
+    try:
+        query = db.query(ListingItem).filter(
+            ListingItem.item_type == ListingItemType.OFFER
+        ).order_by(ListingItem.created_at.desc())
+
+        total = query.count()
+        items = query.offset(skip).limit(limit).all()
+
+        items_list = []
+        for item in items:
+            items_list.append({
+                "id": item.id,
+                "item_name": item.item_name,
+                "category": item.category,
+                "value_tenge": item.value_tenge,
+                "duration_days": item.duration_days,
+                "daily_rate": item.daily_rate,
+                "exchange_type": item.exchange_type.value,
+                "description": item.description,
+                "created_at": item.created_at.isoformat() if item.created_at else None
+            })
+
+        return {
+            "items": items_list,
+            "total": total,
+            "skip": skip,
+            "limit": limit
+        }
+    except Exception as e:
+        logger.error(f"Error fetching offers: {e}")
+        return {"items": [], "total": 0, "skip": skip, "limit": limit, "error": str(e)}
+
+
+# ============================================================
 # CREATE LISTING ENDPOINTS
 # ============================================================
 
@@ -295,12 +377,11 @@ def create_listing(
                     # Create ListingItem
                     list_item = ListingItem(
                         listing_id=db_listing.id,
-                        user_id=user_id,
                         item_type=ListingItemType.WANT,
                         category=item_data.category,
                         exchange_type=item_data.exchange_type,
-                        name=item_data.item_name,
-                        value=item_data.value_tenge,
+                        item_name=item_data.item_name,
+                        value_tenge=item_data.value_tenge,
                         duration_days=item_data.duration_days,
                         description=item_data.description
                     )
@@ -309,8 +390,8 @@ def create_listing(
 
                     all_items_data['wants'][category].append({
                         "id": list_item.id,
-                        "name": list_item.name,
-                        "value": list_item.value,
+                        "item_name": list_item.item_name,
+                        "value_tenge": list_item.value_tenge,
                         "duration_days": list_item.duration_days,
                         "description": list_item.description
                     })
@@ -327,12 +408,11 @@ def create_listing(
                     # Create ListingItem
                     list_item = ListingItem(
                         listing_id=db_listing.id,
-                        user_id=user_id,
                         item_type=ListingItemType.OFFER,
                         category=item_data.category,
                         exchange_type=item_data.exchange_type,
-                        name=item_data.item_name,
-                        value=item_data.value_tenge,
+                        item_name=item_data.item_name,
+                        value_tenge=item_data.value_tenge,
                         duration_days=item_data.duration_days,
                         description=item_data.description
                     )
@@ -341,8 +421,8 @@ def create_listing(
 
                     all_items_data['offers'][category].append({
                         "id": list_item.id,
-                        "name": list_item.name,
-                        "value": list_item.value,
+                        "item_name": list_item.item_name,
+                        "value_tenge": list_item.value_tenge,
                         "duration_days": list_item.duration_days,
                         "description": list_item.description
                     })
