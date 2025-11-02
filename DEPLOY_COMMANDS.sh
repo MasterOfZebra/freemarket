@@ -21,14 +21,21 @@ echo "📋 Step 1: Server Preparation"
 echo "Updating system packages..."
 sudo apt update && sudo apt upgrade -y
 
-# Install required packages
+# Install required packages (excluding Docker to avoid conflicts)
 echo "Installing required packages..."
-sudo apt install -y curl wget git htop iotop ncdu docker.io docker-compose-plugin
+sudo apt install -y curl wget git htop iotop ncdu docker-compose-plugin
 
-# Configure Docker
-echo "Configuring Docker..."
+# Install Docker using official repository to avoid conflicts
+echo "Installing Docker from official repository..."
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
 sudo systemctl enable docker
 sudo systemctl start docker
+rm get-docker.sh
+
+# Verify Docker installation
+docker --version
+docker compose version
 
 # Add current user to docker group (logout/login required)
 sudo usermod -aG docker $USER

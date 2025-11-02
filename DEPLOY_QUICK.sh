@@ -4,9 +4,16 @@
 
 # 1. SERVER PREPARATION
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl wget git htop docker.io docker-compose-plugin
+sudo apt install -y curl wget git htop docker-compose-plugin
+
+# Install Docker from official repository (avoids conflicts)
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
 sudo systemctl enable docker && sudo systemctl start docker
+rm get-docker.sh
 sudo usermod -aG docker $USER
+
+# Install Node.js
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
