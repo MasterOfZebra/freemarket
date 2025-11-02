@@ -137,16 +137,20 @@ async def send_notifications():
 
         await asyncio.sleep(60)  # Check every minute
 
-async def send_match_notification(
+async def send_match_notification_with_retry(
     user_telegram_id: int,
     partner_username: str,
     partner_wants: str,
     your_offers: str,
     score: float,
-    match_id: int = 0
+    match_id: int = 0,
+    max_retries: int = 3
 ) -> bool:
     """
-    Send a notification about a found match to Telegram user.
+    Send a notification about a found match to Telegram user with retry logic.
+
+    Uses exponential backoff: 1s, 2s, 4s delays between retries.
+    Includes idempotency protection via match_id + user_telegram_id.
 
     Args:
         user_telegram_id: Telegram chat_id of the user
@@ -155,6 +159,7 @@ async def send_match_notification(
         your_offers: What you can offer
         score: Match score (0.0-1.0)
         match_id: ID of the match for cabinet link
+        max_retries: Maximum number of retry attempts
 
     Returns:
         True if notification was sent successfully, False otherwise
@@ -162,6 +167,18 @@ async def send_match_notification(
     if not user_telegram_id:
         print(f"⚠️  No telegram_id for notification")
         return False
+
+    # Idempotency key for this notification
+    notification_key = f"match_{match_id}_user_{user_telegram_id}"
+
+    # Check if already sent (basic in-memory deduplication)
+    # In production, use Redis or database for persistent deduplication
+    if hasattr(send_match_notification_with_retry, '_sent_notifications'):
+        if notification_key in send_match_notification_with_retry._sent_notifications:
+            print(f"ℹ️  Notification {notification_key} already sent, skipping")
+            return True
+    else:
+        send_match_notification_with_retry._sent_notifications = set()
 
     cabinet_url = f"https://freemarket.com/cabinet?match={match_id}" if match_id else "https://freemarket.com/cabinet"
 
@@ -177,20 +194,56 @@ async def send_match_notification(
 <a href="{cabinet_url}">👉 Смотреть в кабинете</a>
 """
 
-    try:
-        await bot.send_message(
-            chat_id=user_telegram_id,
-            text=message,
-            parse_mode=ParseMode.HTML
-        )
-        print(f"✅ Match notification sent to {user_telegram_id}")
-        return True
-    except TelegramBadRequest as e:
-        print(f"❌ Failed to send match notification to {user_telegram_id}: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ Unexpected error sending notification: {e}")
-        return False
+    for attempt in range(max_retries):
+        try:
+            await bot.send_message(
+                chat_id=user_telegram_id,
+                text=message,
+                parse_mode=ParseMode.HTML
+            )
+
+            # Mark as sent
+            send_match_notification_with_retry._sent_notifications.add(notification_key)
+
+            print(f"✅ Match notification sent to {user_telegram_id} (attempt {attempt + 1})")
+            return True
+
+        except TelegramBadRequest as e:
+            if attempt == max_retries - 1:
+                print(f"❌ Failed to send match notification to {user_telegram_id} after {max_retries} attempts: {e}")
+                return False
+            else:
+                print(f"⚠️  Attempt {attempt + 1} failed, retrying: {e}")
+
+        except Exception as e:
+            if attempt == max_retries - 1:
+                print(f"❌ Unexpected error sending notification to {user_telegram_id}: {e}")
+                return False
+            else:
+                print(f"⚠️  Attempt {attempt + 1} failed with unexpected error, retrying: {e}")
+
+        # Exponential backoff: 1s, 2s, 4s
+        if attempt < max_retries - 1:
+            delay = 2 ** attempt
+            print(f"⏳  Waiting {delay}s before retry...")
+            await asyncio.sleep(delay)
+
+    return False
+
+
+# Backward compatibility alias
+async def send_match_notification(
+    user_telegram_id: int,
+    partner_username: str,
+    partner_wants: str,
+    your_offers: str,
+    score: float,
+    match_id: int = 0
+) -> bool:
+    """Legacy alias for backward compatibility"""
+    return await send_match_notification_with_retry(
+        user_telegram_id, partner_username, partner_wants, your_offers, score, match_id
+    )
 
 async def main():
     # Start notification sender

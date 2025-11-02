@@ -385,6 +385,24 @@ class ListingItemsByCategoryCreate(BaseModel):
         return v
 
     @validator('wants', 'offers')
+    def validate_max_items_per_category(cls, v):
+        """Validate max items per category"""
+        MAX_ITEMS_PER_CATEGORY = 10
+        for category, items in v.items():
+            if len(items) > MAX_ITEMS_PER_CATEGORY:
+                raise ValueError(f"Too many items in category '{category}': {len(items)}. Maximum allowed: {MAX_ITEMS_PER_CATEGORY}")
+        return v
+
+    @validator('wants', 'offers')
+    def validate_total_items(cls, v):
+        """Validate total items across all categories"""
+        MAX_TOTAL_ITEMS = 50
+        total_items = sum(len(items) for items in v.values())
+        if total_items > MAX_TOTAL_ITEMS:
+            raise ValueError(f"Too many total items: {total_items}. Maximum allowed: {MAX_TOTAL_ITEMS}")
+        return v
+
+    @validator('wants', 'offers')
     def remove_empty_items(cls, v):
         """Remove empty item entries"""
         for category in list(v.keys()):

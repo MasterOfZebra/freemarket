@@ -44,15 +44,35 @@ def get_db():
 # ============================================================
 
 @router.get("/wants", response_model=Dict)
-def get_wants_items(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+def get_wants_items(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    category: Optional[str] = None,
+    exchange_type: Optional[str] = None,
+    min_price: Optional[int] = Query(None, ge=1),
+    max_price: Optional[int] = Query(None, ge=1),
+    db: Session = Depends(get_db)
+):
     """
     Get all wants (what people need) from existing listings.
-    Grouped by category and exchange type.
+    Supports pagination and filtering.
     """
     try:
         query = db.query(ListingItem).filter(
             ListingItem.item_type == ListingItemType.WANT
-        ).order_by(ListingItem.created_at.desc())
+        )
+
+        # Apply filters
+        if category:
+            query = query.filter(ListingItem.category == category)
+        if exchange_type:
+            query = query.filter(ListingItem.exchange_type == exchange_type)
+        if min_price:
+            query = query.filter(ListingItem.value_tenge >= min_price)
+        if max_price:
+            query = query.filter(ListingItem.value_tenge <= max_price)
+
+        query = query.order_by(ListingItem.created_at.desc())
 
         total = query.count()
         items = query.offset(skip).limit(limit).all()
@@ -71,11 +91,23 @@ def get_wants_items(skip: int = 0, limit: int = 20, db: Session = Depends(get_db
                 "created_at": item.created_at.isoformat() if item.created_at else None
             })
 
+        # Build filters info
+        applied_filters = {}
+        if category:
+            applied_filters["category"] = category
+        if exchange_type:
+            applied_filters["exchange_type"] = exchange_type
+        if min_price:
+            applied_filters["min_price"] = min_price
+        if max_price:
+            applied_filters["max_price"] = max_price
+
         return {
             "items": items_list,
             "total": total,
             "skip": skip,
-            "limit": limit
+            "limit": limit,
+            "filters_applied": applied_filters
         }
     except Exception as e:
         logger.error(f"Error fetching wants: {e}")
@@ -83,15 +115,35 @@ def get_wants_items(skip: int = 0, limit: int = 20, db: Session = Depends(get_db
 
 
 @router.get("/offers", response_model=Dict)
-def get_offers_items(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+def get_offers_items(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    category: Optional[str] = None,
+    exchange_type: Optional[str] = None,
+    min_price: Optional[int] = Query(None, ge=1),
+    max_price: Optional[int] = Query(None, ge=1),
+    db: Session = Depends(get_db)
+):
     """
     Get all offers (what people have) from existing listings.
-    Grouped by category and exchange type.
+    Supports pagination and filtering.
     """
     try:
         query = db.query(ListingItem).filter(
             ListingItem.item_type == ListingItemType.OFFER
-        ).order_by(ListingItem.created_at.desc())
+        )
+
+        # Apply filters
+        if category:
+            query = query.filter(ListingItem.category == category)
+        if exchange_type:
+            query = query.filter(ListingItem.exchange_type == exchange_type)
+        if min_price:
+            query = query.filter(ListingItem.value_tenge >= min_price)
+        if max_price:
+            query = query.filter(ListingItem.value_tenge <= max_price)
+
+        query = query.order_by(ListingItem.created_at.desc())
 
         total = query.count()
         items = query.offset(skip).limit(limit).all()
@@ -110,11 +162,23 @@ def get_offers_items(skip: int = 0, limit: int = 20, db: Session = Depends(get_d
                 "created_at": item.created_at.isoformat() if item.created_at else None
             })
 
+        # Build filters info
+        applied_filters = {}
+        if category:
+            applied_filters["category"] = category
+        if exchange_type:
+            applied_filters["exchange_type"] = exchange_type
+        if min_price:
+            applied_filters["min_price"] = min_price
+        if max_price:
+            applied_filters["max_price"] = max_price
+
         return {
             "items": items_list,
             "total": total,
             "skip": skip,
-            "limit": limit
+            "limit": limit,
+            "filters_applied": applied_filters
         }
     except Exception as e:
         logger.error(f"Error fetching offers: {e}")
