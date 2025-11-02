@@ -137,36 +137,45 @@ const transformFormDataToApiFormat = (
   exchangeType,
   userData
 ) => {
-  const transformItems = (items) => {
-    const result = {};
+  const result = {
+    wants: {},
+    offers: {},
+    locations: [userData.city]
+  };
 
-    for (const [category, itemList] of Object.entries(items)) {
-      if (!Array.isArray(itemList) || itemList.length === 0) {
-        continue;
-      }
-
-      result[category] = itemList
-        .filter(item => item.item_name && item.category && item.value_tenge)
-        .map(item => ({
-          category: item.category,
-          exchange_type: exchangeType,
-          item_name: item.item_name.trim(),
-          value_tenge: parseInt(item.value_tenge) || 0,
-          duration_days: exchangeType === 'temporary'
-            ? (parseInt(item.duration_days) || null)
-            : null,
-          description: (item.description || '').trim()
-        }));
+  // Transform wants
+  Object.entries(formData.wants || {}).forEach(([category, items]) => {
+    if (Array.isArray(items) && items.length > 0) {
+      result.wants[category] = items.map(item => ({
+        category,
+        exchange_type: exchangeType,
+        item_name: item.name.trim(),
+        value_tenge: parseInt(item.price) || 0,
+        duration_days: exchangeType === 'temporary'
+          ? (parseInt(item.duration_days) || null)
+          : null,
+        description: (item.description || '').trim()
+      }));
     }
+  });
 
-    return result;
-  };
+  // Transform offers
+  Object.entries(formData.offers || {}).forEach(([category, items]) => {
+    if (Array.isArray(items) && items.length > 0) {
+      result.offers[category] = items.map(item => ({
+        category,
+        exchange_type: exchangeType,
+        item_name: item.name.trim(),
+        value_tenge: parseInt(item.price) || 0,
+        duration_days: exchangeType === 'temporary'
+          ? (parseInt(item.duration_days) || null)
+          : null,
+        description: (item.description || '').trim()
+      }));
+    }
+  });
 
-  return {
-    wants: transformItems(formData.wants || {}),
-    offers: transformItems(formData.offers || {}),
-    locations: [userData.city] // Single city as array
-  };
+  return result;
 };
 
 export default function ExchangeTabs({ userId, onMatchesFound }) {
