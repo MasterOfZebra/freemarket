@@ -6,20 +6,7 @@ server {
     charset UTF-8;
     charset_types text/html text/xml text/plain text/css text/javascript application/javascript application/json;
 
-    # Frontend static files
-    location / {
-        root /usr/share/nginx/html;
-        try_files $uri $uri/ /index.html;
-        add_header Cache-Control "no-store";
-    }
-
-    # Assets with long-term caching
-    location /assets/ {
-        root /usr/share/nginx/html;
-        add_header Cache-Control "public, max-age=31536000, immutable";
-    }
-
-    # Прокси API
+    # Прокси API (ДОЛЖЕН БЫТЬ ПЕРВЫМ!)
     location /api/ {
         # Proxy to backend root so /api/test/ -> backend:/api/test/
         proxy_pass http://backend:8000/;
@@ -29,13 +16,26 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Прокси health-check backend
+    # Прокси health-check backend (ДОЛЖЕН БЫТЬ ПЕРЕД /)
     location /health {
         proxy_pass http://backend:8000/health;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Assets with long-term caching (более специфичный, чем /)
+    location /assets/ {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # Frontend static files (ДОЛЖЕН БЫТЬ ПОСЛЕДНИМ - catch-all)
+    location / {
+        root /usr/share/nginx/html;
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-store";
     }
 
     # Healthcheck для nginx
