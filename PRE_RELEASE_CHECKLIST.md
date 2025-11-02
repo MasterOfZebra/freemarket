@@ -26,6 +26,7 @@
 - [ ] **SQL injection**: ORM queries only, no raw SQL
 - [ ] **Rate limiting**: 100 req/min per IP implemented
 - [ ] **Access control**: Authentication required for mutations
+- [ ] **JWT authentication**: Enable JWT auth for production endpoints (refresh-token tests)
 
 ### 🔌 API & Integration
 - [ ] **OpenAPI docs**: `http://localhost:8000/docs` works
@@ -70,6 +71,11 @@
 - [ ] **Developer docs**: Migration guide, API changes
 - [ ] **CHANGELOG**: All changes documented
 - [ ] **README**: Updated with new features
+
+### 🔄 CI/CD Pipeline
+- [ ] **Dependency security scan**: `pip-audit` for Python, `npm audit` for JS
+- [ ] **Security scan**: No critical vulnerabilities found
+- [ ] **Performance baseline**: Response time <500ms established
 
 ### 🎯 Performance
 - [ ] **Database indexes**: Optimized for new queries

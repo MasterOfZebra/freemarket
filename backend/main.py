@@ -49,6 +49,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add API Version header middleware
+@app.middleware("http")
+async def add_api_version_header(request, call_next):
+    """Add X-API-Version header to all responses"""
+    response = await call_next(request)
+    response.headers["X-API-Version"] = API_VERSION
+    return response
+
 # Include all API routers
 app.include_router(api_router)
 
