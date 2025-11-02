@@ -70,7 +70,7 @@ export default function PermanentTab({ userId, onSubmit }) {
     try {
       // Validate all items
       const allItems = [...wants, ...offers];
-      const newErrors: string[] = [];
+      const newErrors = [];
 
       allItems.forEach((item, idx) => {
         if (item.item_name || item.category || item.value_tenge) {

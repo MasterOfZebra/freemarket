@@ -93,7 +93,7 @@ export default function TemporaryTab({ userId, onSubmit }) {
     try {
       // Validate all items
       const allItems = [...wants, ...offers];
-      const newErrors: string[] = [];
+      const newErrors = [];
 
       allItems.forEach((item, idx) => {
         if (item.item_name || item.category || item.value_tenge || item.duration_days) {
