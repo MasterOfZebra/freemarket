@@ -8,8 +8,9 @@ server {
 
     # Прокси API (ДОЛЖЕН БЫТЬ ПЕРВЫМ!)
     location /api/ {
-        # Proxy to backend API with /api/ prefix preserved
-        proxy_pass http://backend:8000/;
+        # Proxy to backend API - preserve /api/ prefix in path
+        # /api/listings/wants -> http://backend:8000/api/listings/wants
+        proxy_pass http://backend:8000/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
