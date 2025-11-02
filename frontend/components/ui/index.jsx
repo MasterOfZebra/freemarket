@@ -1,12 +1,13 @@
 import React from 'react';
 
 // Card Component
-interface CardProps {
-  className?: string;
-  children: React.ReactNode;
-}
+/**
+ * @typedef {Object} CardProps
+ * @property {string} [className]
+ * @property {React.ReactNode} children
+ */
 
-export const Card: React.FC<CardProps> = ({ className = '', children }) => {
+export const Card = ({ className = '', children }) => {
   return (
     <div className={`bg-white rounded-lg shadow ${className}`}>
       {children}
@@ -15,17 +16,18 @@ export const Card: React.FC<CardProps> = ({ className = '', children }) => {
 };
 
 // Button Component
-interface ButtonProps {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: 'primary' | 'secondary' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
-  loading?: boolean;
-  className?: string;
-  type?: 'button' | 'submit' | 'reset';
-}
+/**
+ * @typedef {Object} ButtonProps
+ * @property {React.ReactNode} children
+ * @property {function(): void} [onClick]
+ * @property {'primary'|'secondary'|'danger'} [variant]
+ * @property {'sm'|'md'|'lg'} [size]
+ * @property {boolean} [loading]
+ * @property {string} [className]
+ * @property {'button'|'submit'|'reset'} [type]
+ */
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button = ({
   children,
   onClick,
   variant = 'primary',
@@ -61,20 +63,21 @@ export const Button: React.FC<ButtonProps> = ({
 };
 
 // Input Component
-interface InputProps {
-  label?: string;
-  placeholder?: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  minLength?: number;
-  maxLength?: number;
-  min?: number;
-  max?: number;
-  className?: string;
-}
+/**
+ * @typedef {Object} InputProps
+ * @property {string} [label]
+ * @property {string} [placeholder]
+ * @property {string} value
+ * @property {function(string): void} onChange
+ * @property {string} [type]
+ * @property {number} [minLength]
+ * @property {number} [maxLength]
+ * @property {number} [min]
+ * @property {number} [max]
+ * @property {string} [className]
+ */
 
-export const Input: React.FC<InputProps> = ({
+export const Input = ({
   label,
   placeholder,
   value,
@@ -105,20 +108,22 @@ export const Input: React.FC<InputProps> = ({
 };
 
 // Select Component
-interface SelectOption {
-  value: string;
-  label: string;
-}
+/**
+ * @typedef {Object} SelectOption
+ * @property {string} value
+ * @property {string} label
+ */
 
-interface SelectProps {
-  label?: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: SelectOption[];
-  className?: string;
-}
+/**
+ * @typedef {Object} SelectProps
+ * @property {string} [label]
+ * @property {string} value
+ * @property {function(string): void} onChange
+ * @property {SelectOption[]} options
+ * @property {string} [className]
+ */
 
-export const Select: React.FC<SelectProps> = ({
+export const Select = ({
   label,
   value,
   onChange,
@@ -145,17 +150,18 @@ export const Select: React.FC<SelectProps> = ({
 };
 
 // Textarea Component
-interface TextareaProps {
-  label?: string;
-  placeholder?: string;
-  value: string;
-  onChange: (value: string) => void;
-  maxLength?: number;
-  rows?: number;
-  className?: string;
-}
+/**
+ * @typedef {Object} TextareaProps
+ * @property {string} [label]
+ * @property {string} [placeholder]
+ * @property {string} value
+ * @property {function(string): void} onChange
+ * @property {number} [maxLength]
+ * @property {number} [rows]
+ * @property {string} [className]
+ */
 
-export const Textarea: React.FC<TextareaProps> = ({
+export const Textarea = ({
   label,
   placeholder,
   value,
@@ -180,13 +186,14 @@ export const Textarea: React.FC<TextareaProps> = ({
 };
 
 // Alert Component
-interface AlertProps {
-  type?: 'error' | 'warning' | 'info' | 'success';
-  children: React.ReactNode;
-  className?: string;
-}
+/**
+ * @typedef {Object} AlertProps
+ * @property {'error'|'warning'|'info'|'success'} [type]
+ * @property {React.ReactNode} children
+ * @property {string} [className]
+ */
 
-export const Alert: React.FC<AlertProps> = ({
+export const Alert = ({
   type = 'info',
   children,
   className = '',

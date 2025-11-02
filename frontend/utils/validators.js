@@ -2,10 +2,11 @@
  * Validation utilities for exchange items
  */
 
-export interface ValidationResult {
-  valid: boolean;
-  error?: string;
-}
+/**
+ * @typedef {Object} ValidationResult
+ * @property {boolean} valid
+ * @property {string} [error]
+ */
 
 // Validation constants
 const MIN_ITEM_NAME_LENGTH = 3;
@@ -61,7 +62,7 @@ const VALID_CATEGORIES = new Set([
 /**
  * Validate permanent exchange item
  */
-export function validatePermanentItem(item: any): ValidationResult {
+export function validatePermanentItem(item) {
   if (!item.category || !VALID_CATEGORIES.has(item.category)) {
     return { valid: false, error: 'Invalid or missing category' };
   }
@@ -93,7 +94,7 @@ export function validatePermanentItem(item: any): ValidationResult {
 /**
  * Validate temporary exchange item
  */
-export function validateTemporaryItem(item: any): ValidationResult {
+export function validateTemporaryItem(item) {
   if (!item.category || !VALID_CATEGORIES.has(item.category)) {
     return { valid: false, error: 'Invalid or missing category' };
   }
@@ -134,7 +135,7 @@ export function validateTemporaryItem(item: any): ValidationResult {
 /**
  * Calculate daily rate for temporary items
  */
-export function calculateDailyRate(value: number, durationDays: number): number {
+export function calculateDailyRate(value, durationDays) {
   if (!durationDays || durationDays <= 0) return 0;
   return value / durationDays;
 }
@@ -142,7 +143,7 @@ export function calculateDailyRate(value: number, durationDays: number): number 
 /**
  * Get quality label based on score
  */
-export function getQualityLabel(score: number): string {
+export function getQualityLabel(score) {
   if (score >= 0.85) return 'excellent';
   if (score >= 0.70) return 'good';
   if (score >= 0.50) return 'fair';
@@ -152,7 +153,7 @@ export function getQualityLabel(score: number): string {
 /**
  * Get color based on score
  */
-export function getScoreColor(score: number): string {
+export function getScoreColor(score) {
   if (score >= 0.85) return 'bg-green-100 border-green-400 text-green-900';
   if (score >= 0.70) return 'bg-yellow-100 border-yellow-400 text-yellow-900';
   return 'bg-red-100 border-red-400 text-red-900';
@@ -161,6 +162,7 @@ export function getScoreColor(score: number): string {
 /**
  * Format score as percentage
  */
-export function formatScore(score: number): string {
+export function formatScore(score) {
   return `${(score * 100).toFixed(0)}%`;
 }
+
