@@ -265,8 +265,11 @@ def create_listing(
                         pass
                 else:
                     user.telegram_username = telegram
-            if user_data.get('city'):
-                user.locations = [user_data['city']]
+            db.flush()
+
+        # Save locations from listing
+        if listing.locations:
+            user.locations = listing.locations
             db.flush()
 
         # Create listing
