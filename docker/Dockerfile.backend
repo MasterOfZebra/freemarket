@@ -1,6 +1,9 @@
-# Dockerfile for FreeMarket Backend
+# Dockerfile for FreeMarket Backend - Multi-stage build for smaller image
 
-FROM python:3.11-slim
+# ================================
+# Build stage - with build dependencies
+# ================================
+FROM python:3.11-slim AS builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -8,17 +11,16 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install system dependencies
+# Install build dependencies (only for compilation, not in final image)
 RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
-    curl \
+    build-essential \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment
 RUN python -m venv /opt/venv
 
-# Upgrade pip, wheel, and setuptools for better wheel support
+# Upgrade pip, wheel, and setuptools
 RUN /opt/venv/bin/pip install --upgrade pip wheel setuptools
 
 # Set work directory
@@ -27,12 +29,36 @@ WORKDIR /app
 # Copy requirements file
 COPY backend/requirements.txt .
 
-# Install PyTorch CPU versions from official index first (to get wheels, not build from source)
+# Install PyTorch CPU versions from official index (wheels, not build from source)
 RUN /opt/venv/bin/pip install --no-cache-dir torch==2.1.2 torchvision==0.16.2 \
     -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
 # Install remaining dependencies
 RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# ================================
+# Runtime stage - clean, minimal image
+# ================================
+FROM python:3.11-slim AS runtime
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install only runtime system dependencies (no build tools)
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy virtual environment from builder stage
+COPY --from=builder /opt/venv /opt/venv
+
+# Set work directory
+WORKDIR /app
 
 # Copy application code
 COPY backend /app/backend
@@ -41,7 +67,7 @@ COPY backend /app/backend
 COPY alembic.ini /app/
 COPY backend/alembic /app/alembic
 
-# Ensure package root is in PYTHONPATH (so `import backend` resolves)
+# Ensure package root is in PYTHONPATH
 ENV PYTHONPATH=/app
 
 # Create non-root user
@@ -56,6 +82,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run application using gunicorn with uvicorn worker (ASGI-compatible)
-# For pure uvicorn, uncomment and use: CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Run application
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--workers", "4", "--bind", "0.0.0.0:8000", "backend.main:app"]
