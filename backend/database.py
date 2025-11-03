@@ -3,7 +3,7 @@ Database configuration and session management
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 import redis.asyncio as redis
 
 from backend.config import DATABASE_URL, REDIS_URL
@@ -17,6 +17,19 @@ Base = declarative_base()
 
 # Redis for caching and queues
 redis_client = redis.from_url(REDIS_URL)
+
+
+# Dependency to get DB session
+def get_db() -> Session:
+    """
+    Dependency function to get database session.
+    Yields a database session and ensures it's closed after use.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     from backend import models  # Import all models to register them with Base
