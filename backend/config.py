@@ -6,9 +6,12 @@ Centralized settings for database, API, logging, etc.
 import os
 from dotenv import load_dotenv
 
-# Load environment variables if .env file exists
-if os.path.exists('.env'):
+# Load environment variables safely
+try:
     load_dotenv()
+except (FileNotFoundError, PermissionError):
+    # .env file not accessible, use environment variables directly
+    pass
 
 # ============================================================
 # DATABASE CONFIG
