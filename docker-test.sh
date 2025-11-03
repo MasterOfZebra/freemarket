@@ -57,7 +57,7 @@ docker_compose_cmd() {
 echo ""
 echo "🏗️  Building and starting services..."
 
-# Stop any existing containers
+# Stop any existing containers and remove orphans
 print_info "Stopping existing containers..."
 docker_compose_cmd -f docker-compose.test.yml down --volumes --remove-orphans 2>/dev/null || true
 
@@ -144,8 +144,8 @@ echo "  -b cookies.txt"
 echo ""
 
 echo "🛑 To stop testing:"
-echo "docker_compose_cmd -f docker-compose.test.yml down --volumes"
+echo "docker_compose_cmd -f docker-compose.test.yml down --volumes --remove-orphans"
 echo ""
 
 print_info "Services are running. Open http://localhost:3001 in your browser to test the UI."
-print_warning "Don't forget to stop the services when done: docker_compose_cmd -f docker-compose.test.yml down --volumes"
+print_warning "Don't forget to stop the services when done: docker_compose_cmd -f docker-compose.test.yml down --volumes --remove-orphans"

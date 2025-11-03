@@ -87,8 +87,8 @@ chmod +x test-docker-api.sh
 ## 🛑 Остановка и очистка
 
 ```bash
-# Остановить все сервисы
-docker compose -f docker-compose.test.yml down
+# Остановить все сервисы и удалить orphan контейнеры
+docker compose -f docker-compose.test.yml down --remove-orphans
 
 # Остановить и удалить volumes (данные)
 docker compose -f docker-compose.test.yml down --volumes
