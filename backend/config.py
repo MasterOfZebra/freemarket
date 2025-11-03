@@ -6,8 +6,9 @@ Centralized settings for database, API, logging, etc.
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables if .env file exists
+if os.path.exists('.env'):
+    load_dotenv()
 
 # ============================================================
 # DATABASE CONFIG
