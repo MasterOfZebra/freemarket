@@ -91,11 +91,14 @@ chmod +x test-docker-api.sh
 docker compose -f docker-compose.test.yml down --remove-orphans
 
 # Остановить и удалить volumes (данные)
-docker compose -f docker-compose.test.yml down --volumes
+docker compose -f docker-compose.test.yml down --volumes --remove-orphans
 
-# Полная очистка
+# Полная очистка (если есть проблемы)
 docker compose -f docker-compose.test.yml down --volumes --remove-orphans
 docker system prune -f
+
+# Или использовать скрипт очистки
+./docker-clean.sh
 ```
 
 ## 🐛 Устранение неполадок
