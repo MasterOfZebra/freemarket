@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for testing
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: freemarket_test
+      POSTGRES_PASSWORD: testpass123
+      POSTGRES_DB: freemarket_test
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    networks:
+      - freemarket_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U freemarket_test -d freemarket_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5433:5432"  # Expose on different port to avoid conflicts
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_test_data:/data
+    networks:
+      - freemarket_test
+    ports:
+      - "6380:6379"  # Expose on different port
+
+  # Backend API service
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    command: uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: postgresql://freemarket_test:testpass123@postgres:5432/freemarket_test
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: test_jwt_secret_key_change_in_production_123456789
+      USE_NEW_CATEGORIES: "true"
+    volumes:
+      - ./backend:/app/backend
+    networks:
+      - freemarket_test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    ports:
+      - "8001:8000"  # Expose backend on port 8001 for testing
+
+  # Frontend React app
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - freemarket_test
+    depends_on:
+      - backend
+    ports:
+      - "3001:80"  # Expose frontend on port 3001
+
+  # Database initialization service (runs once)
+  init-db:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 10 &&
+        echo 'Running database migrations...' &&
+        alembic upgrade head &&
+        echo 'Initializing categories...' &&
+        python backend/scripts/init_categories_v6.py &&
+        echo 'Database initialization complete!'
+      "
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: postgresql://freemarket_test:testpass123@postgres:5432/freemarket_test
+    volumes:
+      - ./backend:/app/backend
+    networks:
+      - freemarket_test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - init  # Only runs when explicitly requested
+
+volumes:
+  postgres_test_data:
+  redis_test_data:
+
+networks:
+  freemarket_test:
+    driver: bridge

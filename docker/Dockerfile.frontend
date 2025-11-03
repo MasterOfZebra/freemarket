@@ -6,7 +6,7 @@ FROM node:18-alpine AS build
 WORKDIR /app
 
 # Copy package files
-COPY src/package*.json src/package-lock.json ./
+COPY package*.json package-lock.json ./
 
 # Install dependencies (use lockfile when available, otherwise install)
 RUN if [ -f package-lock.json ]; then \
@@ -16,7 +16,7 @@ RUN if [ -f package-lock.json ]; then \
     fi
 
 # Copy source code
-COPY src/ .
+COPY . .
 
 # Build application
 RUN npm run build
