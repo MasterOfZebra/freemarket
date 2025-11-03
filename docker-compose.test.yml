@@ -82,16 +82,17 @@ services:
         echo 'Waiting for database...' &&
         sleep 10 &&
         echo 'Running database migrations...' &&
-        cd backend && alembic upgrade head &&
+        PYTHONPATH=/app alembic -c /app/alembic.ini upgrade head &&
         echo 'Initializing categories...' &&
-        python scripts/init_categories_v6.py &&
+        PYTHONPATH=/app python backend/scripts/init_categories_v6.py &&
         echo 'Database initialization complete!'
       "
     environment:
       PYTHONPATH: /app
       DATABASE_URL: postgresql://freemarket_test:testpass123@postgres:5432/freemarket_test
     volumes:
-      - ./backend:/app/backend
+      - .:/app
+      - /app/node_modules
     networks:
       - freemarket_test
     depends_on:
