@@ -423,3 +423,91 @@ class ListingItemsByCategoryResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ==============================================
+# AUTHENTICATION SCHEMAS
+# ==============================================
+
+class UserRegister(BaseModel):
+    """User registration schema"""
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    username: Optional[str] = None
+    password: str = Field(..., min_length=8, max_length=128)
+    full_name: str = Field(..., min_length=1, max_length=100)
+    telegram_contact: Optional[str] = None
+    city: str = "Алматы"
+
+    @validator('phone', 'email', pre=True, always=True)
+    def require_contact_method(cls, v, values, field):
+        """Require at least email or phone"""
+        if field.name == 'email' and not v and not values.get('phone'):
+            raise ValueError('Either email or phone must be provided')
+        if field.name == 'phone' and not v and not values.get('email'):
+            raise ValueError('Either email or phone must be provided')
+        return v
+
+
+class UserLogin(BaseModel):
+    """User login schema"""
+    identifier: str  # email, phone, or username
+    password: str
+
+
+class UserProfile(BaseModel):
+    """User profile response"""
+    id: int
+    email: Optional[str]
+    phone: Optional[str]
+    username: Optional[str]
+    full_name: Optional[str]
+    telegram_contact: Optional[str]
+    city: str
+    bio: Optional[str]
+    trust_score: float
+    exchange_count: int
+    rating_avg: float
+    is_active: bool
+    is_verified: bool
+    created_at: datetime
+    last_login_at: Optional[datetime]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TokenResponse(BaseModel):
+    """JWT token response"""
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int  # seconds
+
+
+class LoginResponse(BaseModel):
+    """Login response with user info"""
+    user: UserProfile
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
+class RefreshTokenRequest(BaseModel):
+    """Refresh token request (handled via cookie, but schema for validation)"""
+    pass
+
+
+class ChangePasswordRequest(BaseModel):
+    """Change password request"""
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class ResetPasswordRequest(BaseModel):
+    """Password reset request"""
+    email_or_phone: str
+
+
+class ResetPasswordConfirm(BaseModel):
+    """Password reset confirmation"""
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=128)

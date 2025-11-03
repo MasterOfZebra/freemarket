@@ -1,73 +1,140 @@
-import { useEffect, useState } from 'react';
-import { getOffers, getWants } from './services/api';
+import { useState, useEffect } from 'react';
 import ExchangeTabs from './components/ExchangeTabs';
+import UserCabinet from './components/UserCabinet';
+import LoginModal from './components/LoginModal';
 import './styles/App.css';
 
 function App() {
-    const [wants, setWants] = useState([]);
-    const [offers, setOffers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('wants');
     const [showRegistration, setShowRegistration] = useState(false);
     const [matchesFound, setMatchesFound] = useState(0);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [user, setUser] = useState(null);
+    const [showLogin, setShowLogin] = useState(false);
+    const [showCabinet, setShowCabinet] = useState(false);
 
-    const fetchData = async () => {
+    // Check if user is logged in on app start
+    useEffect(() => {
+        checkAuthStatus();
+    }, []);
+
+    const checkAuthStatus = async () => {
         try {
-            const [wantsData, offersData] = await Promise.all([
-                getWants(),
-                getOffers()
-            ]);
-            setWants(wantsData);
-            setOffers(offersData);
-        } catch (err) {
-            setError('Ошибка загрузки данных: ' + err.message);
-            console.error(err);
-        } finally {
-            setLoading(false);
+            const response = await fetch('/auth/me', {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const userData = await response.json();
+                setUser(userData);
+                setIsLoggedIn(true);
+            }
+        } catch (error) {
+            // User not logged in
         }
     };
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    const handleLogin = (userData) => {
+        setUser(userData);
+        setIsLoggedIn(true);
+        setShowLogin(false);
+    };
+
+    const handleLogout = async () => {
+        try {
+            await fetch('/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+        setUser(null);
+        setIsLoggedIn(false);
+        setShowCabinet(false);
+    };
 
     const handleMatchesFound = (count) => {
         setMatchesFound(count);
-        // Refresh listings after successful registration
-        setTimeout(() => {
-            fetchData();
-        }, 2000);
     };
-
-    if (loading && !showRegistration) {
-        return <div style={{ padding: '20px', textAlign: 'center' }}>Загрузка...</div>;
-    }
 
     if (showRegistration) {
         return (
             <div className="App">
                 <header className="App-header">
                     <h1>🌍 FreeMarket - Платформа обмена ресурсами</h1>
-                    <button
-                        onClick={() => setShowRegistration(false)}
-                        style={{
-                            padding: '12px 30px',
-                            marginTop: '15px',
-                            backgroundColor: '#666',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '16px',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        ← Назад к спискам
-                    </button>
-                </header>
-                <ExchangeTabs 
-                    userId={1} 
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <button
+                            onClick={() => setShowRegistration(false)}
+                            style={{
+                                padding: '12px 30px',
+                                marginTop: '15px',
+                                backgroundColor: '#666',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            ← Назад к спискам
+                        </button>
+                        {isLoggedIn ? (
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <span style={{ color: 'white', fontSize: '14px' }}>
+                                    Привет, {user?.full_name || user?.username || 'Пользователь'}!
+                                </span>
+                                <button
+                                    onClick={() => setShowCabinet(true)}
+                                    style={{
+                                        padding: '8px 16px',
+                                        marginTop: '15px',
+                                        backgroundColor: '#4CAF50',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px'
+                                    }}
+                                >
+                                    Личный кабинет
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    style={{
+                                        padding: '8px 16px',
+                                        marginTop: '15px',
+                                        backgroundColor: '#f44336',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px'
+                                    }}
+                                >
+                                    Выйти
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setShowLogin(true)}
+                                style={{
+                                    padding: '12px 30px',
+                                    marginTop: '15px',
+                                    backgroundColor: '#2196F3',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Войти
+                            </button>
+                        )}
+                    </div>
+                <ExchangeTabs
+                    userId={1}
                     onMatchesFound={handleMatchesFound}
                 />
             </div>
@@ -79,6 +146,61 @@ function App() {
             <header className="App-header">
                 <h1>🌍 FreeMarket - Платформа обмена ресурсами</h1>
                 <p>Город Алматы - обменивайтесь всем, что нужно!</p>
+
+                {/* Auth buttons */}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
+                    {isLoggedIn ? (
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <span style={{ color: 'white', fontSize: '14px' }}>
+                                Привет, {user?.full_name || user?.username || 'Пользователь'}!
+                            </span>
+                            <button
+                                onClick={() => setShowCabinet(true)}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: '#4CAF50',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                Личный кабинет
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: '#f44336',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                Выйти
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setShowLogin(true)}
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#2196F3',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '14px'
+                            }}
+                        >
+                            Войти / Регистрация
+                        </button>
+                    )}
+                </div>
+
                 <button
                     onClick={() => setShowRegistration(true)}
                     style={{
@@ -116,143 +238,24 @@ function App() {
                 </div>
             )}
 
-            <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-                <div style={{
-                    display: 'flex',
-                    gap: '10px',
-                    marginBottom: '20px',
-                    borderBottom: '3px solid #ddd'
-                }}>
-                    <button
-                        onClick={() => setActiveTab('wants')}
-                        style={{
-                            padding: '12px 24px',
-                            backgroundColor: activeTab === 'wants' ? '#007bff' : '#eee',
-                            color: activeTab === 'wants' ? 'white' : '#333',
-                            border: 'none',
-                            borderRadius: '4px 4px 0 0',
-                            cursor: 'pointer',
-                            fontSize: '16px',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        🔵 НУЖНО (Wants) - {wants.length}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('offers')}
-                        style={{
-                            padding: '12px 24px',
-                            backgroundColor: activeTab === 'offers' ? '#28a745' : '#eee',
-                            color: activeTab === 'offers' ? 'white' : '#333',
-                            border: 'none',
-                            borderRadius: '4px 4px 0 0',
-                            cursor: 'pointer',
-                            fontSize: '16px',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        🟢 ПРЕДЛАГАЮ (Offers) - {offers.length}
-                    </button>
-                </div>
+            {/* Убраны ненужные вкладки - пользователи получают данные о партнерах через Telegram */}
 
-                {activeTab === 'wants' && (
-                    <section>
-                        <h2 style={{ color: '#007bff' }}>🔵 Что люди ищут (НУЖНО)</h2>
-                        {wants.length === 0 ? (
-                            <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
-                                Нет активных запросов
-                            </p>
-                        ) : (
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                                gap: '15px'
-                            }}>
-                                {wants.map(item => (
-                                    <div
-                                        key={item.id}
-                                        style={{
-                                            border: '2px solid #007bff',
-                                            padding: '15px',
-                                            borderRadius: '6px',
-                                            backgroundColor: '#f0f7ff',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                        }}
-                                    >
-                                        <h3 style={{ margin: '0 0 10px 0', color: '#007bff' }}>
-                                            {item.title}
-                                        </h3>
-                                        <p style={{ margin: '5px 0', color: '#555', fontSize: '14px' }}>
-                                            {item.description}
-                                        </p>
-                                        {item.category && (
-                                            <p style={{
-                                                margin: '8px 0 0 0',
-                                                fontSize: '12px',
-                                                color: '#999',
-                                                padding: '8px',
-                                                backgroundColor: 'white',
-                                                borderRadius: '4px'
-                                            }}>
-                                                📁 {item.category}
-                                            </p>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-                )}
+            {/* Login Modal */}
+            {showLogin && (
+                <LoginModal
+                    onClose={() => setShowLogin(false)}
+                    onLogin={handleLogin}
+                />
+            )}
 
-                {activeTab === 'offers' && (
-                    <section>
-                        <h2 style={{ color: '#28a745' }}>🟢 Что люди предлагают (ПРЕДЛАГАЮ)</h2>
-                        {offers.length === 0 ? (
-                            <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
-                                Нет активных предложений
-                            </p>
-                        ) : (
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                                gap: '15px'
-                            }}>
-                                {offers.map(item => (
-                                    <div
-                                        key={item.id}
-                                        style={{
-                                            border: '2px solid #28a745',
-                                            padding: '15px',
-                                            borderRadius: '6px',
-                                            backgroundColor: '#f0fff0',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                        }}
-                                    >
-                                        <h3 style={{ margin: '0 0 10px 0', color: '#28a745' }}>
-                                            {item.title}
-                                        </h3>
-                                        <p style={{ margin: '5px 0', color: '#555', fontSize: '14px' }}>
-                                            {item.description}
-                                        </p>
-                                        {item.category && (
-                                            <p style={{
-                                                margin: '8px 0 0 0',
-                                                fontSize: '12px',
-                                                color: '#999',
-                                                padding: '8px',
-                                                backgroundColor: 'white',
-                                                borderRadius: '4px'
-                                            }}>
-                                                📁 {item.category}
-                                            </p>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-                )}
-            </div>
+            {/* User Cabinet Modal */}
+            {showCabinet && (
+                <UserCabinet
+                    user={user}
+                    onClose={() => setShowCabinet(false)}
+                    onLogout={handleLogout}
+                />
+            )}
         </div>
     );
 }
