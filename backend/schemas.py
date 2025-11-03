@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from decimal import Decimal
@@ -282,37 +282,37 @@ class ListingItemCreate(BaseModel):
     duration_days: Optional[int] = Field(None, ge=1, le=365, description="Duration in days (for temporary only)")
     description: Optional[str] = Field(None, max_length=500)
 
-    @validator('item_name')
+    @field_validator('item_name')
+    @classmethod
     def strip_item_name(cls, v):
         """Trim whitespace from item name"""
         return v.strip() if v else v
 
-    @validator('category')
+    @field_validator('category')
+    @classmethod
     def validate_category(cls, v):
         """Ensure category is valid"""
         if v not in VALID_CATEGORIES:
             raise ValueError(f"Invalid category: {v}. Must be one of {VALID_CATEGORIES}")
         return v
 
-    @validator('duration_days')
-    def validate_duration_days(cls, v, values):
+    @model_validator(mode='after')
+    def validate_duration_days(self):
         """
         Validate duration_days based on exchange_type:
         - PERMANENT: duration_days must be None
         - TEMPORARY: duration_days must be 1-365
         """
-        exchange_type = values.get('exchange_type', ExchangeType.PERMANENT)
-
-        if exchange_type == ExchangeType.TEMPORARY:
-            if v is None:
+        if self.exchange_type == ExchangeType.TEMPORARY:
+            if self.duration_days is None:
                 raise ValueError('duration_days is required for TEMPORARY exchange')
-            if not (1 <= v <= 365):
+            if not (1 <= self.duration_days <= 365):
                 raise ValueError('duration_days must be between 1 and 365')
-        elif exchange_type == ExchangeType.PERMANENT:
-            if v is not None:
+        elif self.exchange_type == ExchangeType.PERMANENT:
+            if self.duration_days is not None:
                 raise ValueError('duration_days must be None for PERMANENT exchange')
 
-        return v
+        return self
 
     class Config:
         json_schema_extra = {
@@ -376,40 +376,47 @@ class ListingItemsByCategoryCreate(BaseModel):
     locations: Optional[List[str]] = Field(None, description="User locations")
     user_data: Optional[Dict[str, str]] = Field(None, description="User data: name, telegram, city")
 
-    @validator('wants', 'offers', pre=True)
-    def validate_categories(cls, v):
-        """Validate all categories are valid"""
-        for category in v.keys():
-            if category not in VALID_CATEGORIES:
-                raise ValueError(f"Invalid category: {category}. Must be one of {VALID_CATEGORIES}")
-        return v
+    @model_validator(mode='after')
+    def validate_and_clean_data(self):
+        """Validate categories and items, remove empty entries"""
+        # Validate categories
+        for field_name in ['wants', 'offers']:
+            field_value = getattr(self, field_name)
+            for category in field_value.keys():
+                if category not in VALID_CATEGORIES:
+                    raise ValueError(f"Invalid category: {category}. Must be one of {VALID_CATEGORIES}")
 
-    @validator('wants', 'offers')
-    def validate_max_items_per_category(cls, v):
-        """Validate max items per category"""
+        # Validate max items per category
         MAX_ITEMS_PER_CATEGORY = 10
-        for category, items in v.items():
-            if len(items) > MAX_ITEMS_PER_CATEGORY:
-                raise ValueError(f"Too many items in category '{category}': {len(items)}. Maximum allowed: {MAX_ITEMS_PER_CATEGORY}")
-        return v
+        for field_name in ['wants', 'offers']:
+            field_value = getattr(self, field_name)
+            for category, items in field_value.items():
+                if len(items) > MAX_ITEMS_PER_CATEGORY:
+                    raise ValueError(f"Too many items in category '{category}': {len(items)}. Maximum allowed: {MAX_ITEMS_PER_CATEGORY}")
 
-    @validator('wants', 'offers')
-    def validate_total_items(cls, v):
-        """Validate total items across all categories"""
+        # Validate total items
         MAX_TOTAL_ITEMS = 50
-        total_items = sum(len(items) for items in v.values())
+        total_items = 0
+        for field_name in ['wants', 'offers']:
+            field_value = getattr(self, field_name)
+            total_items += sum(len(items) for items in field_value.values())
         if total_items > MAX_TOTAL_ITEMS:
             raise ValueError(f"Too many total items: {total_items}. Maximum allowed: {MAX_TOTAL_ITEMS}")
-        return v
 
-    @validator('wants', 'offers')
-    def remove_empty_items(cls, v):
-        """Remove empty item entries"""
-        for category in list(v.keys()):
-            v[category] = [item for item in v[category]
-                          if isinstance(item, dict) and item.get('item_name', '').strip()]
-        # Remove categories with no items
-        return {k: items for k, items in v.items() if items}
+        # Remove empty items and categories
+        for field_name in ['wants', 'offers']:
+            field_value = getattr(self, field_name)
+            cleaned = {}
+            for category, items in field_value.items():
+                cleaned_items = [
+                    item for item in items
+                    if isinstance(item, dict) and item.get('item_name', '').strip()
+                ]
+                if cleaned_items:  # Only keep categories with items
+                    cleaned[category] = cleaned_items
+            setattr(self, field_name, cleaned)
+
+        return self
 
 
 class ListingItemsByCategoryResponse(BaseModel):
@@ -439,14 +446,12 @@ class UserRegister(BaseModel):
     telegram_contact: Optional[str] = None
     city: str = "Алматы"
 
-    @validator('phone', 'email', pre=True, always=True)
-    def require_contact_method(cls, v, values, field):
+    @model_validator(mode='after')
+    def require_contact_method(self):
         """Require at least email or phone"""
-        if field.name == 'email' and not v and not values.get('phone'):
+        if not self.email and not self.phone:
             raise ValueError('Either email or phone must be provided')
-        if field.name == 'phone' and not v and not values.get('email'):
-            raise ValueError('Either email or phone must be provided')
-        return v
+        return self
 
 
 class UserLogin(BaseModel):
