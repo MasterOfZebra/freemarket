@@ -19,7 +19,7 @@ from sqlalchemy import and_, or_
 from backend.database import get_db
 from backend.models import User, RefreshToken, AuthEvent
 from backend.schemas import (
-    UserRegister, UserLogin, UserProfile, LoginResponse,
+    UserRegister, UserLogin, UserProfile, LoginResponse, TokenResponse,
     RefreshTokenRequest, ChangePasswordRequest
 )
 
