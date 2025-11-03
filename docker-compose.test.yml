@@ -82,9 +82,9 @@ services:
         echo 'Waiting for database...' &&
         sleep 10 &&
         echo 'Running database migrations...' &&
-        alembic upgrade head &&
+        cd backend && alembic upgrade head &&
         echo 'Initializing categories...' &&
-        python backend/scripts/init_categories_v6.py &&
+        python scripts/init_categories_v6.py &&
         echo 'Database initialization complete!'
       "
     environment:

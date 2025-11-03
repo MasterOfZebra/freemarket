@@ -61,8 +61,16 @@ echo "🏗️  Building and starting services..."
 print_info "Stopping existing containers..."
 docker_compose_cmd -f docker-compose.test.yml down --volumes --remove-orphans 2>/dev/null || true
 
+# Clean up Docker system (remove old images and containers)
+print_info "Cleaning up Docker system..."
+docker system prune -f >/dev/null 2>&1 || true
+
+# Remove old images that might conflict
+print_info "Removing old test images..."
+docker images | grep freemarket | awk '{print $3}' | xargs docker rmi -f 2>/dev/null || true
+
 # Build and start services
-print_info "Building services..."
+print_info "Building services (no cache)..."
 docker_compose_cmd -f docker-compose.test.yml build --no-cache
 
 print_info "Starting database and Redis..."
