@@ -21,26 +21,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Check if exchangetype enum already exists before creating
-    conn = op.get_bind()
-    result = conn.execute(text("""
-    SELECT 1 FROM pg_type WHERE typname = 'exchangetype';
-    """))
-    
-    if not result.fetchone():
-        # Only create if it doesn't exist
-        conn.execute(text("""
-        CREATE TYPE exchangetype AS ENUM ('temporary', 'permanent');
-        """))
-
-    # Create category_mappings table
-    exchange_type_enum = sa.Enum('temporary', 'permanent', name='exchangetype', create_type=False)
+    # Create category_mappings table with VARCHAR instead of enum to avoid conflicts
+    # This is a legacy mapping table, enum is not critical here
     op.create_table(
         'category_mappings',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('legacy_category', sa.String(length=50), nullable=False),
         sa.Column('new_category_slug', sa.String(length=50), nullable=False),
-        sa.Column('exchange_type', exchange_type_enum, nullable=False),
+        sa.Column('exchange_type', sa.String(length=20), nullable=False),  # VARCHAR instead of enum
         sa.Column('confidence', sa.Float(), nullable=True, default=1.0),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
         sa.PrimaryKeyConstraint('id'),
@@ -56,15 +44,3 @@ def downgrade() -> None:
     op.drop_index('ix_mapping_exchange_type', table_name='category_mappings')
     op.drop_index(op.f('ix_category_mappings_id'), table_name='category_mappings')
     op.drop_table('category_mappings')
-
-    # Drop enum if it exists
-    conn = op.get_bind()
-    conn.execute(text("""
-    DO $$
-    BEGIN
-        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'exchangetype') THEN
-            DROP TYPE exchangetype;
-        END IF;
-    END
-    $$;
-    """))
