@@ -418,6 +418,8 @@ class Listing(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Relationships
+    user = relationship("User", back_populates="listings")
     offers = relationship("ListingOffer", back_populates="listing", cascade="all, delete-orphan")
     wants = relationship("ListingWant", back_populates="listing", cascade="all, delete-orphan")
 
