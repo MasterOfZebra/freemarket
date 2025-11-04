@@ -81,6 +81,32 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  init-db:
+    image: freemarket_backend:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 10 &&
+        echo 'Running database migrations...' &&
+        PYTHONPATH=/app alembic -c /app/alembic.ini upgrade head &&
+        echo 'Initializing categories...' &&
+        PYTHONPATH=/app python backend/scripts/init_categories_v6.py &&
+        echo 'Database initialization complete!'
+      "
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: postgresql://assistadmin_pg:${DB_PASSWORD}@postgres:5432/assistance_kz
+    networks:
+      - freemarket
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - init
+
 volumes:
   redis_data:
   postgres_data:
