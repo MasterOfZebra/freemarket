@@ -1,7 +1,7 @@
 """Add exchange types support to listing_items
 
 Revision ID: 001_add_exchange_types
-Revises: 
+Revises:
 Create Date: 2025-01-15 10:00:00.000000
 
 This migration adds support for two exchange types (permanent and temporary):

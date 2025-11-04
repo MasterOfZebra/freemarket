@@ -64,37 +64,26 @@ def upgrade() -> None:
 
     # Таблица объявлений
     op.create_table(
-        'market_listings',
+        'listings',
         sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('type', sa.String(), nullable=False),  # Временно как String
         sa.Column('title', sa.String(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('category_id', sa.Integer(), nullable=False),
-        sa.Column('subcategory_id', sa.Integer(), nullable=True),
-        sa.Column('location', sa.String(), nullable=True),
-        sa.Column('contact', sa.String(), nullable=True),
-        sa.Column('status', sa.String(), nullable=False), # Временно как String
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime(timezone=True), onupdate=sa.func.now()),
-        sa.ForeignKeyConstraint(['category_id'], ['categories.id']),
-        sa.ForeignKeyConstraint(['subcategory_id'], ['categories.id']),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'])
     )
-    op.create_index('ix_market_listing_type_category_status', 'market_listings', ['type', 'category_id', 'status'])
-    op.create_index('ix_market_listing_created_desc', 'market_listings', ['created_at', 'status'])
+    op.create_index('ix_listing_user_id', 'listings', ['user_id'])
+    op.create_index('ix_listing_created_at', 'listings', ['created_at'])
 
     # Теперь меняем тип колонок на ENUM через ALTER TABLE
     op.execute("ALTER TABLE categories ALTER COLUMN section TYPE listingsection USING section::listingsection")
-    op.execute("ALTER TABLE market_listings ALTER COLUMN type TYPE listingsection USING type::listingsection")
-    op.execute("ALTER TABLE market_listings ALTER COLUMN status TYPE listingstatus USING status::listingstatus")
-    op.execute("ALTER TABLE market_listings ALTER COLUMN status SET DEFAULT 'active'")
 
 
 def downgrade() -> None:
-    op.drop_index('ix_market_listing_created_desc', table_name='market_listings')
-    op.drop_index('ix_market_listing_type_category_status', table_name='market_listings')
-    op.drop_table('market_listings')
+    op.drop_index('ix_listing_created_at', table_name='listings')
+    op.drop_index('ix_listing_user_id', table_name='listings')
+    op.drop_table('listings')
 
     op.drop_index('ix_category_section_parent', table_name='categories')
     op.drop_table('categories')

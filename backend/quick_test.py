@@ -83,12 +83,12 @@ def main():
         test("Health endpoint", False, str(e)[:50])
         return False
 
-    # Test 8: Import market listings endpoint
+    # Test 8: Import listings exchange endpoint
     try:
-        from backend.api.endpoints import market_listings
-        test("Market listings endpoint", True, f"Market listings defined")
+        from backend.api.endpoints import listings_exchange
+        test("Listings exchange endpoint", True, f"Listings exchange defined")
     except Exception as e:
-        test("Market listings endpoint", False, str(e)[:50])
+        test("Listings exchange endpoint", False, str(e)[:50])
         return False
 
     # Test 9: Import FastAPI app

@@ -177,6 +177,230 @@ curl -X PUT http://localhost:8000/api/users/1/locations \
 ```
 
 ---
+## 🧭 Category & LK Endpoints (v6)
+
+### GET `/v1/categories`
+Получить список версий категорий и структуру формы для создания/редактирования объявлений.
+
+**Response (пример):**
+```json
+{
+  "version": 6,
+  "categories": [
+    {"id": 1, "name": "Транспорт", "slug": "transport"},
+    {"id": 2, "name": "Инструменты", "slug": "tools"}
+  ],
+  "mappings": {
+    "legacy_to_v6": {"old_slug": "transport_old"}
+  }
+}
+```
+
+### GET `/v1/categories/permanent`
+Список категорий для постоянного обмена.
+
+### GET `/v1/categories/temporary`
+Список категорий для временного обмена.
+
+### GET `/user/cabinet`
+Личный кабинет пользователя (профиль, мои объявления, активные обмены).
+
+### GET `/user/listings`
+Список объявлений пользователя.
+
+### GET `/user/exchanges`
+Список активных обменов пользователя.
+
+### PUT `/user/profile`
+Обновление профиля пользователя.
+
+### DELETE `/user/account`
+Удаление аккаунта пользователя.
+
+### POST `/auth/register`
+Регистрация пользователя (с подтверждением email/телефона по мере реализации).
+
+### POST `/auth/login`
+Авторизация и выдача access/refresh токенов.
+
+### POST `/auth/register`
+Регистрация нового пользователя.
+
+**Request Body:**
+```json
+{
+  "username": "alice_123",
+  "email": "alice@example.com",
+  "phone": "+7-777-123-4567",
+  "password": "secure_password_123",
+  "full_name": "Alice Smith",
+  "telegram_contact": "@alice_telegram",
+  "city": "Алматы",
+  "bio": "Люблю велосипеды и инструменты"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 1,
+  "username": "alice_123",
+  "email": "alice@example.com",
+  "full_name": "Alice Smith",
+  "telegram_contact": "@alice_telegram",
+  "city": "Алматы",
+  "bio": "Люблю велосипеды и инструменты",
+  "is_active": true,
+  "created_at": "2025-11-05T10:00:00Z"
+}
+```
+
+### POST `/auth/login`
+Авторизация и получение JWT токенов.
+
+**Request Body:**
+```json
+{
+  "username": "alice_123",
+  "password": "secure_password_123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 900,
+  "user": {
+    "id": 1,
+    "username": "alice_123",
+    "email": "alice@example.com"
+  }
+}
+```
+
+**Cookies Set:**
+- `refresh_token`: HttpOnly, Secure, SameSite=Lax, expires in 30 days
+- `refresh_token_hash`: Server-side hash for validation
+
+### POST `/auth/refresh`
+Обновление access token (использует HttpOnly cookie).
+
+**Request:** No body required (reads from cookie)
+
+**Response (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 900
+}
+```
+
+**Security Features:**
+- Old refresh token marked as revoked
+- New refresh token issued and stored
+- Rate limited (5 requests per 5 minutes per IP)
+
+### POST `/auth/logout`
+Выход из системы и отзыв refresh токена.
+
+**Request:** No body required
+
+**Response (200 OK):**
+```json
+{
+  "message": "Successfully logged out"
+}
+```
+
+**Actions:**
+- Refresh token cookie cleared (expires immediately)
+- Refresh token hash removed from Redis
+- Auth event logged
+
+### POST `/auth/revoke-sessions`
+Отзыв всех сессий пользователя.
+
+**Request:** Requires valid access token
+
+**Response (200 OK):**
+```json
+{
+  "message": "All sessions revoked",
+  "revoked_count": 3
+}
+```
+
+**Actions:**
+- All refresh tokens for user marked as revoked in Redis
+- User must re-login on all devices
+
+### GET `/auth/me`
+Получение профиля текущего пользователя.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response (200 OK):**
+```json
+{
+  "id": 1,
+  "username": "alice_123",
+  "email": "alice@example.com",
+  "full_name": "Alice Smith",
+  "telegram_contact": "@alice_telegram",
+  "city": "Алматы",
+  "bio": "Люблю велосипеды и инструменты",
+  "trust_score": 0.95,
+  "exchange_count": 5,
+  "rating_avg": 4.8,
+  "is_active": true,
+  "is_verified": false,
+  "last_login_at": "2025-11-05T10:00:00Z"
+}
+```
+
+### Complete Authentication Flow
+
+```javascript
+// 1. Register
+const registerResponse = await fetch('/api/auth/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    username: 'alice_123',
+    email: 'alice@example.com',
+    password: 'secure_password'
+  })
+});
+
+// 2. Login
+const loginResponse = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    username: 'alice_123',
+    password: 'secure_password'
+  })
+});
+const { access_token } = await loginResponse.json();
+
+// 3. Use API with access token
+const profileResponse = await fetch('/api/auth/me', {
+  headers: { 'Authorization': `Bearer ${access_token}` }
+});
+
+// 4. Refresh token automatically (when expired)
+const refreshResponse = await fetch('/api/auth/refresh', {
+  method: 'POST'
+  // Cookie is sent automatically
+});
+const { access_token: new_token } = await refreshResponse.json();
+
+// 5. Logout
+await fetch('/api/auth/logout', { method: 'POST' });
+```
 
 ### GET `/api/users/list`
 List all active users (paginated).

@@ -1,7 +1,7 @@
 # 📚 FreeMarket Documentation - Master Index
 
-**Version:** 2.0 (Consolidated)  
-**Last Updated:** January 15, 2025  
+**Version:** 2.0 (Consolidated)
+**Last Updated:** January 15, 2025
 **Status:** ✅ Complete & Up-to-Date
 
 ---
@@ -23,6 +23,7 @@
 |---------|--------|----------|
 | **Category Matching** | ✅ Active | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | **Telegram Notifications** | ✅ Active | [ARCHITECTURE.md](./ARCHITECTURE.md#telegram-integration) |
+| **Категории v6 / LK** | ✅ Active | [ARCHITECTURE.md#категории-v6-и-lk](./ARCHITECTURE.md#категории-v6-и-lk) |
 | **Location Filtering** | ✅ Active | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | **API (22 endpoints)** | ✅ Complete | [API_REFERENCE.md](./API_REFERENCE.md) |
 | **Testing (7 scenarios)** | ✅ Ready | [TESTING.md](./TESTING.md) |
@@ -54,28 +55,49 @@
 - Complete user journey
 - Data model (normalized schema)
 - Category matching algorithm
+- Категории v6 и личный кабинет (LK)
 - Telegram integration
 - API endpoints overview
 
 ### **📡 API Reference**
 
-**[API_REFERENCE.md](./API_REFERENCE.md)** (15 min read)
-- All 22 endpoints documented
+**[API_REFERENCE.md](./API_REFERENCE.md)** (20 min read)
+- All 29 endpoints documented
+- Authentication flow (JWT + refresh tokens)
+- Category v6 endpoints
+- User cabinet endpoints
 - Request/response examples
-- Category-based listing endpoint
-- Matching endpoint with filtering
-- Authentication & error handling
 - Integration examples
 
 ### **🧪 Testing Guide**
 
-**[TESTING.md](./TESTING.md)** (30 min read)
-- 7 complete test scenarios
+**[TESTING.md](./TESTING.md)** (35 min read)
+- 9 complete test scenarios
+- Категории v6 миграции
+- Auth rotation & LK access
 - Step-by-step instructions
 - Expected outputs
 - Integration testing
 - Troubleshooting guide
-- Quick command reference
+
+### **🔒 Security Guide**
+
+**[SECURITY.md](./SECURITY.md)** (15 min read)
+- JWT authentication security
+- HttpOnly/Secure cookies
+- Token rotation & revocation
+- Redis revocation store
+- Password hashing guidelines
+- Data privacy policies
+
+### **🗄️ Migrations Guide**
+
+**[MIGRATIONS.md](./MIGRATIONS.md)** (25 min read)
+- Database migration structure
+- Step-by-step rollback procedures
+- Troubleshooting migration issues
+- Production deployment safety
+- Version control best practices
 
 ### **🚀 Deployment Guide**
 
@@ -280,13 +302,15 @@ Each test scenario has:
 
 ## 📊 **Project Statistics**
 
-- **Documentation files:** 11 (consolidated from 25!)
-- **API endpoints:** 22
-- **Test scenarios:** 7
-- **Categories:** 6 (electronics, money, furniture, transport, services, other)
+- **Documentation files:** 15 (consolidated and expanded)
+- **API endpoints:** 40 (7 new for auth, categories v6, LK + additional user endpoints)
+- **Test scenarios:** 9 (added v6 migrations and auth rotation)
+- **Categories:** v6 with versioning (permanent/temporary exchange types)
 - **Max locations:** 3 (Алматы, Астана, Шымкент)
 - **Matching threshold:** 0.70 (70%)
 - **Value tolerance:** ±15%
+- **Security:** JWT + refresh tokens with Redis revocation
+- **LK features:** Profile, listings, active exchanges
 
 ---
 
