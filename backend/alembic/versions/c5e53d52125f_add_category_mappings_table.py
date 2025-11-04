@@ -21,17 +21,17 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create exchange_type enum if it doesn't exist
+    # Check if exchangetype enum already exists before creating
     conn = op.get_bind()
-    conn.execute(text("""
-    DO $$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'exchangetype') THEN
-            CREATE TYPE exchangetype AS ENUM ('temporary', 'permanent');
-        END IF;
-    END
-    $$;
+    result = conn.execute(text("""
+    SELECT 1 FROM pg_type WHERE typname = 'exchangetype';
     """))
+    
+    if not result.fetchone():
+        # Only create if it doesn't exist
+        conn.execute(text("""
+        CREATE TYPE exchangetype AS ENUM ('temporary', 'permanent');
+        """))
 
     # Create category_mappings table
     exchange_type_enum = sa.Enum('temporary', 'permanent', name='exchangetype', create_type=False)
