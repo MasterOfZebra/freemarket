@@ -9,8 +9,12 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import configure_mappers  # Add this import
 from backend.database import engine
 from backend.models import CategoryVersion, CategoryV6, CategoryMapping, ExchangeType
+
+# Configure mappers to resolve relationships
+configure_mappers()
 
 
 def init_categories_v6():
