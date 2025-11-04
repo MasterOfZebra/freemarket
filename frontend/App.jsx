@@ -137,6 +137,7 @@ function App() {
                     userId={1}
                     onMatchesFound={handleMatchesFound}
                 />
+                </header>
             </div>
         );
     }
