@@ -20,9 +20,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # categories_v6 table already uses existing exchangetype enum
-    exchange_type_enum = sa.Enum('temporary', 'permanent', name='exchangetype', create_type=False)
-
+    # Create categories_v6 table with VARCHAR instead of enum to avoid conflicts
+    # Data will be inserted via raw SQL in init script, so enum is not needed
     op.create_table(
         'categories_v6',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -31,7 +30,7 @@ def upgrade() -> None:
         sa.Column('name', sa.String(length=100), nullable=False),
         sa.Column('group', sa.String(length=100), nullable=False),
         sa.Column('emoji', sa.String(length=10), nullable=False),
-        sa.Column('exchange_type', exchange_type_enum, nullable=False),
+        sa.Column('exchange_type', sa.String(length=20), nullable=False),  # VARCHAR instead of enum
         sa.Column('form_schema', sa.JSON(), nullable=True),
         sa.Column('sort_order', sa.Integer(), nullable=False, default=0),
         sa.Column('is_active', sa.Boolean(), nullable=False, default=True),
