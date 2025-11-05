@@ -40,7 +40,7 @@ class CategoriesVersionResponse(BaseModel):
     categories: CategoriesByExchangeType
 
 
-@router.get("/v1/categories", response_model=CategoriesVersionResponse)
+@router.get("/categories", response_model=CategoriesVersionResponse)
 async def get_categories(
     version: str = Query("v6.0", description="Category system version"),
     db: Session = Depends(get_db)
@@ -92,7 +92,7 @@ async def get_categories(
     )
 
 
-@router.get("/v1/categories/{exchange_type}", response_model=List[CategoryResponse])
+@router.get("/categories/{exchange_type}", response_model=List[CategoryResponse])
 async def get_categories_by_type(
     exchange_type: str,
     version: str = Query("v6.0", description="Category system version"),
@@ -136,7 +136,7 @@ async def get_categories_by_type(
     return [CategoryResponse.from_orm(cat) for cat in categories]
 
 
-@router.get("/v1/categories/groups/{exchange_type}")
+@router.get("/categories/groups/{exchange_type}")
 async def get_category_groups(
     exchange_type: str,
     version: str = Query("v6.0", description="Category system version"),

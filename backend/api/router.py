@@ -16,7 +16,7 @@ router.include_router(auth.router, prefix="/auth", tags=["authentication"])
 router.include_router(user_profile.router, prefix="/user", tags=["user"])
 
 # Categories API for dynamic forms
-router.include_router(categories.router)
+router.include_router(categories.router, prefix="/v1", tags=["categories"])
 
 # Listings exchange endpoints (permanent/temporary with categories) - PRIMARY endpoint for listings
 router.include_router(listings_exchange.router, prefix="/api")
