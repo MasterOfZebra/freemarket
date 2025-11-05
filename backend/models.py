@@ -247,7 +247,7 @@ class CategoryV6(Base):
     emoji = Column(String(10), nullable=False)             # Icon emoji
 
     # Exchange type this category belongs to
-    exchange_type = Column(SQLEnum(ExchangeType), nullable=False, index=True)
+    exchange_type = Column(String(20), nullable=False, index=True)  # VARCHAR to match migration
 
     # Form configuration (JSON schema for dynamic forms)
     form_schema = Column(JSON, nullable=True)  # Field definitions, validation rules
@@ -274,7 +274,7 @@ class CategoryMapping(Base):
     id = Column(Integer, primary_key=True, index=True)
     legacy_category = Column(String(50), nullable=False)    # Old category slug
     new_category_slug = Column(String(50), nullable=False)  # New v6 category slug
-    exchange_type = Column(SQLEnum(ExchangeType), nullable=False)
+    exchange_type = Column(String(20), nullable=False)  # VARCHAR to match migration
     confidence = Column(Float, default=1.0)                 # Mapping confidence 0-1
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

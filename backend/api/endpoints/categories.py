@@ -102,9 +102,9 @@ async def get_categories_by_type(
     Get categories for a specific exchange type.
     Used for populating form dropdowns and validation.
     """
-    try:
-        exchange_enum = ExchangeType(exchange_type.upper())
-    except ValueError:
+    # Validate exchange type
+    exchange_type_upper = exchange_type.upper()
+    if exchange_type_upper not in ['PERMANENT', 'TEMPORARY']:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid exchange type. Must be 'permanent' or 'temporary'"
@@ -128,7 +128,7 @@ async def get_categories_by_type(
     categories = db.query(CategoryV6).filter(
         and_(
             CategoryV6.version_id == category_version.id,
-            CategoryV6.exchange_type == exchange_enum,
+            CategoryV6.exchange_type == exchange_type_upper,
             CategoryV6.is_active == True
         )
     ).order_by(CategoryV6.sort_order).all()
@@ -146,9 +146,9 @@ async def get_category_groups(
     Get unique category groups for a specific exchange type.
     Useful for organizing UI sections.
     """
-    try:
-        exchange_enum = ExchangeType(exchange_type.upper())
-    except ValueError:
+    # Validate exchange type
+    exchange_type_upper = exchange_type.upper()
+    if exchange_type_upper not in ['PERMANENT', 'TEMPORARY']:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid exchange type. Must be 'permanent' or 'temporary'"
@@ -172,7 +172,7 @@ async def get_category_groups(
     groups = db.query(CategoryV6.group).filter(
         and_(
             CategoryV6.version_id == category_version.id,
-            CategoryV6.exchange_type == exchange_enum,
+            CategoryV6.exchange_type == exchange_type_upper,
             CategoryV6.is_active == True
         )
     ).distinct().all()
