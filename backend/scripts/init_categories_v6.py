@@ -37,9 +37,6 @@ def init_categories_v6():
 
         print(f"Category version created with id: {version_id}")
 
-        print("DEBUG: Starting temporary categories insertion. SQL query for 'group' column:")
-        print("DEBUG SQL TEMPORARY: INSERT INTO categories_v6 (version_id, slug, name, \"group\", emoji, exchange_type, sort_order, created_at) ...")
-
         # TEMPORARY EXCHANGE CATEGORIES (с возвратом) - tuples for easier insertion
         temporary_categories = [
             ("bicycles", "Велосипеды, самокаты, гироскутеры", "🚗 Транспорт и мобильность", "🚗"),
@@ -73,8 +70,8 @@ def init_categories_v6():
         # Insert temporary categories using raw SQL
         for sort_order, (slug, name, group_name, emoji) in enumerate(temporary_categories):
             db.execute(text("""
-                INSERT INTO categories_v6 (version_id, slug, name, "group", emoji, exchange_type, sort_order, created_at)
-                VALUES (:version_id, :slug, :name, :group_name, :emoji, 'temporary', :sort_order, NOW())
+                INSERT INTO categories_v6 (version_id, slug, name, "group", emoji, exchange_type, is_active, sort_order, created_at)
+                VALUES (:version_id, :slug, :name, :group_name, :emoji, 'temporary', TRUE, :sort_order, NOW())
                 ON CONFLICT (version_id, exchange_type, slug) DO NOTHING
             """), {
                 'version_id': version_id,
@@ -125,12 +122,11 @@ def init_categories_v6():
         ]
 
         print("Creating permanent categories...")
-        print("DEBUG SQL PERMANENT: INSERT INTO categories_v6 (version_id, slug, name, \"group\", emoji, exchange_type, sort_order, created_at) ...")
         # Insert permanent categories using raw SQL
         for sort_order, (slug, name, group_name, emoji) in enumerate(permanent_categories):
             db.execute(text("""
-                INSERT INTO categories_v6 (version_id, slug, name, "group", emoji, exchange_type, sort_order, created_at)
-                VALUES (:version_id, :slug, :name, :group_name, :emoji, 'permanent', :sort_order, NOW())
+                INSERT INTO categories_v6 (version_id, slug, name, "group", emoji, exchange_type, is_active, sort_order, created_at)
+                VALUES (:version_id, :slug, :name, :group_name, :emoji, 'permanent', TRUE, :sort_order, NOW())
                 ON CONFLICT (version_id, exchange_type, slug) DO NOTHING
             """), {
                 'version_id': version_id,
