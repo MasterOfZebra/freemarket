@@ -26,7 +26,7 @@ def upgrade() -> None:
         sa.Column('listing_id', sa.Integer(), nullable=False),
         sa.Column('item_type', sa.String(length=10), nullable=False),  # want | offer
         sa.Column('category', sa.String(length=50), nullable=False),
-        sa.Column('exchange_type', sa.String(length=20), nullable=False, server_default='permanent'),
+        sa.Column('exchange_type', sa.String(length=20), nullable=False, server_default='PERMANENT'),
         sa.Column('item_name', sa.String(length=100), nullable=False),
         sa.Column('value_tenge', sa.Integer(), nullable=False),
         sa.Column('duration_days', sa.Integer(), nullable=True),

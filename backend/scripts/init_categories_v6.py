@@ -71,7 +71,7 @@ def init_categories_v6():
         for sort_order, (slug, name, group_name, emoji) in enumerate(temporary_categories):
             db.execute(text("""
                 INSERT INTO categories_v6 (version_id, slug, name, "group", emoji, exchange_type, is_active, sort_order, created_at)
-                VALUES (:version_id, :slug, :name, :group_name, :emoji, 'temporary', TRUE, :sort_order, NOW())
+                VALUES (:version_id, :slug, :name, :group_name, :emoji, 'TEMPORARY', TRUE, :sort_order, NOW())
                 ON CONFLICT (version_id, exchange_type, slug) DO NOTHING
             """), {
                 'version_id': version_id,
@@ -126,7 +126,7 @@ def init_categories_v6():
         for sort_order, (slug, name, group_name, emoji) in enumerate(permanent_categories):
             db.execute(text("""
                 INSERT INTO categories_v6 (version_id, slug, name, "group", emoji, exchange_type, is_active, sort_order, created_at)
-                VALUES (:version_id, :slug, :name, :group_name, :emoji, 'permanent', TRUE, :sort_order, NOW())
+                VALUES (:version_id, :slug, :name, :group_name, :emoji, 'PERMANENT', TRUE, :sort_order, NOW())
                 ON CONFLICT (version_id, exchange_type, slug) DO NOTHING
             """), {
                 'version_id': version_id,
@@ -139,24 +139,24 @@ def init_categories_v6():
 
         # Create legacy mappings for migration
         legacy_mappings = [
-            ("electronics", "photo_equipment", "permanent", 0.9),
-            ("electronics", "lighting_equipment", "permanent", 0.8),
-            ("money", "money_crypto", "permanent", 1.0),
-            ("furniture", "furniture_appliances", "permanent", 0.9),
-            ("furniture", "decor_textiles", "permanent", 0.7),
-            ("transport", "personal_transport", "permanent", 0.9),
-            ("transport", "electric_vehicles", "permanent", 0.8),
-            ("services", "services_work", "permanent", 0.9),
-            ("services", "completed_projects", "permanent", 0.8),
-            ("electronics", "photo_equipment", "temporary", 0.7),
-            ("electronics", "video_audio", "temporary", 0.7),
-            ("money", "money_crypto", "temporary", 0.8),
-            ("money", "trusted_equivalent", "temporary", 0.6),
-            ("furniture", "furniture_appliances", "temporary", 0.7),
-            ("transport", "bicycles", "temporary", 0.8),
-            ("transport", "electric_transport", "temporary", 0.9),
-            ("services", "tutoring", "temporary", 0.8),
-            ("services", "task_execution", "temporary", 0.8),
+            ("electronics", "photo_equipment", "PERMANENT", 0.9),
+            ("electronics", "lighting_equipment", "PERMANENT", 0.8),
+            ("money", "money_crypto", "PERMANENT", 1.0),
+            ("furniture", "furniture_appliances", "PERMANENT", 0.9),
+            ("furniture", "decor_textiles", "PERMANENT", 0.7),
+            ("transport", "personal_transport", "PERMANENT", 0.9),
+            ("transport", "electric_vehicles", "PERMANENT", 0.8),
+            ("services", "services_work", "PERMANENT", 0.9),
+            ("services", "completed_projects", "PERMANENT", 0.8),
+            ("electronics", "photo_equipment", "TEMPORARY", 0.7),
+            ("electronics", "video_audio", "TEMPORARY", 0.7),
+            ("money", "money_crypto", "TEMPORARY", 0.8),
+            ("money", "trusted_equivalent", "TEMPORARY", 0.6),
+            ("furniture", "furniture_appliances", "TEMPORARY", 0.7),
+            ("transport", "bicycles", "TEMPORARY", 0.8),
+            ("transport", "electric_transport", "TEMPORARY", 0.9),
+            ("services", "tutoring", "TEMPORARY", 0.8),
+            ("services", "task_execution", "TEMPORARY", 0.8),
         ]
 
         print("Creating legacy mappings...")
