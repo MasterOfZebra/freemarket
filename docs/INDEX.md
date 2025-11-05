@@ -1,7 +1,7 @@
 # 📚 FreeMarket Documentation - Master Index
 
 **Version:** 2.0 (Consolidated)
-**Last Updated:** January 15, 2025
+**Last Updated:** Ноябрь 2025
 **Status:** ✅ Complete & Up-to-Date
 
 ---
@@ -22,12 +22,14 @@
 | Feature | Status | Location |
 |---------|--------|----------|
 | **Category Matching** | ✅ Active | [ARCHITECTURE.md](./ARCHITECTURE.md) |
-| **Telegram Notifications** | ✅ Active | [ARCHITECTURE.md](./ARCHITECTURE.md#telegram-integration) |
-| **Категории v6 / LK** | ✅ Active | [ARCHITECTURE.md#категории-v6-и-lk](./ARCHITECTURE.md#категории-v6-и-lk) |
+| **Telegram Notifications** | ✅ Active | [ARCHITECTURE.md#telegram-integration](./ARCHITECTURE.md#telegram-integration) |
+| **Категории v6, JWT-аутентификация, Nginx** | ✅ Active | [ARCHITECTURE.md#categories-v6-jwt-nginx](./ARCHITECTURE.md#categories-v6-jwt-nginx) |
 | **Location Filtering** | ✅ Active | [ARCHITECTURE.md](./ARCHITECTURE.md) |
-| **API (22 endpoints)** | ✅ Complete | [API_REFERENCE.md](./API_REFERENCE.md) |
-| **Testing (7 scenarios)** | ✅ Ready | [TESTING.md](./TESTING.md) |
+| **API (37 endpoints)** | ✅ Complete | [API_REFERENCE.md](./API_REFERENCE.md) |
+| **Testing (9 scenarios)** | ✅ Ready | [TESTING.md](./TESTING.md) |
 | **Production Deployment** | ✅ Ready | [DEPLOYMENT.md](./DEPLOYMENT.md) |
+| **Security (JWT, Redis)** | ✅ Active | [SECURITY.md](./SECURITY.md) |
+| **DB Migrations (Alembic)** | ✅ Documented | [MIGRATIONS.md](./MIGRATIONS.md) |
 
 ---
 
@@ -55,14 +57,14 @@
 - Complete user journey
 - Data model (normalized schema)
 - Category matching algorithm
-- Категории v6 и личный кабинет (LK)
+- Категории v6, JWT-аутентификация и Nginx
 - Telegram integration
 - API endpoints overview
 
 ### **📡 API Reference**
 
 **[API_REFERENCE.md](./API_REFERENCE.md)** (20 min read)
-- All 29 endpoints documented
+- All 37 endpoints documented
 - Authentication flow (JWT + refresh tokens)
 - Category v6 endpoints
 - User cabinet endpoints
@@ -117,7 +119,7 @@
 
 1. **Read:** [DEVELOPMENT.md](../DEVELOPMENT.md) (10 min)
 2. **Setup:** Install dependencies, configure database
-3. **Run:** `python -m backend.quick_test`
+3. **Run:** `python backend/quick_test.py`
 4. **Test:** Run test scenarios from [TESTING.md](./TESTING.md)
 
 ### **Understanding the Architecture**
@@ -163,7 +165,7 @@
 ☐ Build Docker images
 ☐ Run docker-compose up
 ☐ Run health check
-☐ Verify all 22 endpoints working
+☐ Verify all 37 endpoints working
 ☐ Test Telegram notifications
 ☐ Check cabinet display
 ☐ Monitor logs for errors
@@ -180,7 +182,7 @@
 
 ## 🧪 **For QA / Testing**
 
-### **Test Scenarios (7 Total)**
+### **Test Scenarios (9 Total)**
 
 See [TESTING.md](./TESTING.md) for complete guide with:
 
@@ -191,6 +193,8 @@ See [TESTING.md](./TESTING.md) for complete guide with:
 5. **Telegram Notification** - Message format & delivery
 6. **Cabinet Display** - Match details in personal cabinet
 7. **Chain Matching** - 3+ way exchange discovery
+8. **Категории v6 миграции**
+9. **Auth rotation & LK access**
 
 ### **Quick Test Commands**
 
@@ -199,12 +203,16 @@ See [TESTING.md](./TESTING.md) for complete guide with:
 python backend/quick_test.py
 
 # Test category matching
-curl -X POST http://localhost:8000/api/listings/by-categories \
+curl -X POST https://assistance-kz.ru/api/listings/create-by-categories \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
   -d @test_payload.json
 
 # Find matches
-curl -X POST http://localhost:8000/api/matching/find-matches?user_id=1
+curl -X POST https://assistance-kz.ru/api/matching/run-pipeline \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"user_id":null}'
 
 # Check Telegram notifications sent
 # (Check Telegram chat with bot)
@@ -269,6 +277,8 @@ Each test scenario has:
 | Run quick test | [TESTING_QUICK_COMMANDS.md](../TESTING_QUICK_COMMANDS.md) | 5 min |
 | Learn category matching | [ARCHITECTURE.md#category-matching-engine](./ARCHITECTURE.md#category-matching-engine) | 15 min |
 | Implement Telegram | [ARCHITECTURE.md#telegram-integration](./ARCHITECTURE.md#telegram-integration) | 10 min |
+| Understand security | [SECURITY.md](./SECURITY.md) | 15 min |
+| Understand DB migrations | [MIGRATIONS.md](./MIGRATIONS.md) | 25 min |
 
 ---
 
@@ -294,7 +304,7 @@ Each test scenario has:
 ### **For Troubleshooting**
 
 1. Check [TESTING.md](./TESTING.md) - "Troubleshooting" section
-2. Review error in [DEVELOPMENT.md](../DEVELOPMENT.md)
+2. Review error in [DEVELOPMENT.md](../DEVELOPMENT.MD)
 3. Check logs: `docker logs backend` or console output
 4. Read relevant section in [ARCHITECTURE.md](./ARCHITECTURE.md)
 
@@ -303,7 +313,7 @@ Each test scenario has:
 ## 📊 **Project Statistics**
 
 - **Documentation files:** 15 (consolidated and expanded)
-- **API endpoints:** 40 (7 new for auth, categories v6, LK + additional user endpoints)
+- **API endpoints:** 37 (7 new for auth, categories v6, LK + additional user endpoints)
 - **Test scenarios:** 9 (added v6 migrations and auth rotation)
 - **Categories:** v6 with versioning (permanent/temporary exchange types)
 - **Max locations:** 3 (Алматы, Астана, Шымкент)
@@ -321,7 +331,7 @@ Each test scenario has:
 | ✅ Current & Complete | 11 files |
 | 🗑️ Removed (duplicates) | 14 files |
 | 📝 In active use | All |
-| 🔄 Last updated | Jan 15, 2025 |
+| 🔄 Last updated | Ноябрь 2025 |
 
 ---
 
@@ -364,7 +374,9 @@ docker-compose -f docker-compose.prod.yml up -d
 - **"What's the API?"** → [API_REFERENCE.md](./API_REFERENCE.md)
 - **"How to test?"** → [TESTING.md](./TESTING.md)
 - **"How to deploy?"** → [DEPLOYMENT.md](./DEPLOYMENT.md)
-- **"Local setup?"** → [DEVELOPMENT.md](../DEVELOPMENT.md)
+- **"Local setup?"** → [DEVELOPMENT.md](../DEVELOPMENT.MD)
+- **"Understand security?"** → [SECURITY.md](./SECURITY.md)
+- **"Understand DB migrations?"** → [MIGRATIONS.md](./MIGRATIONS.md)
 
 ---
 
@@ -376,6 +388,8 @@ docs/
 ├── ARCHITECTURE.md             ← System design (READ THIS FIRST!)
 ├── API_REFERENCE.md            ← All endpoints
 ├── TESTING.md                  ← Test guide & scenarios
+├── SECURITY.md                 ← Security guidelines
+├── MIGRATIONS.md               ← Database migration guide
 └── DEPLOYMENT.md               ← Production setup
 
 root/

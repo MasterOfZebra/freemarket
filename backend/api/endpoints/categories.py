@@ -77,9 +77,9 @@ async def get_categories(
 
     for cat in categories:
         cat_response = CategoryResponse.from_orm(cat)
-        if cat.exchange_type == ExchangeType.PERMANENT:
+        if cat.exchange_type == 'PERMANENT':
             permanent_categories.append(cat_response)
-        elif cat.exchange_type == ExchangeType.TEMPORARY:
+        elif cat.exchange_type == 'TEMPORARY':
             temporary_categories.append(cat_response)
 
     return CategoriesVersionResponse(

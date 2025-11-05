@@ -29,20 +29,22 @@ FreeMarket is a **peer-to-peer marketplace** for mutual aid and resource exchang
 
 ## 🎯 Key Features
 
-### 1. User Registration
+### 1. User Registration (JWT)
 ```
-POST /api/users/
+POST /auth/register
+- email
+- password
 - username
-- contact (Telegram)
-- locations (select 1-3 cities)
+- full_name
+- city
+- telegram_contact
 ```
 
-### 2. Market Listings
+### 2. Market Listings (v6 Categories)
 ```
-POST /api/market-listings/
-- Type: wants (request) or offers (provide)
-- Category: food, tools, clothes, etc.
-- Description
+POST /api/listings/create-by-categories
+- wants: { "PERMANENT": [...], "TEMPORARY": [...] }
+- offers: { "PERMANENT": [...], "TEMPORARY": [...] }
 ```
 
 ### 3. Unified Matching Pipeline
@@ -76,17 +78,21 @@ FreeMarket/
 │   ├── ARCHITECTURE.md        (System design)
 │   ├── API_REFERENCE.md       (All endpoints)
 │   ├── TESTING.md             (Test scenarios)
-│   └── ... (more in docs/)
+│   ├── SECURITY.md            (Security guidelines)
+│   ├── MIGRATIONS.md          (Database migration guide)
+│   └── DEPLOYMENT.md          (Deployment guide)
 │
 ├── backend/                    🔧 API & Logic
 │   ├── api/
 │   │   ├── endpoints/         (Modular endpoints)
+│   │   │   ├── auth.py
+│   │   │   ├── categories.py
 │   │   │   ├── health.py
-│   │   │   ├── users.py
-│   │   │   ├── market_listings.py
-│   │   │   ├── exchange_chains.py
+│   │   │   ├── listings_exchange.py
+│   │   │   ├── matching.py
 │   │   │   ├── notifications.py
-│   │   │   └── matching.py    (Unified pipeline)
+│   │   │   ├── user_profile.py
+│   │   │   └── users.py
 │   │   └── router.py
 │   ├── matching/
 │   │   ├── __init__.py
@@ -95,7 +101,7 @@ FreeMarket/
 │   ├── main.py                (FastAPI app)
 │   └── ...
 │
-├── src/                        🎨 Frontend
+├── frontend/                   🎨 Frontend
 │   ├── components/
 │   ├── pages/
 │   ├── services/
@@ -106,6 +112,9 @@ FreeMarket/
 │   ├── Dockerfile.backend
 │   ├── Dockerfile.frontend
 │   ├── Dockerfile.bot
+│   ├── nginx/
+│   │   └── conf.d/
+│   │       └── default.conf
 │   └── docker-compose.prod.yml
 │
 └── scripts/                    📜 Utilities
@@ -176,6 +185,8 @@ docker-compose -f docker/docker-compose.prod.yml up
 - Testing scenarios
 - Deployment guide
 - Configuration
+- Security
+- Database Migrations
 
 See [docs/INDEX.md](./docs/INDEX.md) for complete navigation.
 
@@ -191,13 +202,15 @@ See [docs/INDEX.md](./docs/INDEX.md) for complete navigation.
 ✅ Documentation:  Consolidated
 ✅ Testing:        Ready
 ✅ Deployment:     Docker Compose
+✅ Security:       JWT + Redis revocation
+✅ Migrations:     Alembic managed
 ```
 
 ---
 
 ## 📊 Version History
 
-- **v2.0** (Jan 2025) - Phase 5: Unified architecture, clean codebase
+- **v2.0** (Ноябрь 2025) - Phase 5: Категории v6, JWT-аутентификация, Nginx, Личный кабинет
 - **v1.0** - Initial MVP
 
 See [docs/CHANGELOG.md](./docs/CHANGELOG.md) for details.

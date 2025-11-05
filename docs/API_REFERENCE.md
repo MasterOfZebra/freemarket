@@ -1,6 +1,6 @@
 # 📡 FreeMarket API Reference
 
-**Version:** 2.0 | **Last Updated:** January 2025
+**Version:** 2.0 | **Last Updated:** November 2025
 
 ---
 
@@ -10,11 +10,14 @@
 |---|---|---|
 | **Health** | 2 | ✅ Active |
 | **Users** | 5 | ✅ Active |
-| **Market Listings** | 5 | ✅ Active |
+| **Authentication** | 7 | ✅ Active |
+| **User Cabinet** | 5 | ✅ Active |
+| **Categories (v6)** | 3 | ✅ Active |
+| **Listings Exchange** | 5 | ✅ Active |
 | **Matching** | 3 | ✅ Active |
 | **Exchange Chains** | 5 | ✅ Active |
 | **Notifications** | 2 | ✅ Active |
-| **TOTAL** | **22** | ✅ Ready |
+| **TOTAL** | **37** | ✅ Ready |
 
 ---
 
@@ -33,7 +36,7 @@ Check if API is running.
 
 **Example:**
 ```bash
-curl http://localhost:8000/health
+curl https://assistance-kz.ru/health
 ```
 
 ---
@@ -54,15 +57,18 @@ Root API information.
 ## 👥 Users Endpoints
 
 ### POST `/api/users/`
-Create a new user with registration data.
+Create a new user. For full registration with password, use `/auth/register`.
 
 **Request Body:**
 ```json
 {
-  "username": "alice_123",
-  "contact": "@alice_telegram",
-  "locations": ["Алматы", "Астана"],
-  "trust_score": 0.0
+  "username": "test_user",
+  "email": "test@example.com",
+  "phone": "+77001234567",
+  "full_name": "Test User",
+  "telegram_contact": "@test_user_tg",
+  "city": "Алматы",
+  "bio": "Test bio"
 }
 ```
 
@@ -70,28 +76,32 @@ Create a new user with registration data.
 ```json
 {
   "id": 1,
-  "username": "alice_123",
-  "contact": "@alice_telegram",
-  "locations": ["Алматы", "Астана"],
-  "trust_score": 0.0,
-  "created_at": "2025-01-15T10:30:00",
-  "active": true
+  "username": "test_user",
+  "email": "test@example.com",
+  "full_name": "Test User",
+  "telegram_contact": "@test_user_tg",
+  "city": "Алматы",
+  "bio": "Test bio",
+  "is_active": true,
+  "created_at": "2025-11-05T10:00:00Z"
 }
 ```
 
 **Status Codes:**
 - `201 Created` - User created successfully
 - `400 Bad Request` - Validation error
-- `409 Conflict` - Username already exists
+- `409 Conflict` - Username/email/phone already exists
 
 **Example:**
 ```bash
-curl -X POST http://localhost:8000/api/users/ \
+curl -X POST https://assistance-kz.ru/api/users/ \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "alice_123",
-    "contact": "@alice_telegram",
-    "locations": ["Алматы"]
+    "username": "test_user",
+    "email": "test@example.com",
+    "phone": "+77001234567",
+    "full_name": "Test User",
+    "city": "Алматы"
   }'
 ```
 
@@ -104,12 +114,26 @@ Get user details by ID.
 ```json
 {
   "id": 1,
-  "username": "alice_123",
-  "contact": "@alice_telegram",
-  "locations": ["Алматы", "Астана"],
-  "trust_score": 0.85,
-  "created_at": "2025-01-15T10:30:00",
-  "active": true
+  "username": "test_user",
+  "email": "test@example.com",
+  "full_name": "Test User",
+  "telegram_contact": "@test_user_tg",
+  "city": "Алматы",
+  "bio": "Test bio",
+  "trust_score": 0.0,
+  "exchange_count": 0,
+  "rating_avg": 0.0,
+  "is_active": true,
+  "is_verified": false,
+  "email_verified": false,
+  "phone_verified": false,
+  "created_at": "2025-11-05T10:00:00Z",
+  "updated_at": "2025-11-05T10:00:00Z",
+  "last_login_at": null,
+  "last_active_at": null,
+  "telegram_id": null,
+  "telegram_username": null,
+  "telegram_first_name": null
 }
 ```
 
@@ -119,7 +143,7 @@ Get user details by ID.
 
 **Example:**
 ```bash
-curl http://localhost:8000/api/users/1
+curl https://assistance-kz.ru/api/users/1
 ```
 
 ---
@@ -135,7 +159,7 @@ Get user by username.
 
 **Example:**
 ```bash
-curl http://localhost:8000/api/users/username/alice_123
+curl https://assistance-kz.ru/api/users/username/test_user
 ```
 
 ---
@@ -171,97 +195,56 @@ Update user's selected locations.
 
 **Example:**
 ```bash
-curl -X PUT http://localhost:8000/api/users/1/locations \
+curl -X PUT https://assistance-kz.ru/api/users/1/locations \
   -H "Content-Type: application/json" \
   -d '{"locations": ["Алматы"]}'
 ```
 
 ---
-## 🧭 Category & LK Endpoints (v6)
 
-### GET `/v1/categories`
-Получить список версий категорий и структуру формы для создания/редактирования объявлений.
-
-**Response (пример):**
-```json
-{
-  "version": 6,
-  "categories": [
-    {"id": 1, "name": "Транспорт", "slug": "transport"},
-    {"id": 2, "name": "Инструменты", "slug": "tools"}
-  ],
-  "mappings": {
-    "legacy_to_v6": {"old_slug": "transport_old"}
-  }
-}
-```
-
-### GET `/v1/categories/permanent`
-Список категорий для постоянного обмена.
-
-### GET `/v1/categories/temporary`
-Список категорий для временного обмена.
-
-### GET `/user/cabinet`
-Личный кабинет пользователя (профиль, мои объявления, активные обмены).
-
-### GET `/user/listings`
-Список объявлений пользователя.
-
-### GET `/user/exchanges`
-Список активных обменов пользователя.
-
-### PUT `/user/profile`
-Обновление профиля пользователя.
-
-### DELETE `/user/account`
-Удаление аккаунта пользователя.
+## 🔑 Authentication Endpoints
 
 ### POST `/auth/register`
-Регистрация пользователя (с подтверждением email/телефона по мере реализации).
-
-### POST `/auth/login`
-Авторизация и выдача access/refresh токенов.
-
-### POST `/auth/register`
-Регистрация нового пользователя.
+Register a new user with email, password, and optional profile details.
 
 **Request Body:**
 ```json
 {
-  "username": "alice_123",
-  "email": "alice@example.com",
-  "phone": "+7-777-123-4567",
-  "password": "secure_password_123",
-  "full_name": "Alice Smith",
-  "telegram_contact": "@alice_telegram",
-  "city": "Алматы",
-  "bio": "Люблю велосипеды и инструменты"
+  "email": "newuser@example.com",
+  "password": "StrongPassword123!",
+  "username": "newuser_freemarket",
+  "full_name": "New User",
+  "city": "Астана",
+  "telegram_contact": "@newuser_telegram"
 }
 ```
 
 **Response (201 Created):**
 ```json
 {
-  "id": 1,
-  "username": "alice_123",
-  "email": "alice@example.com",
-  "full_name": "Alice Smith",
-  "telegram_contact": "@alice_telegram",
-  "city": "Алматы",
-  "bio": "Люблю велосипеды и инструменты",
+  "id": 2,
+  "username": "newuser_freemarket",
+  "email": "newuser@example.com",
+  "full_name": "New User",
+  "telegram_contact": "@newuser_telegram",
+  "city": "Астана",
   "is_active": true,
-  "created_at": "2025-11-05T10:00:00Z"
+  "is_verified": false,
+  "email_verified": false,
+  "phone_verified": false,
+  "created_at": "2025-11-05T10:30:00Z"
 }
 ```
 
+---
+
 ### POST `/auth/login`
-Авторизация и получение JWT токенов.
+Authenticate a user and receive JWT access and refresh tokens. Refresh token is set as an HttpOnly cookie.
 
 **Request Body:**
 ```json
 {
-  "username": "alice_123",
+  "username": "test_user",
   "password": "secure_password_123"
 }
 ```
@@ -274,18 +257,19 @@ curl -X PUT http://localhost:8000/api/users/1/locations \
   "expires_in": 900,
   "user": {
     "id": 1,
-    "username": "alice_123",
-    "email": "alice@example.com"
+    "username": "test_user",
+    "email": "test@example.com"
   }
 }
 ```
 
 **Cookies Set:**
-- `refresh_token`: HttpOnly, Secure, SameSite=Lax, expires in 30 days
-- `refresh_token_hash`: Server-side hash for validation
+- `refresh_token`: HttpOnly, Secure, SameSite=Lax, expires in 7 days
+
+---
 
 ### POST `/auth/refresh`
-Обновление access token (использует HttpOnly cookie).
+Refresh the access token using the HttpOnly refresh token cookie. Automatically revokes the old refresh token.
 
 **Request:** No body required (reads from cookie)
 
@@ -299,12 +283,14 @@ curl -X PUT http://localhost:8000/api/users/1/locations \
 ```
 
 **Security Features:**
-- Old refresh token marked as revoked
-- New refresh token issued and stored
+- Old refresh token marked as revoked in Redis
+- New refresh token issued and stored in cookie
 - Rate limited (5 requests per 5 minutes per IP)
 
+---
+
 ### POST `/auth/logout`
-Выход из системы и отзыв refresh токена.
+Logout the current user, clear refresh token cookie, and revoke the refresh token in Redis.
 
 **Request:** No body required
 
@@ -316,12 +302,37 @@ curl -X PUT http://localhost:8000/api/users/1/locations \
 ```
 
 **Actions:**
-- Refresh token cookie cleared (expires immediately)
+- `refresh_token` cookie cleared
 - Refresh token hash removed from Redis
-- Auth event logged
+
+---
+
+### POST `/auth/change-password`
+Change the password for the authenticated user.
+
+**Request Body:**
+```json
+{
+  "old_password": "CurrentPassword123!",
+  "new_password": "NewStrongPassword123!"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Password updated successfully"
+}
+```
+
+**Status Codes:**
+- `200 OK` - Password changed
+- `400 Bad Request` - Invalid old password or validation error
+
+---
 
 ### POST `/auth/revoke-sessions`
-Отзыв всех сессий пользователя.
+Revoke all active refresh tokens for the authenticated user, forcing re-login on all devices.
 
 **Request:** Requires valid access token
 
@@ -329,7 +340,7 @@ curl -X PUT http://localhost:8000/api/users/1/locations \
 ```json
 {
   "message": "All sessions revoked",
-  "revoked_count": 3
+  "revoked_count": 1
 }
 ```
 
@@ -337,8 +348,10 @@ curl -X PUT http://localhost:8000/api/users/1/locations \
 - All refresh tokens for user marked as revoked in Redis
 - User must re-login on all devices
 
+---
+
 ### GET `/auth/me`
-Получение профиля текущего пользователя.
+Get the profile of the currently authenticated user.
 
 **Headers:** `Authorization: Bearer <access_token>`
 
@@ -346,279 +359,366 @@ curl -X PUT http://localhost:8000/api/users/1/locations \
 ```json
 {
   "id": 1,
-  "username": "alice_123",
-  "email": "alice@example.com",
-  "full_name": "Alice Smith",
-  "telegram_contact": "@alice_telegram",
+  "username": "test_user",
+  "email": "test@example.com",
+  "full_name": "Test User",
+  "telegram_contact": "@test_user_tg",
   "city": "Алматы",
-  "bio": "Люблю велосипеды и инструменты",
-  "trust_score": 0.95,
-  "exchange_count": 5,
-  "rating_avg": 4.8,
+  "bio": "Test bio",
+  "trust_score": 0.0,
+  "exchange_count": 0,
+  "rating_avg": 0.0,
   "is_active": true,
   "is_verified": false,
-  "last_login_at": "2025-11-05T10:00:00Z"
+  "email_verified": false,
+  "phone_verified": false,
+  "created_at": "2025-11-05T10:00:00Z",
+  "updated_at": "2025-11-05T10:00:00Z",
+  "last_login_at": "2025-11-05T10:35:00Z",
+  "last_active_at": "2025-11-05T10:35:00Z",
+  "telegram_id": null,
+  "telegram_username": null,
+  "telegram_first_name": null
 }
-```
-
-### Complete Authentication Flow
-
-```javascript
-// 1. Register
-const registerResponse = await fetch('/api/auth/register', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    username: 'alice_123',
-    email: 'alice@example.com',
-    password: 'secure_password'
-  })
-});
-
-// 2. Login
-const loginResponse = await fetch('/api/auth/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    username: 'alice_123',
-    password: 'secure_password'
-  })
-});
-const { access_token } = await loginResponse.json();
-
-// 3. Use API with access token
-const profileResponse = await fetch('/api/auth/me', {
-  headers: { 'Authorization': `Bearer ${access_token}` }
-});
-
-// 4. Refresh token automatically (when expired)
-const refreshResponse = await fetch('/api/auth/refresh', {
-  method: 'POST'
-  // Cookie is sent automatically
-});
-const { access_token: new_token } = await refreshResponse.json();
-
-// 5. Logout
-await fetch('/api/auth/logout', { method: 'POST' });
-```
-
-### GET `/api/users/list`
-List all active users (paginated).
-
-**Query Parameters:**
-- `skip` (optional, default: 0) - Skip N users
-- `limit` (optional, default: 20) - Return N users
-
-**Response:**
-```json
-{
-  "items": [
-    {
-      "id": 1,
-      "username": "alice_123",
-      "contact": "@alice_telegram",
-      "locations": ["Алматы"],
-      "trust_score": 0.85
-    },
-    {
-      "id": 2,
-      "username": "bob_456",
-      "contact": "@bob_telegram",
-      "locations": ["Астана"],
-      "trust_score": 0.92
-    }
-  ],
-  "total": 150,
-  "skip": 0,
-  "limit": 20
-}
-```
-
-**Example:**
-```bash
-curl "http://localhost:8000/api/users/list?skip=0&limit=10"
 ```
 
 ---
 
-## 📋 Market Listings Endpoints
+## 👤 User Cabinet Endpoints
 
-### POST `/api/market-listings/`
-Create a new want or offer listing.
+### GET `/user/cabinet`
+Get aggregated data for the authenticated user's personal cabinet, including profile, listings, and active exchanges.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response (200 OK):**
+```json
+{
+  "user_profile": {
+    "id": 1,
+    "username": "test_user",
+    "full_name": "Test User"
+  },
+  "my_listings": [
+    { "id": 101, "title": "Мой велосипед", "exchange_type": "PERMANENT" }
+  ],
+  "active_exchanges": [
+    { "chain_id": 5, "partner_name": "Другой пользователь" }
+  ]
+}
+```
+
+---
+
+### GET `/user/listings`
+Get all listings created by the authenticated user.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 101,
+    "title": "Мой велосипед",
+    "description": "Старый, но рабочий велосипед",
+    "user_id": 1,
+    "exchange_type": "PERMANENT",
+    "created_at": "2025-11-05T11:00:00Z"
+  },
+  {
+    "id": 102,
+    "title": "Нужна дрель",
+    "description": "Ищу электрическую дрель на пару дней",
+    "user_id": 1,
+    "exchange_type": "TEMPORARY",
+    "created_at": "2025-11-05T11:10:00Z"
+  }
+]
+```
+
+---
+
+### GET `/user/exchanges`
+Get active exchange chains or bilateral matches involving the authenticated user.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response (200 OK):**
+```json
+[
+  {
+    "match_id": 201,
+    "partner_username": "alice_other",
+    "status": "pending",
+    "matching_categories": ["tools"],
+    "created_at": "2025-11-05T11:20:00Z"
+  }
+]
+```
+
+---
+
+### PUT `/user/profile`
+Update the profile details of the authenticated user.
+
+**Headers:** `Authorization: Bearer <access_token>`
 
 **Request Body:**
 ```json
 {
-  "user_id": 1,
-  "title": "Нужен велосипед",
-  "description": "Ищу детский велосипед, 16-20 дюймов",
-  "category": "tools",
-  "kind": 2,
-  "active": true
+  "full_name": "Updated Name",
+  "bio": "New interesting bio",
+  "city": "Астана",
+  "telegram_contact": "@updated_tg"
 }
 ```
 
-**Kind Values:**
-- `1` = Offer (ДАРЮ)
-- `2` = Want (ХОЧУ)
-
-**Categories:**
-- `food` - Food
-- `clothes` - Clothing
-- `tools` - Tools & Equipment
-- `furniture` - Furniture
-- `books` - Books & Media
-- `services` - Services
-- `other` - Other
-
-**Response:**
+**Response (200 OK):**
 ```json
 {
-  "id": 1,
-  "user_id": 1,
-  "title": "Нужен велосипед",
-  "description": "Ищу детский велосипед, 16-20 дюймов",
-  "category": "tools",
-  "kind": 2,
-  "active": true,
-  "created_at": "2025-01-15T10:35:00"
-}
-```
-
-**Status Codes:**
-- `201 Created` - Listing created
-- `400 Bad Request` - Validation error
-- `404 Not Found` - User not found
-
-**Example:**
-```bash
-curl -X POST http://localhost:8000/api/market-listings/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_id": 1,
-    "title": "Нужен велосипед",
-    "description": "Детский велосипед 16-20 дюймов",
-    "category": "tools",
-    "kind": 2
-  }'
-```
-
----
-
-### GET `/api/market-listings/wants/all`
-Get all want listings (what people need).
-
-**Query Parameters:**
-- `skip` (optional, default: 0)
-- `limit` (optional, default: 20)
-
-**Response:**
-```json
-{
-  "items": [
-    {
-      "id": 1,
-      "user_id": 1,
-      "title": "Нужен велосипед",
-      "description": "Детский велосипед 16-20 дюймов",
-      "category": "tools",
-      "kind": 2,
-      "active": true
-    }
-  ],
-  "total": 42,
-  "skip": 0,
-  "limit": 20
-}
-```
-
-**Example:**
-```bash
-curl "http://localhost:8000/api/market-listings/wants/all?limit=10"
-```
-
----
-
-### GET `/api/market-listings/offers/all`
-Get all offer listings (what people have).
-
-**Query Parameters:**
-- `skip` (optional, default: 0)
-- `limit` (optional, default: 20)
-
-**Response:** Same structure as wants
-
-**Example:**
-```bash
-curl "http://localhost:8000/api/market-listings/offers/all?limit=10"
-```
-
----
-
-### GET `/api/market-listings/{listing_id}`
-Get specific listing details.
-
-**Response:**
-```json
-{
-  "id": 1,
-  "user_id": 1,
-  "title": "Нужен велосипед",
-  "description": "Детский велосипед 16-20 дюймов",
-  "category": "tools",
-  "kind": 2,
-  "active": true,
-  "created_at": "2025-01-15T10:35:00",
+  "message": "Profile updated successfully",
   "user": {
-    "username": "alice_123",
-    "contact": "@alice_telegram",
-    "locations": ["Алматы"]
+    "id": 1,
+    "username": "test_user",
+    "full_name": "Updated Name",
+    "city": "Астана"
   }
 }
 ```
 
-**Status Codes:**
-- `200 OK` - Found
-- `404 Not Found` - Listing doesn't exist
+---
 
-**Example:**
-```bash
-curl http://localhost:8000/api/market-listings/1
+### DELETE `/user/account`
+Delete the authenticated user's account. This is a sensitive operation.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Response (200 OK):**
+```json
+{
+  "message": "Account deleted successfully"
+}
 ```
 
 ---
 
-### GET `/api/market-listings/user/{user_id}`
-Get all listings for a specific user.
+## 📋 Categories API (v6)
+
+### GET `/v1/categories`
+Get the current active category version and all categories, organized by exchange type.
 
 **Query Parameters:**
-- `skip` (optional, default: 0)
-- `limit` (optional, default: 20)
+- `version` (optional, default: `v6.0`): Category system version to retrieve.
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
-  "items": [
-    { "id": 1, "kind": 2, "title": "..." },
-    { "id": 2, "kind": 1, "title": "..." }
-  ],
-  "total": 5,
-  "skip": 0,
-  "limit": 20
+  "version": "v6.0",
+  "description": "Initial v6 category system with expanded temporary and permanent exchanges",
+  "categories": {
+    "permanent": [
+      {
+        "slug": "personal_transport",
+        "name": "Личные и спецтранспортные средства",
+        "group": "🚗 Транспорт и техника",
+        "emoji": "🚗",
+        "sort_order": 0,
+        "form_schema": null
+      }
+    ],
+    "temporary": [
+      {
+        "slug": "bicycles",
+        "name": "Велосипеды, самокаты, гироскутеры",
+        "group": "🚗 Транспорт и мобильность",
+        "emoji": "🚗",
+        "sort_order": 0,
+        "form_schema": null
+      }
+    ]
+  }
 }
 ```
 
-**Example:**
-```bash
-curl http://localhost:8000/api/market-listings/user/1
+---
+
+### GET `/v1/categories/{exchange_type}`
+Get categories for a specific exchange type (`permanent` or `temporary`).
+
+**Path Parameters:**
+- `exchange_type` (required): `permanent` or `temporary`.
+
+**Query Parameters:**
+- `version` (optional, default: `v6.0`): Category system version to retrieve.
+
+**Response (200 OK):**
+```json
+[
+  {
+    "slug": "personal_transport",
+    "name": "Личные и спецтранспортные средства",
+    "group": "🚗 Транспорт и техника",
+    "emoji": "🚗",
+    "sort_order": 0,
+    "form_schema": null
+  }
+]
 ```
+
+---
+
+### GET `/v1/categories/groups/{exchange_type}`
+Get unique category groups for a specific exchange type (`permanent` or `temporary`).
+
+**Path Parameters:**
+- `exchange_type` (required): `permanent` or `temporary`.
+
+**Query Parameters:**
+- `version` (optional, default: `v6.0`): Category system version to retrieve.
+
+**Response (200 OK):**
+```json
+{
+  "groups": [
+    "🚗 Транспорт и техника",
+    "🔧 Инструменты и оборудование"
+  ]
+}
+```
+
+---
+
+## 📝 Listings Exchange Endpoints
+
+### POST `/api/listings/create-by-categories`
+Create a new listing by providing wants and offers organized by categories.
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Request Body:**
+```json
+{
+  "wants": {
+    "PERMANENT": [
+      {
+        "item_name": "Учебник по Python",
+        "value_tenge": 15000,
+        "description": "Ищу для изучения"
+      }
+    ],
+    "TEMPORARY": [
+      {
+        "item_name": "Электросамокат",
+        "value_tenge": 5000,
+        "duration_days": 3,
+        "description": "На выходные"
+      }
+    ]
+  },
+  "offers": {
+    "PERMANENT": [
+      {
+        "item_name": "Книга по JS",
+        "value_tenge": 12000,
+        "description": "Могу отдать"
+      }
+    ]
+  }
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "created_at": "2025-11-05T12:00:00Z",
+  "listings": [
+    {
+      "id": 101,
+      "item_type": "WANT",
+      "exchange_type": "PERMANENT",
+      "item_name": "Учебник по Python",
+      "value_tenge": 15000,
+      "duration_days": null
+    },
+    {
+      "id": 102,
+      "item_type": "WANT",
+      "exchange_type": "TEMPORARY",
+      "item_name": "Электросамокат",
+      "value_tenge": 5000,
+      "duration_days": 3
+    }
+  ]
+}
+```
+
+---
+
+### POST `/api/listings/create`
+Create a single listing item (either want or offer).
+
+**Headers:** `Authorization: Bearer <access_token>`
+
+**Request Body:**
+```json
+{
+  "item_type": "WANT",
+  "exchange_type": "PERMANENT",
+  "item_name": "Книга по Алгоритмам",
+  "value_tenge": 20000,
+  "description": "Новое издание"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 103,
+  "item_type": "WANT",
+  "exchange_type": "PERMANENT",
+  "item_name": "Книга по Алгоритмам",
+  "value_tenge": 20000,
+  "description": "Новое издание",
+  "user_id": 1,
+  "created_at": "2025-11-05T12:05:00Z"
+}
+```
+
+---
+
+### GET `/api/listings/wants`
+Get all want listings (what people need).
+
+**Response:** Same structure as `/user/listings`
+
+---
+
+### GET `/api/listings/offers`
+Get all offer listings (what people have).
+
+**Response:** Same structure as `/user/listings`
+
+---
+
+### GET `/api/listings/user/{user_id}`
+Get all listings for a specific user.
+
+**Path Parameters:**
+- `user_id` (required): ID of the user.
+
+**Response:** Same structure as `/user/listings`
 
 ---
 
 ## 🔄 Matching Endpoints
 
 ### POST `/api/matching/run-pipeline`
-Run the complete unified matching pipeline.
+Run the complete unified matching pipeline for a specific user or all active users.
+
+**Headers:** `Authorization: Bearer <access_token>` (optional, if `user_id` is specified)
 
 **Request Body:**
 ```json
@@ -630,7 +730,7 @@ Run the complete unified matching pipeline.
 **Parameters:**
 - `user_id` (optional): If provided, only match this user. If null, match all active users.
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
   "bilateral_matches": 3,
@@ -640,30 +740,12 @@ Run the complete unified matching pipeline.
 }
 ```
 
-**5-Phase Pipeline:**
-1. **Location-aware filtering** - Find candidates in same cities
-2. **Unified scoring** - Text similarity (0.7) + trust bonus (0.2) + location bonus (0.1)
-3. **Bilateral matching** - Find mutual exchanges (Alice.want ⊆ Bob.offer AND Bob.want ⊆ Alice.offer)
-4. **Chain discovery** - Find 3+ participant cycles
-5. **Notifications** - Send notifications to all participants
-
-**Status Codes:**
-- `200 OK` - Pipeline completed
-- `500 Internal Error` - Pipeline failed
-
-**Example:**
-```bash
-curl -X POST http://localhost:8000/api/matching/run-pipeline \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": null}'
-```
-
 ---
 
 ### GET `/api/matching/status`
-Get status of last matching run.
+Get status of the last matching run.
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
   "last_run": "2025-01-15T12:00:00",
@@ -674,15 +756,10 @@ Get status of last matching run.
 }
 ```
 
-**Example:**
-```bash
-curl http://localhost:8000/api/matching/status
-```
-
 ---
 
 ### POST `/api/matching/test-flow`
-Test the matching flow with sample data (for development).
+Test the matching flow with sample data (for development and debugging).
 
 **Request Body:**
 ```json
@@ -698,7 +775,7 @@ Test the matching flow with sample data (for development).
 - `scoring` - Test score calculation
 - `full` - Run all tests
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
   "test": "bilateral",
@@ -708,19 +785,14 @@ Test the matching flow with sample data (for development).
 }
 ```
 
-**Example:**
-```bash
-curl -X POST http://localhost:8000/api/matching/test-flow \
-  -H "Content-Type: application/json" \
-  -d '{"scenario": "bilateral"}'
-```
-
 ---
 
 ## 🔗 Exchange Chains Endpoints
 
 ### POST `/api/chains/discover`
 Manually trigger chain discovery.
+
+**Headers:** `Authorization: Bearer <access_token>`
 
 **Request Body:**
 ```json
@@ -730,7 +802,7 @@ Manually trigger chain discovery.
 }
 ```
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
   "chains_created": 5,
@@ -746,22 +818,10 @@ Manually trigger chain discovery.
 }
 ```
 
-**Example:**
-```bash
-curl -X POST http://localhost:8000/api/chains/discover \
-  -H "Content-Type: application/json" \
-  -d '{"min_participants": 3, "max_participants": 10}'
-```
-
 ---
 
 ### GET `/api/chains/all`
 Get all discovered exchange chains.
-
-**Query Parameters:**
-- `skip` (optional, default: 0)
-- `limit` (optional, default: 20)
-- `status` (optional): `pending`, `accepted`, `completed`
 
 **Response:**
 ```json
@@ -782,30 +842,19 @@ Get all discovered exchange chains.
 }
 ```
 
-**Example:**
-```bash
-curl "http://localhost:8000/api/chains/all?status=pending"
-```
-
 ---
 
 ### GET `/api/chains/user/{user_id}`
 Get all chains for a specific user.
 
-**Query Parameters:**
-- `status` (optional): Filter by status
-
 **Response:** Same as above
-
-**Example:**
-```bash
-curl http://localhost:8000/api/chains/user/1?status=pending
-```
 
 ---
 
 ### POST `/api/chains/{chain_id}/accept`
 User accepts a proposed chain.
+
+**Headers:** `Authorization: Bearer <access_token>`
 
 **Request Body:**
 ```json
@@ -814,7 +863,7 @@ User accepts a proposed chain.
 }
 ```
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
   "chain_id": 1,
@@ -824,22 +873,12 @@ User accepts a proposed chain.
 }
 ```
 
-**Status Codes:**
-- `200 OK` - Accepted
-- `400 Bad Request` - Invalid request
-- `404 Not Found` - Chain not found
-
-**Example:**
-```bash
-curl -X POST http://localhost:8000/api/chains/1/accept \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": 1}'
-```
-
 ---
 
 ### POST `/api/chains/{chain_id}/decline`
 User declines a proposed chain.
+
+**Headers:** `Authorization: Bearer <access_token>`
 
 **Request Body:**
 ```json
@@ -849,7 +888,7 @@ User declines a proposed chain.
 }
 ```
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
   "chain_id": 1,
@@ -857,13 +896,6 @@ User declines a proposed chain.
   "status": "declined",
   "message": "You've declined this exchange chain"
 }
-```
-
-**Example:**
-```bash
-curl -X POST http://localhost:8000/api/chains/1/decline \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": 1, "reason": "Not available"}'
 ```
 
 ---
@@ -877,7 +909,7 @@ Get pending notifications for a user.
 - `user_id` (required) - User ID
 - `status` (optional): `pending`, `read`, `all`
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
   "notifications": [
@@ -901,27 +933,17 @@ Get pending notifications for a user.
 }
 ```
 
-**Example:**
-```bash
-curl "http://localhost:8000/api/notifications/?user_id=1&status=pending"
-```
-
 ---
 
 ### POST `/api/notifications/{notification_id}/read`
 Mark notification as read.
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
   "notification_id": 1,
   "status": "read"
 }
-```
-
-**Example:**
-```bash
-curl -X POST http://localhost:8000/api/notifications/1/read
 ```
 
 ---
@@ -940,7 +962,7 @@ GET /api/[resource]/all
 
 **Example:**
 ```bash
-curl "http://localhost:8000/api/market-listings/offers/all?skip=20&limit=10&sort=created&order=desc"
+curl "https://assistance-kz.ru/api/listings/wants?skip=20&limit=10&sort=created&order=desc"
 ```
 
 ---
@@ -961,6 +983,8 @@ All endpoints return errors in this format:
 - `200 OK` - Success
 - `201 Created` - Resource created
 - `400 Bad Request` - Validation error
+- `401 Unauthorized` - Authentication required
+- `403 Forbidden` - Insufficient permissions
 - `404 Not Found` - Resource not found
 - `409 Conflict` - Conflict (e.g., duplicate username)
 - `500 Internal Server Error` - Server error
@@ -972,24 +996,61 @@ All endpoints return errors in this format:
 ### Complete User Flow Example
 
 ```bash
-# 1. Create user
-USER_ID=$(curl -s -X POST http://localhost:8000/api/users/ \
+# 1. Register user
+REGISTER_RESPONSE=$(curl -s -X POST https://assistance-kz.ru/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"username":"alice","contact":"@alice","locations":["Алматы"]}' \
-  | jq -r '.id')
+  -d '{
+    "email": "testuser_auth@example.com",
+    "password": "SecurePass123!",
+    "username": "testuser_auth",
+    "full_name": "Test User Auth",
+    "city": "Алматы"
+  }' \
+  -c /tmp/cookies.txt \
+  -b /tmp/cookies.txt)
+USER_ID=$(echo $REGISTER_RESPONSE | jq -r '.id')
+echo "Registered User ID: $USER_ID"
 
-# 2. Create listings
-curl -X POST http://localhost:8000/api/market-listings/ \
+# 2. Login user
+LOGIN_RESPONSE=$(curl -s -X POST https://assistance-kz.ru/auth/login \
   -H "Content-Type: application/json" \
-  -d "{\"user_id\":$USER_ID,\"title\":\"Велосипед\",\"kind\":2,\"category\":\"tools\"}"
+  -d '{
+    "username": "testuser_auth",
+    "password": "SecurePass123!"
+  }' \
+  -c /tmp/cookies.txt \
+  -b /tmp/cookies.txt)
+ACCESS_TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.access_token')
+echo "Access Token: $ACCESS_TOKEN"
 
-# 3. Run matching
-curl -X POST http://localhost:8000/api/matching/run-pipeline \
+# 3. Create listings with authenticated user
+curl -X POST https://assistance-kz.ru/api/listings/create-by-categories \
   -H "Content-Type: application/json" \
-  -d '{"user_id":null}'
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -d '{
+    "wants": {
+      "PERMANENT": [
+        { "item_name": "Книга по JS", "value_tenge": 10000 }
+      ]
+    },
+    "offers": {
+      "TEMPORARY": [
+        { "item_name": "Электросамокат", "value_tenge": 5000, "duration_days": 2 }
+      ]
+    }
+  }'
 
-# 4. Check chains
-curl "http://localhost:8000/api/chains/all?status=pending"
+# 4. Access user cabinet
+curl -s https://assistance-kz.ru/user/cabinet \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# 5. Logout
+curl -X POST https://assistance-kz.ru/auth/logout \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -c /tmp/cookies.txt \
+  -b /tmp/cookies.txt
+
+rm /tmp/cookies.txt
 ```
 
 ---
@@ -998,7 +1059,7 @@ curl "http://localhost:8000/api/chains/all?status=pending"
 
 | Metric | Value |
 |--------|-------|
-| Total Endpoints | 22 |
+| Total Endpoints | 37 |
 | Response Time | < 200ms |
 | Max Page Size | 100 |
 | Default Page Size | 20 |
@@ -1006,4 +1067,4 @@ curl "http://localhost:8000/api/chains/all?status=pending"
 
 ---
 
-**For more details, see [docs/ARCHITECTURE.md](./ARCHITECTURE.md) or [docs/TESTING.md](./TESTING.md)**
+**For more details, see [docs/ARCHITECTURE.md](./ARCHITECTURE.MD) or [docs/TESTING.md](./TESTING.MD)**
