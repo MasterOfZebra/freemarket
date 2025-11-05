@@ -70,7 +70,7 @@ def init_categories_v6():
         # Insert temporary categories using raw SQL
         for sort_order, (slug, name, group_name, emoji) in enumerate(temporary_categories):
             db.execute(text("""
-                INSERT INTO categories_v6 (version_id, slug, name, group, emoji, exchange_type, sort_order, created_at)
+                INSERT INTO categories_v6 (version_id, slug, name, "group", emoji, exchange_type, sort_order, created_at)
                 VALUES (:version_id, :slug, :name, :group_name, :emoji, 'temporary', :sort_order, NOW())
                 ON CONFLICT (version_id, exchange_type, slug) DO NOTHING
             """), {
@@ -125,7 +125,7 @@ def init_categories_v6():
         # Insert permanent categories using raw SQL
         for sort_order, (slug, name, group_name, emoji) in enumerate(permanent_categories):
             db.execute(text("""
-                INSERT INTO categories_v6 (version_id, slug, name, group, emoji, exchange_type, sort_order, created_at)
+                INSERT INTO categories_v6 (version_id, slug, name, "group", emoji, exchange_type, sort_order, created_at)
                 VALUES (:version_id, :slug, :name, :group_name, :emoji, 'permanent', :sort_order, NOW())
                 ON CONFLICT (version_id, exchange_type, slug) DO NOTHING
             """), {
