@@ -11,6 +11,7 @@ function App() {
     const [user, setUser] = useState(null);
     const [showLogin, setShowLogin] = useState(false);
     const [showCabinet, setShowCabinet] = useState(false);
+    const [error, setError] = useState(null);
 
     // Check if user is logged in on app start
     useEffect(() => {

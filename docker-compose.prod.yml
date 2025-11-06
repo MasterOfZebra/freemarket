@@ -91,9 +91,9 @@ services:
         echo 'Waiting for database...' &&
         sleep 10 &&
         echo 'Running database migrations...' &&
-        PYTHONPATH=/app alembic -c /app/alembic.ini upgrade head &&
+        alembic upgrade head &&
         echo 'Initializing categories...' &&
-        PYTHONPATH=/app python backend/scripts/init_categories_v6.py &&
+        python backend/scripts/init_categories_v6.py &&
         echo 'Database initialization complete!'
       "
     environment:
