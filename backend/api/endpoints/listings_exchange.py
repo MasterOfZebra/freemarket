@@ -622,10 +622,16 @@ def _find_matches_internal(
 
     Matching algorithm:
     1. Find all other users
-    2. For each category in user's listing, find items in other listings
-    3. Calculate equivalence score
-    4. Create notifications for matches
-    5. Return matches sorted by score
+    2. Cross-category matching: ANY item can match with ANY other item of same exchange type
+    3. Calculate equivalence score based on value (permanent) or daily rate (temporary)
+    4. Apply language similarity bonus (30% weight)
+    5. Create notifications for matches above 70% threshold
+    6. Return matches sorted by combined score (70% equivalence + 30% language)
+
+    Cross-category exchange means:
+    - Phone (electronics) can exchange with Bike (transport)
+    - Laptop (electronics) can exchange with Camera (photo equipment)
+    - Any category ↔ Any other category, as long as values/daily rates match
 
     Args:
         user_id: User ID to find matches for
@@ -633,12 +639,12 @@ def _find_matches_internal(
         db: Database session (required, but can be None for HTTP endpoint calls)
 
     Returns:
-    {
-      "user_id": 1,
-      "matches_found": 5,
-      "notifications_created": 10,
-      "matches": [...]
-    }
+        {
+          "user_id": 1,
+          "matches_found": 5,
+          "notifications_created": 10,
+          "matches": [...]
+        }
     """
 
     try:
@@ -693,9 +699,8 @@ def _find_matches_internal(
                     continue
 
                 for their_offer in other_offers:
-                    if my_want.category != their_offer.category:
-                        continue
-
+                    # Allow cross-category matching - items from any category can exchange
+                    # based on equivalent value/cost, not category restrictions
                     if my_want.exchange_type != their_offer.exchange_type:
                         continue
 
@@ -759,9 +764,8 @@ def _find_matches_internal(
                     continue
 
                 for their_want in other_wants:
-                    if my_offer.category != their_want.category:
-                        continue
-
+                    # Allow cross-category matching - items from any category can exchange
+                    # based on equivalent value/cost, not category restrictions
                     if my_offer.exchange_type != their_want.exchange_type:
                         continue
 
