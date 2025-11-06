@@ -618,20 +618,27 @@ def _find_matches_internal(
     Internal matching function that can be called from other endpoints.
     Separated from the HTTP endpoint to avoid circular dependencies.
 
-    Find all potential matches for a user's listing items.
+    Find MUTUAL exchange matches for a user's listing items.
 
-    Matching algorithm:
-    1. Find all other users
-    2. Cross-category matching: ANY item can match with ANY other item of same exchange type
-    3. Calculate equivalence score based on value (permanent) or daily rate (temporary)
-    4. Apply language similarity bonus (30% weight)
-    5. Create notifications for matches above 70% threshold
-    6. Return matches sorted by combined score (70% equivalence + 30% language)
+    MUTUAL EXCHANGE ALGORITHM:
+    1. Find all other users with listings
+    2. For each partner, check BOTH exchange directions simultaneously:
+       - Direction A→B: User's wants match with partner's offers
+       - Direction B→A: User's offers match with partner's wants
+    3. Only create match if BOTH directions have valid matches (threshold ≥70%)
+    4. Cross-category matching: ANY item can match with ANY other item of same exchange type
+    5. Calculate equivalence scores based on value (permanent) or daily rate (temporary)
+    6. Apply language similarity bonus (30% weight to final score)
+    7. Select best matches from each direction for the final exchange
+    8. Create notifications for mutual matches
+    9. Return matches sorted by overall exchange score
 
-    Cross-category exchange means:
-    - Phone (electronics) can exchange with Bike (transport)
-    - Laptop (electronics) can exchange with Camera (photo equipment)
-    - Any category ↔ Any other category, as long as values/daily rates match
+    MUTUAL EXCHANGE REQUIREMENTS:
+    - At least one want↔offer match in both directions
+    - Same exchange type (permanent↔permanent OR temporary↔temporary)
+    - Cross-category allowed: Phone↔Bike, Laptop↔Camera, etc.
+    - Combined score ≥70% for each direction
+    - Final score = average of both direction scores
 
     Args:
         user_id: User ID to find matches for
@@ -641,9 +648,15 @@ def _find_matches_internal(
     Returns:
         {
           "user_id": 1,
-          "matches_found": 5,
-          "notifications_created": 10,
-          "matches": [...]
+          "matches_found": 3,
+          "notifications_created": 6,
+          "matches": [{
+            "type": "mutual_exchange",
+            "my_want_item": {...}, "their_offer_item": {...},
+            "my_offer_item": {...}, "their_want_item": {...},
+            "overall_score": 0.85,
+            "explanation": "Mutual exchange: X want↔offer + Y offer↔want matches"
+          }]
         }
     """
 
@@ -679,7 +692,7 @@ def _find_matches_internal(
             Listing.user_id != user_id
         ).all()
 
-        # Find matches
+        # Find matches with MUTUAL exchange logic
         for other_listing in other_listings:
             other_user = db.query(User).filter(User.id == other_listing.user_id).first()
 
@@ -693,7 +706,9 @@ def _find_matches_internal(
                 ListingItem.item_type == ListingItemType.OFFER
             ).all()
 
-            # Match my wants with their offers
+            # Check for MUTUAL matches: both directions must have at least one match
+            # Direction 1: My wants match with their offers
+            want_offer_matches = []
             for my_want in my_wants:
                 if exchange_type and my_want.exchange_type.value != exchange_type:
                     continue
@@ -729,36 +744,16 @@ def _find_matches_internal(
 
                     # Only match if both equivalence and combined score pass threshold
                     if result.is_match and combined_score >= 0.70:
-                        matches.append({
-                            "match_id": f"{my_want.id}_{their_offer.id}",
-                            "type": "want_offer",
-                            "partner_user_id": other_user.id,
-                            "partner_contact": other_user.contact,
-                            "category": my_want.category,
-                            "exchange_type": my_want.exchange_type.value,
-                            "my_want": {
-                                "item_id": my_want.id,
-                                "item_name": my_want.item_name,
-                                "value_tenge": my_want.value_tenge,
-                                "duration_days": my_want.duration_days,
-                                "daily_rate": my_want.daily_rate
-                            },
-                            "their_offer": {
-                                "item_id": their_offer.id,
-                                "item_name": their_offer.item_name,
-                                "value_tenge": their_offer.value_tenge,
-                                "duration_days": their_offer.duration_days,
-                                "daily_rate": their_offer.daily_rate
-                            },
-                            "score": round(combined_score, 2),
-                            "equivalence_score": round(result.score, 2),
-                            "language_similarity": round(language_similarity, 2),
-                            "score_category": result.category.value,
-                            "difference_percent": round(result.difference_percent, 1),
-                            "explanation": result.explanation
+                        want_offer_matches.append({
+                            "my_want": my_want,
+                            "their_offer": their_offer,
+                            "score": combined_score,
+                            "result": result,
+                            "language_similarity": language_similarity
                         })
 
-            # Match my offers with their wants
+            # Direction 2: My offers match with their wants
+            offer_want_matches = []
             for my_offer in my_offers:
                 if exchange_type and my_offer.exchange_type.value != exchange_type:
                     continue
@@ -794,37 +789,83 @@ def _find_matches_internal(
 
                     # Only match if both equivalence and combined score pass threshold
                     if result.is_match and combined_score >= 0.70:
-                        matches.append({
-                            "match_id": f"{my_offer.id}_{their_want.id}",
-                            "type": "offer_want",
-                            "partner_user_id": other_user.id,
-                            "partner_contact": other_user.contact,
-                            "category": my_offer.category,
-                            "exchange_type": my_offer.exchange_type.value,
-                            "my_offer": {
-                                "item_id": my_offer.id,
-                                "item_name": my_offer.item_name,
-                                "value_tenge": my_offer.value_tenge,
-                                "duration_days": my_offer.duration_days,
-                                "daily_rate": my_offer.daily_rate
-                            },
-                            "their_want": {
-                                "item_id": their_want.id,
-                                "item_name": their_want.item_name,
-                                "value_tenge": their_want.value_tenge,
-                                "duration_days": their_want.duration_days,
-                                "daily_rate": their_want.daily_rate
-                            },
-                            "score": round(combined_score, 2),
-                            "equivalence_score": round(result.score, 2),
-                            "language_similarity": round(language_similarity, 2),
-                            "score_category": result.category.value,
-                            "difference_percent": round(result.difference_percent, 1),
-                            "explanation": result.explanation
+                        offer_want_matches.append({
+                            "my_offer": my_offer,
+                            "their_want": their_want,
+                            "score": combined_score,
+                            "result": result,
+                            "language_similarity": language_similarity
                         })
 
-        # Sort by score descending
-        matches.sort(key=lambda x: x["score"], reverse=True)
+            # MUTUAL EXCHANGE REQUIREMENT:
+            # Only create match if BOTH directions have at least one valid match
+            if want_offer_matches and offer_want_matches:
+                # Find the best matches from each direction for the final exchange
+                best_want_offer = max(want_offer_matches, key=lambda x: x["score"])
+                best_offer_want = max(offer_want_matches, key=lambda x: x["score"])
+
+                # Calculate overall exchange score (average of both directions)
+                overall_score = (best_want_offer["score"] + best_offer_want["score"]) / 2
+
+                matches.append({
+                    "match_id": f"mutual_{user_id}_{other_user.id}_{best_want_offer['my_want'].id}_{best_offer_want['my_offer'].id}",
+                    "type": "mutual_exchange",
+                    "partner_user_id": other_user.id,
+                    "partner_contact": other_user.contact,
+                    "exchange_type": best_want_offer["my_want"].exchange_type.value,
+
+                    # Best want->offer match
+                    "my_want_item": {
+                        "item_id": best_want_offer["my_want"].id,
+                        "item_name": best_want_offer["my_want"].item_name,
+                        "category": best_want_offer["my_want"].category,
+                        "value_tenge": best_want_offer["my_want"].value_tenge,
+                        "duration_days": best_want_offer["my_want"].duration_days,
+                        "daily_rate": best_want_offer["my_want"].daily_rate
+                    },
+                    "their_offer_item": {
+                        "item_id": best_want_offer["their_offer"].id,
+                        "item_name": best_want_offer["their_offer"].item_name,
+                        "category": best_want_offer["their_offer"].category,
+                        "value_tenge": best_want_offer["their_offer"].value_tenge,
+                        "duration_days": best_want_offer["their_offer"].duration_days,
+                        "daily_rate": best_want_offer["their_offer"].daily_rate
+                    },
+
+                    # Best offer->want match
+                    "my_offer_item": {
+                        "item_id": best_offer_want["my_offer"].id,
+                        "item_name": best_offer_want["my_offer"].item_name,
+                        "category": best_offer_want["my_offer"].category,
+                        "value_tenge": best_offer_want["my_offer"].value_tenge,
+                        "duration_days": best_offer_want["my_offer"].duration_days,
+                        "daily_rate": best_offer_want["my_offer"].daily_rate
+                    },
+                    "their_want_item": {
+                        "item_id": best_offer_want["their_want"].id,
+                        "item_name": best_offer_want["their_want"].item_name,
+                        "category": best_offer_want["their_want"].category,
+                        "value_tenge": best_offer_want["their_want"].value_tenge,
+                        "duration_days": best_offer_want["their_want"].duration_days,
+                        "daily_rate": best_offer_want["their_want"].daily_rate
+                    },
+
+                    # Scores
+                    "overall_score": round(overall_score, 2),
+                    "want_offer_score": round(best_want_offer["score"], 2),
+                    "offer_want_score": round(best_offer_want["score"], 2),
+                    "want_offer_equivalence": round(best_want_offer["result"].score, 2),
+                    "offer_want_equivalence": round(best_offer_want["result"].score, 2),
+                    "want_offer_similarity": round(best_want_offer["language_similarity"], 2),
+                    "offer_want_similarity": round(best_offer_want["language_similarity"], 2),
+
+                    # Quality indicators
+                    "score_category": "mutual_exchange",
+                    "explanation": f"Mutual exchange: {len(want_offer_matches)} want↔offer + {len(offer_want_matches)} offer↔want matches found"
+                })
+
+        # Sort by overall exchange score descending
+        matches.sort(key=lambda x: x["overall_score"], reverse=True)
 
         # Create notifications for each match
         from backend.crud import create_notification
@@ -837,56 +878,65 @@ def _find_matches_internal(
                 partner_user = db.query(User).filter(User.id == partner_user_id).first()
 
                 if partner_user:
-                    # Notification for partner (they have an item that matches user's want/offer)
+                    # Notification for partner (mutual exchange found)
                     partner_notification = NotificationCreate(
-                        user_id=other_user.id,
+                        user_id=partner_user.id,
                         payload={
                             "match_id": match["match_id"],
-                            "match_type": match.get("type", "unknown"),
-                            "your_item": match.get("their_offer") or match.get("their_want", {}),
-                            "matched_with": match.get("my_want") or match.get("my_offer", {}),
-                            "score": match["score"],
-                            "quality": match.get("score_category", "unknown"),
-                            "category": match.get("category", ""),
-                            "exchange_type": match.get("exchange_type", ""),
-                            "difference_percent": match.get("difference_percent", 0),
-                            "explanation": match.get("explanation", ""),
-                            # Add partner contact info
+                            "match_type": "mutual_exchange",
+                            "exchange_type": match["exchange_type"],
+
+                            # Partner gets what they want
+                            "you_receive": match["their_want_item"],
+                            "you_give": match["my_offer_item"],
+
+                            # Partner info about the other person
                             "partner_name": user.username,
                             "partner_telegram": user.telegram_username or f"+{user.telegram_id}" if user.telegram_id else None,
                             "partner_rating": round(user.trust_score, 2),
-                            "partner_exchanges": len([r for r in user.ratings_received]) if hasattr(user, 'ratings_received') else 0
+                            "partner_exchanges": len([r for r in user.ratings_received]) if hasattr(user, 'ratings_received') else 0,
+
+                            # Exchange details
+                            "overall_score": match["overall_score"],
+                            "want_offer_score": match["want_offer_score"],
+                            "offer_want_score": match["offer_want_score"],
+                            "explanation": match["explanation"]
                         }
                     )
                     create_notification(db, partner_notification)
                     notifications_created += 1
 
-                # Notification for current user (optional - they initiated the search)
+                # Notification for current user (mutual exchange found)
                 user_notification = NotificationCreate(
                     user_id=user_id,
                     payload={
                         "match_id": match["match_id"],
-                        "match_type": match.get("type", "unknown"),
-                        "your_item": match.get("my_want") or match.get("my_offer", {}),
-                        "matched_with": match.get("their_offer") or match.get("their_want", {}),
+                        "match_type": "mutual_exchange",
+                        "exchange_type": match["exchange_type"],
+
+                        # User gets what they want
+                        "you_receive": match["my_want_item"],
+                        "you_give": match["my_offer_item"],
+
+                        # Partner info
                         "partner_user_id": partner_user_id,
                         "partner_name": other_user.username,
                         "partner_telegram": other_user.telegram_username or f"+{other_user.telegram_id}" if other_user.telegram_id else None,
                         "partner_rating": round(other_user.trust_score, 2),
                         "partner_exchanges": len([r for r in other_user.ratings_received]) if hasattr(other_user, 'ratings_received') else 0,
-                        "score": match["score"],
-                        "quality": match.get("score_category", "unknown"),
-                        "category": match.get("category", ""),
-                        "exchange_type": match.get("exchange_type", ""),
-                        "difference_percent": match.get("difference_percent", 0),
-                        "explanation": match.get("explanation", "")
+
+                        # Exchange details
+                        "overall_score": match["overall_score"],
+                        "want_offer_score": match["want_offer_score"],
+                        "offer_want_score": match["offer_want_score"],
+                        "explanation": match["explanation"]
                     }
                 )
                 create_notification(db, user_notification)
                 notifications_created += 1
 
             except Exception as notif_error:
-                logger.warning(f"Failed to create notification for match {match.get('match_id')}: {notif_error}")
+                logger.warning(f"Failed to create notification for mutual match {match.get('match_id')}: {notif_error}")
                 # Continue processing other matches
 
         db.commit()  # Commit notifications
