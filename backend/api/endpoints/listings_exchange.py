@@ -88,7 +88,7 @@ def get_wants_items(
                 "daily_rate": item.daily_rate,
                 "exchange_type": item.exchange_type.value,
                 "description": item.description,
-                "created_at": item.created_at.isoformat() if item.created_at else None
+                "created_at": str(getattr(item, 'created_at'))
             })
 
         # Build filters info
@@ -159,7 +159,7 @@ def get_offers_items(
                 "daily_rate": item.daily_rate,
                 "exchange_type": item.exchange_type.value,
                 "description": item.description,
-                "created_at": item.created_at.isoformat() if item.created_at else None
+                "created_at": str(getattr(item, 'created_at'))
             })
 
         # Build filters info
@@ -719,18 +719,21 @@ def _find_matches_internal(
                     if my_want.exchange_type != their_offer.exchange_type:
                         continue
 
-                    # Calculate equivalence score
+                    # Calculate equivalence score with cross-category adjustment
+                    is_cross_category = (my_want.category != their_offer.category)
                     if my_want.exchange_type == ExchangeType.PERMANENT:
                         result = ExchangeEquivalence.calculate_permanent_score(
                             my_want.value_tenge,
-                            their_offer.value_tenge
+                            their_offer.value_tenge,
+                            tolerance=0.5 if is_cross_category else None  # Lower tolerance for cross-category
                         )
                     else:  # TEMPORARY
                         result = ExchangeEquivalence.calculate_temporary_score(
                             my_want.value_tenge,
                             my_want.duration_days,
                             their_offer.value_tenge,
-                            their_offer.duration_days
+                            their_offer.duration_days,
+                            tolerance=0.5 if is_cross_category else None  # Lower tolerance for cross-category
                         )
 
                     # Apply language similarity multiplier
@@ -742,8 +745,17 @@ def _find_matches_internal(
                     # Combined score: 70% equivalence, 30% language similarity
                     combined_score = result.score * 0.7 + language_similarity * 0.3
 
-                    # Only match if both equivalence and combined score pass threshold
-                    if result.is_match and combined_score >= 0.70:
+                    # Dynamic threshold: lower for cross-category matches
+                    # Cross-category exchanges allow lower similarity threshold
+                    is_cross_category = (my_want.category != their_offer.category)
+                    threshold = 0.20 if is_cross_category else 0.70
+
+                    # For cross-category exchanges, lower equivalence threshold
+                    equivalence_threshold = 0.30 if is_cross_category else ExchangeEquivalence.config.MIN_MATCH_SCORE
+                    result_is_match = result.score >= equivalence_threshold
+
+                    # Only match if equivalence passes and combined score meets dynamic threshold
+                    if result_is_match and combined_score >= threshold:
                         want_offer_matches.append({
                             "my_want": my_want,
                             "their_offer": their_offer,
@@ -764,18 +776,21 @@ def _find_matches_internal(
                     if my_offer.exchange_type != their_want.exchange_type:
                         continue
 
-                    # Calculate equivalence score
+                    # Calculate equivalence score with cross-category adjustment
+                    is_cross_category = (my_offer.category != their_want.category)
                     if my_offer.exchange_type == ExchangeType.PERMANENT:
                         result = ExchangeEquivalence.calculate_permanent_score(
                             my_offer.value_tenge,
-                            their_want.value_tenge
+                            their_want.value_tenge,
+                            tolerance=0.5 if is_cross_category else None  # Lower tolerance for cross-category
                         )
                     else:  # TEMPORARY
                         result = ExchangeEquivalence.calculate_temporary_score(
                             my_offer.value_tenge,
                             my_offer.duration_days,
                             their_want.value_tenge,
-                            their_want.duration_days
+                            their_want.duration_days,
+                            tolerance=0.5 if is_cross_category else None  # Lower tolerance for cross-category
                         )
 
                     # Apply language similarity multiplier
@@ -787,8 +802,17 @@ def _find_matches_internal(
                     # Combined score: 70% equivalence, 30% language similarity
                     combined_score = result.score * 0.7 + language_similarity * 0.3
 
-                    # Only match if both equivalence and combined score pass threshold
-                    if result.is_match and combined_score >= 0.70:
+                    # Dynamic threshold: lower for cross-category matches
+                    # Cross-category exchanges allow lower similarity threshold
+                    is_cross_category = (my_offer.category != their_want.category)
+                    threshold = 0.20 if is_cross_category else 0.70
+
+                    # For cross-category exchanges, lower equivalence threshold
+                    equivalence_threshold = 0.30 if is_cross_category else ExchangeEquivalence.config.MIN_MATCH_SCORE
+                    result_is_match = result.score >= equivalence_threshold
+
+                    # Only match if equivalence passes and combined score meets dynamic threshold
+                    if result_is_match and combined_score >= threshold:
                         offer_want_matches.append({
                             "my_offer": my_offer,
                             "their_want": their_want,
