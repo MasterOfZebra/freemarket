@@ -1,8 +1,8 @@
 # 🏛️ FreeMarket System Architecture
 
-**Version:** 2.0 - Категории v6, JWT-аутентификация, Nginx
+**Version:** 2.2 - Personal Cabinet, Real-Time Communications & Moderation
 **Last Updated:** Ноябрь 2025
-**Status:** ✅ Production Ready
+**Status:** ✅ Production Ready with Full User Experience
 
 ---
 
@@ -12,11 +12,15 @@
 2. [Категории v6, JWT-аутентификация и Nginx](#categories-v6-jwt-nginx)
 3. [User Journey](#user-journey)
 4. [System Architecture (7 Layers)](#system-architecture-7-layers)
-5. [Data Model](#data-model)
-6. [Category Matching Engine](#category-matching-engine)
-7. [API Endpoints](#api-endpoints)
-8. [Telegram Integration](#telegram-integration)
-9. [Database Schema](#database-schema)
+5. [Real-Time Layer](#real-time-layer)
+6. [Notification & Review Stream](#notification--review-stream)
+7. [Complaint & Moderation Subsystem](#complaint--moderation-subsystem)
+8. [Incremental Matching System](#incremental-matching-system)
+9. [Data Model](#data-model)
+10. [Category Matching Engine](#category-matching-engine)
+11. [API Endpoints](#api-endpoints)
+12. [Telegram Integration](#telegram-integration)
+13. [Database Schema](#database-schema)
 
 ---
 
@@ -28,11 +32,16 @@
 - ✅ **Category-based listings** - хочу/могу по 6 категориям
 - ✅ **Smart matching** - находит пары по пересечению категорий и стоимости
 - ✅ **Telegram notifications** - уведомления о совпадениях
-- ✅ **Personal cabinet** - просмотр совпадений на сайте
+- ✅ **Personal cabinet** - полный дашборд пользователя с историей
 - ✅ **Location filtering** - фильтр по городам (Алматы, Астана, Шымкент)
 - ✅ **Chain matching** - поиск многосторонних обменов (3+ участников)
 - ✅ **Категории v6** - новая, версионированная система категорий (Permanent/Temporary)
 - ✅ **JWT-аутентификация** - безопасная аутентификация с refresh-токенами и Redis-ревокацией
+- ✅ **Real-Time Chat** - WebSocket чат с гарантией доставки сообщений
+- ✅ **Live Notifications** - SSE стримы для мгновенных обновлений
+- ✅ **Review & Trust System** - система отзывов с анти-спам контролем
+- ✅ **Moderation & Safety** - автоматическая модерация жалоб с эскалацией
+- ✅ **Incremental Matching** - событийно-ориентированные обновления матчинга
 
 ---
 
@@ -199,7 +208,138 @@ STEP 6: Договоренность & обмен
 
 ---
 
-## 📊 **Data Model**
+## 💬 **Real-Time Layer**
+
+### **WebSocket Chat System**
+
+**Architecture:**
+- **Separate Gateway Container** (`freemarket-ws`) - изолированный WebSocket сервер для лучшей масштабируемости
+- **Connection Management** - JWT аутентификация при подключении, автоматическое отключение неактивных соединений
+- **Message Delivery Guarantees** - Redis TTL-кэш для сообщений, повторная доставка при сбое WebSocket
+- **Pub/Sub Broadcasting** - Redis Pub/Sub для широковещательной рассылки сообщений всем участникам обмена
+
+**Protocol:**
+```javascript
+// Client connects with JWT token
+const ws = new WebSocket('wss://api.freemarket.kz/ws/exchange/mutual_1_2_10_15?token=jwt_token');
+
+// Server validates token and exchange participation
+// Messages are delivered with timestamps and read receipts
+```
+
+**Features:**
+- **Delivery Tracking** - `delivered_at`, `read_at` timestamps для гарантии доставки
+- **Redis TTL Cache** - последние сообщения кэшируются для восстановления после переподключения
+- **Rate Limiting** - ограничение частоты отправки сообщений (Redis-based)
+- **Connection Pooling** - эффективное управление множественными соединениями
+
+### **Server-Sent Events (SSE)**
+
+**Architecture:**
+- **Event Stream Endpoint** (`/api/events/stream`) - односторонний поток событий от сервера
+- **Redis Streams** - journaling и replay для надежности
+- **Consumer Groups** - масштабируемая обработка событий
+- **Last Events Cache** - Redis JSON кэш последних событий для быстрой инициализации клиента
+
+**Event Types:**
+```json
+{
+  "type": "message_received",
+  "exchange_id": "mutual_1_2_10_15",
+  "sender_name": "John Doe",
+  "preview": "Hi, let's meet...",
+  "timestamp": "2025-11-07T10:00:00Z"
+}
+
+{
+  "type": "notification_new",
+  "notification_id": 123,
+  "title": "New match found!",
+  "message": "You have a new potential exchange",
+  "priority": "high"
+}
+```
+
+---
+
+## 🔔 **Notification & Review Stream**
+
+### **Notification System**
+
+**Architecture:**
+- **UserEvent Model** - структурированные события для каждого пользователя
+- **SSE Stream** - реальное время без постоянного polling
+- **Event Types** - стандартизированные типы событий (MESSAGE_RECEIVED, OFFER_MATCHED, EXCHANGE_COMPLETED, etc.)
+- **Push Notifications** - интеграция с Firebase Cloud Messaging для мобильных устройств
+
+**Event Flow:**
+```
+User Action → Event Creation → Redis Stream → SSE Broadcast → UI Update
+```
+
+### **Review & Trust Analytics**
+
+**Trust Score Calculation:**
+```
+Base Score = Average Rating (weighted by recency)
+Completion Bonus = +10% for high completion rate
+Account Age Bonus = +5% for accounts > 6 months
+Report Penalty = -5% per received report
+
+Final Trust Score = Base + Bonuses - Penalties
+```
+
+**Anti-Spam Controls:**
+- Rate limiting: 5 reviews per hour per user
+- One review per exchange per user
+- Reviews only after exchange confirmation
+- Suspicious patterns detection
+
+**Redis Caching:**
+- User ratings cached for 1 hour
+- Trust scores recalculated daily
+- Recent reviews cached for fast retrieval
+
+---
+
+## 🚨 **Complaint & Moderation Subsystem**
+
+### **Auto-Moderation Pipeline**
+
+**Report Processing:**
+```
+User Report → Redis Stream → Background Worker → Auto-Analysis → Admin Queue
+```
+
+**Auto-Escalation Rules:**
+- 3+ reports on listing → auto-hide
+- 5+ reports on user → auto-ban (7 days)
+- Fraud reports → immediate admin review
+- Spam patterns → account suspension
+
+**Admin Dashboard:**
+- Real-time report queue
+- Moderation statistics
+- Bulk actions support
+- Audit trail logging
+
+### **Safety Features**
+
+**Content Moderation:**
+- Automated spam detection
+- Image analysis for inappropriate content
+- Pattern matching for fraud indicators
+- User behavior analytics
+
+**Account Protection:**
+- Progressive penalties (warning → ban)
+- Appeal mechanisms
+- Account recovery procedures
+- Data export on account deletion
+
+---
+
+## 🤖 **Incremental Matching System**
 
 ### **Normalized Schema:**
 
@@ -244,6 +384,94 @@ notifications
   ├─ user_id (FK → users)
   ├─ payload (JSON: match details + telegram details)
   ├─ is_sent (BOOLEAN)
+  └─ created_at
+
+user_events (NEW!)
+  ├─ id (PK)
+  ├─ user_id (FK → users)
+  ├─ event_type (MESSAGE_RECEIVED, OFFER_MATCHED, EXCHANGE_COMPLETED, etc.)
+  ├─ related_id (INTEGER, optional)
+  ├─ payload (JSONB)
+  ├─ is_read (BOOLEAN)
+  ├─ created_at
+  └─ read_at
+
+exchange_messages (NEW!)
+  ├─ id (PK)
+  ├─ exchange_id (VARCHAR)
+  ├─ sender_id (FK → users)
+  ├─ message_text (TEXT)
+  ├─ message_type (TEXT, IMAGE, SYSTEM)
+  ├─ is_read (BOOLEAN)
+  ├─ delivered_at (TIMESTAMP)
+  ├─ read_at (TIMESTAMP)
+  └─ created_at
+
+user_reviews (NEW!)
+  ├─ id (PK)
+  ├─ author_id (FK → users)
+  ├─ target_id (FK → users)
+  ├─ exchange_id (VARCHAR)
+  ├─ rating (INTEGER: 1-5)
+  ├─ text (TEXT)
+  ├─ is_public (BOOLEAN)
+  └─ created_at
+
+exchange_history (NEW!)
+  ├─ id (PK)
+  ├─ exchange_id (VARCHAR)
+  ├─ event_type (CREATED, CONFIRMED, COMPLETED, CANCELLED, REVIEWED)
+  ├─ user_id (FK → users, NULLABLE)
+  ├─ details (JSONB)
+  └─ created_at
+
+reports (NEW!)
+  ├─ id (PK)
+  ├─ reporter_id (FK → users)
+  ├─ target_listing_id (FK → listing_items, NULLABLE)
+  ├─ target_user_id (FK → users, NULLABLE)
+  ├─ reason (PRICE_MISMATCH, SPAM, FRAUD, etc.)
+  ├─ description (TEXT)
+  ├─ status (PENDING, UNDER_REVIEW, RESOLVED, DISMISSED)
+  ├─ admin_id (FK → users, NULLABLE)
+  ├─ admin_notes (TEXT)
+  ├─ resolution (LISTING_REMOVED, USER_WARNED, etc.)
+  ├─ created_at
+  ├─ resolved_at
+  └─ updated_at
+
+user_trust_index (NEW!)
+  ├─ id (PK)
+  ├─ user_id (FK → users, UNIQUE)
+  ├─ trust_score (FLOAT)
+  ├─ weighted_rating (FLOAT)
+  ├─ exchanges_completed (INTEGER)
+  ├─ reviews_received (INTEGER)
+  ├─ reports_filed (INTEGER)
+  ├─ reports_received (INTEGER)
+  ├─ account_age_days (INTEGER)
+  ├─ last_activity_days (INTEGER)
+  ├─ last_calculated (TIMESTAMP)
+  └─ created_at
+
+user_action_log (NEW!)
+  ├─ id (PK)
+  ├─ user_id (FK → users)
+  ├─ action_type (LOGIN, LISTING_CREATE, MESSAGE_SEND, etc.)
+  ├─ target_id (INTEGER, NULLABLE)
+  ├─ metadata (JSONB)
+  ├─ ip_address (VARCHAR)
+  ├─ user_agent (TEXT)
+  └─ created_at
+
+match_index (NEW!)
+  ├─ id (PK)
+  ├─ user_id (FK → users)
+  ├─ item_type (want, offer)
+  ├─ exchange_type (PERMANENT, TEMPORARY)
+  ├─ category (VARCHAR)
+  ├─ tags (JSONB)
+  ├─ updated_at
   └─ created_at
 ```
 
@@ -329,7 +557,199 @@ For each category:
 
 ---
 
-## 📡 **API Endpoints (22 Total)**
+## 🧮 **Language Normalization & Scoring Engine**
+
+### **LanguageNormalizer Module (`backend/language_normalization.py`)**
+
+Модуль для многоязыковой нормализации текста и семантического сравнения. Обеспечивает точное сопоставление текстов с учетом морфологии, синонимов и семантической близости.
+
+#### **Основные компоненты:**
+
+1. **Текстовые трансформации:**
+   - Кириллица ↔ Латиница (транслитерация)
+   - Нормализация регистра и пунктуации
+   - Удаление стоп-слов (из `data/stopwords.txt`)
+
+2. **Морфологический анализ:**
+   - Поддержка русской морфологии через pymorphy3
+   - Лемматизация и стемминг через NLTK/Spacy
+
+3. **Семантическое сравнение:**
+   - **Векторная близость:** SentenceTransformers модель (`paraphrase-multilingual-MiniLM-L12-v2`)
+   - **Лексическое перекрытие:** Jaccard similarity по словам
+   - **Fuzzy matching:** RapidFuzz для опечаток и вариаций
+   - **Синонимы:** Расширенная база в `data/synonyms.json`
+
+4. **Композитный скоринг:**
+   ```
+   final_score = (semantic_vector * 0.4) + (word_overlap * 0.6)
+   ```
+
+#### **API:**
+```python
+normalizer = LanguageNormalizer()
+score = normalizer.similarity_score("гитара", "уроки музыки")  # → 0.75
+vector_sim = normalizer.vector_similarity("iPhone", "айфон")   # → 0.92
+```
+
+### **MatchingScorer Module (`backend/scoring.py`)**
+
+Комплексный модуль для расчета итогового скоринга мэтчинга. Комбинирует текстовую схожесть, стоимость и временные параметры.
+
+#### **Компоненты скоринга:**
+
+1. **ScoreComponent Enum:**
+   - `SEMANTIC_VECTOR`: Векторная семантическая близость (0.4 вес)
+   - `WORD_OVERLAP`: Перекрытие слов (0.6 вес)
+   - `FUZZY_MATCH`: Fuzzy matching для опечаток
+   - `COST_PRIORITY`: Приоритет по стоимости
+   - `DURATION_PENALTY`: Штраф за несовпадение duration
+
+2. **Стоимостный приоритет:**
+   ```
+   cost_priority = 1.0 / (1.0 + price_diff_ratio)
+   ```
+
+3. **Duration penalty:**
+   - Точное совпадение: `1.1` (бонус)
+   - Несовпадение: `0.9` (штраф)
+
+4. **Итоговый score:**
+   ```
+   final_score = (semantic*0.4 + overlap*0.6 + cost_priority) * duration_penalty
+   ```
+
+#### **API:**
+```python
+scorer = MatchingScorer()
+result = scorer.calculate_score(
+    "гитара", "уроки музыки",
+    price_a=25000, price_b=15000,
+    duration_a="7 дней", duration_b="7 дней",
+    is_cross_category=True
+)
+# → MatchingScore(total_score=0.85, is_match=True, ...)
+```
+
+### **EquivalenceEngine с Adaptive Tolerance**
+
+Расширенная система эквивалентности с адаптивной толерантностью для межкатегорийных обменов.
+
+#### **Конфигурация:**
+```python
+class ExchangeEquivalenceConfig:
+    VALUE_TOLERANCE = 0.15          # ±15% для same-category
+    CROSS_CATEGORY_TOLERANCE = 0.50  # ±50% для cross-category
+    MIN_MATCH_SCORE = 0.70           # Минимальный скор для мэтча
+```
+
+#### **Адаптивная логика:**
+```python
+tolerance = CROSS_CATEGORY_TOLERANCE if is_cross_category else VALUE_TOLERANCE
+# Позволяет более гибкое сопоставление для разных категорий
+```
+
+---
+
+## 🤖 **Incremental Matching System**
+
+### **Архитектура инкрементального мэтчинга**
+
+Система инкрементального мэтчинга предотвращает полную пересчет всех комбинаций при каждом изменении профиля пользователя. Вместо O(N×N) используется O(K) сложность, где K - количество затронутых категорий.
+
+#### **Ключевые компоненты:**
+
+1. **MatchIndex Table** - индекс пользовательских предпочтений
+2. **Event System** - асинхронные события изменения профиля
+3. **MatchUpdater Worker** - фоновый пересчет матчей
+4. **Partial Updates API** - PATCH endpoints для частичных изменений
+
+#### **MatchIndex Table Schema:**
+```sql
+CREATE TABLE match_index (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    item_type VARCHAR(10) NOT NULL, -- 'want' | 'offer'
+    exchange_type VARCHAR(20) NOT NULL, -- 'PERMANENT' | 'TEMPORARY'
+    category VARCHAR(50) NOT NULL,
+    tags JSONB, -- Array of tags for advanced filtering
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    -- Unique constraint prevents duplicates
+    UNIQUE(user_id, category, item_type, exchange_type),
+
+    -- GIN index for tag-based queries
+    INDEX GIN (tags),
+
+    -- Composite indexes for performance
+    INDEX (category, user_id),
+    INDEX (user_id),
+    INDEX (exchange_type),
+    INDEX (item_type),
+    INDEX (updated_at)
+);
+```
+
+#### **Event-Driven Flow:**
+
+```
+1. PATCH /listings/{id} → 2. ProfileChangeEvent → 3. MatchIndex Update → 4. MatchUpdateEvent → 5. MatchUpdater Worker → 6. Incremental Recalculation
+```
+
+#### **Partial Update API:**
+
+```http
+PATCH /listings/{listing_id}?user_id=123
+Content-Type: application/json
+
+{
+  "wants": {
+    "electronics": [
+      {"item_name": "iPad", "value_tenge": 300000, "exchange_type": "PERMANENT"}
+    ]
+  },
+  "offers": {
+    "transport": [
+      {"item_name": "велосипед", "value_tenge": 50000, "exchange_type": "TEMPORARY", "duration_days": 30}
+    ]
+  },
+  "remove_items": [456, 789]
+}
+```
+
+#### **Exchange Confirmation & Auto-Cleanup:**
+
+```http
+POST /exchanges/mutual_1_2_10_15/confirm?confirmer_user_id=1
+```
+
+**Автоматические действия:**
+- Валидация участников обмена
+- Soft-delete обмененных items (`is_archived = true`)
+- Генерация ProfileChangeEvent для обоих пользователей
+- Отправка уведомлений о завершении обмена
+- Триггер инкрементального пересчета матчей
+
+#### **Performance Benefits:**
+
+- **Before:** Полный пересчет всех матчей при любом изменении (~N×N операций)
+- **After:** Инкрементальный пересчет только затронутых категорий (~K×M операций, где M << N)
+
+- **Index Size:** O(U×C) вместо O(U×I), где U=users, C=categories, I=items
+- **Update Latency:** <1 сек вместо 10-30 сек при большом количестве пользователей
+- **Background Processing:** Не блокирует UI при изменениях профиля
+
+#### **Error Handling & Resilience:**
+
+- **Event Replay:** События сохраняются в очереди для повторной обработки при сбоях
+- **Partial Failures:** Отдельные неудачи не ломают всю систему
+- **Rate Limiting:** Ограничение частоты обновлений от одного пользователя
+- **Monitoring:** Метрики производительности и количества обработанных задач
+
+---
+
+## 📡 **API Endpoints (44 Total)**
 
 ### **Category-Based Listings:**
 

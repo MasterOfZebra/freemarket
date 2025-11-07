@@ -1,6 +1,6 @@
 # 📡 FreeMarket API Reference
 
-**Version:** 2.0 | **Last Updated:** November 2025
+**Version:** 2.2 (Personal Cabinet, Communications & Moderation) | **Last Updated:** November 2025
 
 ---
 
@@ -16,8 +16,14 @@
 | **Listings Exchange** | 5 | ✅ Active |
 | **Matching** | 3 | ✅ Active |
 | **Exchange Chains** | 5 | ✅ Active |
+| **Exchange Confirmation** | 2 | ✅ Active |
 | **Notifications** | 2 | ✅ Active |
-| **TOTAL** | **37** | ✅ Ready |
+| **Chat (Real-Time)** | 3 | ✅ Active |
+| **Reviews & Trust** | 3 | ✅ Active |
+| **Moderation & Safety** | 4 | ✅ Active |
+| **Server-Sent Events** | 1 | ✅ Active |
+| **Exchange History** | 3 | ✅ Active |
+| **TOTAL** | **44** | ✅ Ready |
 
 ---
 
@@ -1060,6 +1066,675 @@ rm /tmp/cookies.txt
 | Metric | Value |
 |--------|-------|
 | Total Endpoints | 37 |
+| Response Time | < 200ms |
+| Max Page Size | 100 |
+| Default Page Size | 20 |
+| Timeout | 30s |
+
+---
+
+## 🔄 **Incremental Updates & Exchange Management**
+
+### **PATCH `/listings/{listing_id}` - Partial Listing Updates**
+
+Partially update a user listing with incremental matching support. Supports adding/removing items without full replacement.
+
+**Authorization:** Required (user_id query parameter)
+
+**Request Body:**
+```json
+{
+  "wants": {
+    "electronics": [
+      {
+        "item_name": "iPad Pro",
+        "value_tenge": 400000,
+        "exchange_type": "PERMANENT",
+        "description": "Хочу планшет для работы"
+      }
+    ],
+    "transport": [
+      {
+        "item_name": "аренда велосипеда",
+        "value_tenge": 25000,
+        "exchange_type": "TEMPORARY",
+        "duration_days": 14,
+        "description": "Нужен на выходные"
+      }
+    ]
+  },
+  "offers": {
+    "books": [
+      {
+        "item_name": "учебники по Python",
+        "value_tenge": 15000,
+        "exchange_type": "PERMANENT",
+        "description": "Книги в хорошем состоянии"
+      }
+    ]
+  },
+  "remove_items": [456, 789]
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "listing_id": 123,
+  "user_id": 1,
+  "items_added": 3,
+  "items_removed": 2,
+  "current_counts": {
+    "wants": 5,
+    "offers": 8
+  },
+  "message": "Listing updated successfully with incremental matching triggered"
+}
+```
+
+**Features:**
+- ✅ Atomic transactions
+- ✅ Automatic match index updates
+- ✅ Event-driven incremental matching
+- ✅ Validation of all items
+- ✅ Rate limiting (prevents spam)
+
+**Example:**
+```bash
+curl -X PATCH "https://assistance-kz.ru/api/listings/123?user_id=1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "wants": {"electronics": [{"item_name": "MacBook", "value_tenge": 600000}]},
+    "remove_items": [456]
+  }'
+```
+
+---
+
+### **POST `/exchanges/{exchange_id}/confirm` - Confirm Exchange Completion**
+
+Confirm successful exchange completion with automatic cleanup of exchanged items.
+
+**Authorization:** Required (confirmer_user_id query parameter)
+
+**URL Parameters:**
+- `exchange_id`: Exchange identifier (format: `mutual_{user_a}_{user_b}_{item_a}_{item_b}`)
+
+**Query Parameters:**
+- `confirmer_user_id`: ID of user confirming the exchange
+
+**Response:**
+```json
+{
+  "status": "success",
+  "exchange_id": "mutual_1_2_10_15",
+  "confirmed_by": 1,
+  "participants": [1, 2],
+  "items_archived": [10, 15],
+  "message": "Exchange confirmed and items automatically cleaned up from listings"
+}
+```
+
+**Automatic Actions:**
+- ✅ Validates exchange participants and items
+- ✅ Soft-deletes exchanged items (`is_archived = true`)
+- ✅ Emits profile change events for both users
+- ✅ Triggers incremental match recalculation
+- ✅ Sends completion notifications to both participants
+
+**Security:**
+- User must be a participant in the exchange
+- Items must exist and not already archived
+- Atomic transaction ensures consistency
+
+**Example:**
+```bash
+curl -X POST "https://assistance-kz.ru/api/exchanges/mutual_1_2_10_15/confirm?confirmer_user_id=1"
+```
+
+---
+
+## 💬 **Chat Endpoints**
+
+### WebSocket `/ws/exchange/{exchange_id}`
+
+Real-time chat for exchanges with message delivery guarantees.
+
+**Authorization:** Required (JWT token in query parameter)
+
+**Path Parameters:**
+- `exchange_id` (required): Exchange identifier (format: `mutual_{user_a}_{user_b}_{item_a}_{item_b}`)
+
+**Query Parameters:**
+- `token`: JWT access token
+
+**Protocol:**
+```javascript
+// Connect
+const ws = new WebSocket('wss://assistance-kz.ru/ws/exchange/mutual_1_2_10_15?token=your_jwt_token');
+
+// Send message
+ws.send(JSON.stringify({
+  type: 'message',
+  text: 'Hello, let's meet tomorrow!',
+  message_type: 'TEXT'
+}));
+
+// Receive messages
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('New message:', data);
+};
+```
+
+**Message Types:**
+- `TEXT` - Text messages
+- `IMAGE` - Image attachments
+- `SYSTEM` - System notifications
+
+---
+
+### GET `/api/chat/exchange/{exchange_id}/history`
+
+Get chat history for an exchange.
+
+**Authorization:** Required
+
+**Path Parameters:**
+- `exchange_id` (required): Exchange identifier
+
+**Query Parameters:**
+- `skip` (optional): Pagination offset (default: 0)
+- `limit` (optional): Number of messages (default: 50, max: 100)
+
+**Response (200 OK):**
+```json
+{
+  "messages": [
+    {
+      "id": 1,
+      "exchange_id": "mutual_1_2_10_15",
+      "sender_id": 1,
+      "message_text": "Hello!",
+      "message_type": "TEXT",
+      "is_read": true,
+      "delivered_at": "2025-11-07T10:00:00Z",
+      "read_at": "2025-11-07T10:01:00Z",
+      "created_at": "2025-11-07T10:00:00Z"
+    }
+  ],
+  "total": 1,
+  "unread_count": 0
+}
+```
+
+---
+
+### GET `/api/chat/unread-counts`
+
+Get unread message counts for all user's exchanges.
+
+**Authorization:** Required
+
+**Response (200 OK):**
+```json
+{
+  "total_unread": 3,
+  "exchanges": {
+    "mutual_1_2_10_15": 2,
+    "mutual_3_4_20_25": 1
+  }
+}
+```
+
+---
+
+### POST `/api/chat/exchange/{exchange_id}/mark-read`
+
+Mark all messages in an exchange as read.
+
+**Authorization:** Required
+
+**Path Parameters:**
+- `exchange_id` (required): Exchange identifier
+
+**Response (200 OK):**
+```json
+{
+  "marked_read": 2,
+  "exchange_id": "mutual_1_2_10_15"
+}
+```
+
+---
+
+## 🔔 **Server-Sent Events**
+
+### GET `/api/events/stream`
+
+Real-time event stream for notifications and updates.
+
+**Authorization:** Required (JWT token)
+
+**Response:** Server-sent events stream
+
+**Event Types:**
+```javascript
+// Connect
+const eventSource = new EventSource('/api/events/stream', {
+  headers: { 'Authorization': 'Bearer ' + token }
+});
+
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Event:', data.type, data);
+};
+
+// Example events
+{
+  "type": "message_received",
+  "exchange_id": "mutual_1_2_10_15",
+  "sender_name": "John Doe",
+  "preview": "Hi, let's meet..."
+}
+
+{
+  "type": "notification_new",
+  "notification_id": 123,
+  "title": "New match found!",
+  "message": "You have a new potential exchange"
+}
+```
+
+---
+
+## ⭐ **Reviews & Trust Endpoints**
+
+### POST `/api/reviews`
+
+Create a review for a completed exchange.
+
+**Authorization:** Required
+
+**Request Body:**
+```json
+{
+  "exchange_id": "mutual_1_2_10_15",
+  "target_user_id": 2,
+  "rating": 5,
+  "text": "Great exchange, very reliable partner!",
+  "is_public": true
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 1,
+  "author_id": 1,
+  "target_id": 2,
+  "exchange_id": "mutual_1_2_10_15",
+  "rating": 5,
+  "text": "Great exchange, very reliable partner!",
+  "is_public": true,
+  "created_at": "2025-11-07T12:00:00Z"
+}
+```
+
+**Anti-Spam Controls:**
+- Maximum 1 review per exchange per user
+- Rate limited: 5 reviews per hour per user
+- Reviews only allowed after exchange confirmation
+
+---
+
+### GET `/api/reviews/users/{user_id}`
+
+Get reviews for a specific user.
+
+**Authorization:** Required
+
+**Path Parameters:**
+- `user_id` (required): User ID to get reviews for
+
+**Query Parameters:**
+- `skip` (optional): Pagination offset
+- `limit` (optional): Number of reviews (default: 10, max: 50)
+
+**Response (200 OK):**
+```json
+{
+  "reviews": [
+    {
+      "id": 1,
+      "author_name": "Anonymous",
+      "rating": 5,
+      "text": "Great exchange!",
+      "created_at": "2025-11-07T12:00:00Z",
+      "is_verified": true
+    }
+  ],
+  "summary": {
+    "average_rating": 4.8,
+    "total_reviews": 25,
+    "verified_reviews": 20
+  }
+}
+```
+
+---
+
+### GET `/api/reviews/users/{user_id}/rating`
+
+Get user's trust rating and analytics.
+
+**Authorization:** Required
+
+**Path Parameters:**
+- `user_id` (required): User ID
+
+**Response (200 OK):**
+```json
+{
+  "user_id": 123,
+  "average_rating": 4.7,
+  "total_reviews": 15,
+  "verified_reviews": 12,
+  "trust_score": 85.5,
+  "weighted_rating": 4.6,
+  "exchanges_completed": 18,
+  "last_calculated": "2025-11-07T12:00:00Z"
+}
+```
+
+**Trust Score Calculation:**
+- Base: Average rating (weighted by recency)
+- Bonus: High completion rate (+10%)
+- Penalty: Reports received (-5% per report)
+- Account age bonus (+5% for accounts > 6 months)
+
+---
+
+## 🚨 **Moderation & Safety Endpoints**
+
+### POST `/api/reports`
+
+Submit a complaint about a listing or user.
+
+**Authorization:** Required
+
+**Request Body:**
+```json
+{
+  "target_listing_id": 123,
+  "target_user_id": null,
+  "reason": "PRICE_MISMATCH",
+  "description": "Item price doesn't match market value",
+  "evidence_urls": ["https://example.com/photo.jpg"]
+}
+```
+
+**Reason Options:**
+- `PRICE_MISMATCH` - Price doesn't match value
+- `UNAVAILABLE_ITEM` - Item not available
+- `FAKE_LISTING` - Fake or misleading listing
+- `INAPPROPRIATE_CONTENT` - Offensive content
+- `SPAM` - Spam or harassment
+- `FRAUD` - Suspected fraud
+- `OTHER` - Other issues
+
+**Response (201 Created):**
+```json
+{
+  "id": 1,
+  "reporter_id": 456,
+  "target_listing_id": 123,
+  "reason": "PRICE_MISMATCH",
+  "status": "PENDING",
+  "created_at": "2025-11-07T13:00:00Z",
+  "estimated_resolution": "2025-11-10T13:00:00Z"
+}
+```
+
+---
+
+### GET `/api/admin/reports`
+
+Admin endpoint to view reports (admin only).
+
+**Authorization:** Required (admin role)
+
+**Query Parameters:**
+- `status` (optional): Filter by status (`PENDING`, `UNDER_REVIEW`, `RESOLVED`)
+- `skip` (optional): Pagination offset
+- `limit` (optional): Number of reports (default: 20)
+
+**Response (200 OK):**
+```json
+{
+  "reports": [
+    {
+      "id": 1,
+      "reporter_name": "John Doe",
+      "target_listing_title": "iPhone for exchange",
+      "reason": "PRICE_MISMATCH",
+      "status": "PENDING",
+      "created_at": "2025-11-07T13:00:00Z",
+      "priority": "MEDIUM"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### POST `/api/admin/reports/{report_id}/resolve`
+
+Resolve a report (admin only).
+
+**Authorization:** Required (admin role)
+
+**Path Parameters:**
+- `report_id` (required): Report ID
+
+**Request Body:**
+```json
+{
+  "resolution": "LISTING_REMOVED",
+  "admin_notes": "Listing removed due to price mismatch",
+  "actions_taken": ["hide_listing", "notify_user"]
+}
+```
+
+**Resolution Options:**
+- `LISTING_REMOVED` - Listing hidden/removed
+- `USER_WARNED` - User received warning
+- `USER_BANNED` - User account banned
+- `DISMISSED` - Report dismissed as invalid
+
+**Response (200 OK):**
+```json
+{
+  "report_id": 1,
+  "status": "RESOLVED",
+  "resolution": "LISTING_REMOVED",
+  "resolved_at": "2025-11-07T14:00:00Z"
+}
+```
+
+---
+
+### POST `/api/admin/users/{user_id}/ban`
+
+Ban a user account (admin only).
+
+**Authorization:** Required (admin role)
+
+**Path Parameters:**
+- `user_id` (required): User ID to ban
+
+**Request Body:**
+```json
+{
+  "reason": "MULTIPLE_REPORTS",
+  "duration_days": 30,
+  "admin_notes": "Banned due to multiple price mismatch reports"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "user_id": 123,
+  "status": "BANNED",
+  "ban_until": "2025-12-07T14:00:00Z",
+  "reason": "MULTIPLE_REPORTS"
+}
+```
+
+---
+
+### GET `/api/admin/dashboard`
+
+Get moderation statistics (admin only).
+
+**Authorization:** Required (admin role)
+
+**Response (200 OK):**
+```json
+{
+  "stats": {
+    "pending_reports": 12,
+    "resolved_today": 8,
+    "active_bans": 3,
+    "hidden_listings": 15,
+    "reports_by_reason": {
+      "PRICE_MISMATCH": 5,
+      "SPAM": 3,
+      "FRAUD": 2
+    }
+  },
+  "recent_activity": [
+    {
+      "type": "report_resolved",
+      "report_id": 123,
+      "timestamp": "2025-11-07T14:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## 📜 **Exchange History Endpoints**
+
+### GET `/api/history/my-exchanges`
+
+Get user's exchange history with filters.
+
+**Authorization:** Required
+
+**Query Parameters:**
+- `status` (optional): `COMPLETED`, `ACTIVE`, `CANCELLED`
+- `skip` (optional): Pagination offset
+- `limit` (optional): Number of exchanges (default: 20)
+
+**Response (200 OK):**
+```json
+{
+  "exchanges": [
+    {
+      "id": "mutual_1_2_10_15",
+      "partner_name": "Jane Smith",
+      "partner_rating": 4.8,
+      "status": "COMPLETED",
+      "items": ["iPad Pro", "MacBook lessons"],
+      "completed_at": "2025-11-05T10:00:00Z",
+      "rating_given": 5,
+      "review_text": "Great exchange!"
+    }
+  ],
+  "total": 1,
+  "filters_applied": ["status:COMPLETED"]
+}
+```
+
+---
+
+### GET `/api/history/exchanges/{exchange_id}`
+
+Get detailed history for a specific exchange (participants only).
+
+**Authorization:** Required (must be participant)
+
+**Path Parameters:**
+- `exchange_id` (required): Exchange identifier
+
+**Response (200 OK):**
+```json
+{
+  "exchange_id": "mutual_1_2_10_15",
+  "participants": [
+    {"user_id": 1, "name": "John Doe", "role": "initiator"},
+    {"user_id": 2, "name": "Jane Smith", "role": "partner"}
+  ],
+  "timeline": [
+    {
+      "event_type": "CREATED",
+      "timestamp": "2025-11-01T10:00:00Z",
+      "details": "Exchange created via matching"
+    },
+    {
+      "event_type": "MESSAGE_SENT",
+      "timestamp": "2025-11-01T10:30:00Z",
+      "details": "First contact message"
+    },
+    {
+      "event_type": "CONFIRMED",
+      "timestamp": "2025-11-03T14:00:00Z",
+      "details": "Exchange confirmed by both parties"
+    },
+    {
+      "event_type": "COMPLETED",
+      "timestamp": "2025-11-05T10:00:00Z",
+      "details": "Items exchanged successfully"
+    }
+  ],
+  "final_rating": 5,
+  "review_count": 2
+}
+```
+
+---
+
+### GET `/api/history/my-exchanges/export`
+
+Export user's exchange history in various formats.
+
+**Authorization:** Required
+
+**Query Parameters:**
+- `format` (optional): `JSON`, `CSV` (default: `JSON`)
+- `start_date` (optional): Filter from date (ISO format)
+- `end_date` (optional): Filter to date (ISO format)
+
+**Response:** File download
+
+**CSV Format:**
+```csv
+exchange_id,partner_name,status,completed_at,rating_given,items
+mutual_1_2_10_15,Jane Smith,COMPLETED,2025-11-05T10:00:00Z,5,"iPad Pro, MacBook lessons"
+```
+
+---
+
+## 📊 **API Statistics**
+
+| Metric | Value |
+|--------|-------|
+| Total Endpoints | 44 |
 | Response Time | < 200ms |
 | Max Page Size | 100 |
 | Default Page Size | 20 |

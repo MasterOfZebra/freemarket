@@ -1,10 +1,10 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey, ARRAY, Numeric, Interval, text, Enum as SQLEnum, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey, ARRAY, Numeric, Interval, text as sa_text, Enum as SQLEnum, UniqueConstraint, Index
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 from backend.database import Base
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 import enum
 
 
@@ -58,6 +58,8 @@ class User(Base):
     trust_score = Column(Float, default=0.0)
     exchange_count = Column(Integer, default=0)
     rating_avg = Column(Float, default=0.0)
+    rating_count = Column(Integer, default=0)
+    last_rating_update = Column(DateTime(timezone=True), nullable=True)
 
     # Account status
     is_active = Column(Boolean, default=True)
@@ -84,8 +86,35 @@ class User(Base):
     profiles = relationship("Profile", back_populates="user")
     items = relationship("Item", back_populates="user")
     listings = relationship("Listing", back_populates="user")
-    ratings_given = relationship("Rating", foreign_keys="Rating.from_user", back_populates="from_user_rel")
-    ratings_received = relationship("Rating", foreign_keys="Rating.to_user", back_populates="to_user_rel")
+    match_indexes = relationship("MatchIndex", back_populates="user")
+    sent_messages = relationship("ExchangeMessage", back_populates="sender")
+    events = relationship("UserEvent", back_populates="user")
+    reviews_given = relationship(
+        "UserReview",
+        foreign_keys="[UserReview.author_id]",
+        back_populates="author"
+    )
+    reviews_received = relationship(
+        "UserReview",
+        foreign_keys="[UserReview.target_id]",
+        back_populates="target"
+    )
+    exchange_actions = relationship("ExchangeHistory", back_populates="user")
+    action_logs = relationship("UserActionLog", back_populates="user")
+    trust_index = relationship("UserTrustIndex", back_populates="user", uselist=False)
+    reports_filed = relationship("Report", foreign_keys="Report.reporter_id", back_populates="reporter")
+    reports_received = relationship("Report", foreign_keys="Report.target_user_id", back_populates="target_user")
+    reports_moderated = relationship("Report", foreign_keys="Report.admin_id", back_populates="admin")
+    ratings_given = relationship(
+        "Rating",
+        foreign_keys="[Rating.from_user]",
+        back_populates="from_user_rel"
+    )
+    ratings_received = relationship(
+        "Rating",
+        foreign_keys="[Rating.to_user]",
+        back_populates="to_user_rel"
+    )
 
     __table_args__ = (
         Index("ix_user_auth", "email", "phone", "username"),  # For auth lookups
@@ -112,7 +141,7 @@ class Item(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    kind = Column(Integer, nullable=False, default=1, server_default=text("1"))  # 1=offer, 2=want
+    kind = Column(Integer, nullable=False, default=1, server_default=sa_text("1"))  # 1=offer, 2=want
     category = Column(String, nullable=False)
     title = Column(String)
     description = Column(Text)
@@ -321,16 +350,44 @@ class RefreshToken(Base):
     @property
     def is_expired(self) -> bool:
         """Check if token is expired"""
-        return self.expires_at < func.now()
+        from datetime import datetime, timezone
+        # ensure that expires_at and now are both timezone-aware
+        now = datetime.now(timezone.utc)
+        # expires_at may or may not be tz-aware depending on backend engine, handle accordingly
+        expires_at = self.expires_at
+        if not isinstance(expires_at, datetime) or not isinstance(now, datetime):
+            # Defensive: if either is not a datetime, return expired
+            return True
+        # Ensure both times are naive or both are aware for correct comparison
+        if expires_at.tzinfo is None and now.tzinfo is not None:
+            expires_at = expires_at.replace(tzinfo=now.tzinfo)
+        elif expires_at.tzinfo is not None and now.tzinfo is None:
+            now = now.replace(tzinfo=expires_at.tzinfo)
+        # Ensure proper bool return: don't return SQLAlchemy Column expressions!
+        return bool(expires_at < now)
 
     @property
     def is_valid(self) -> bool:
         """Check if token is still valid"""
-        return not self.is_revoked and not self.is_expired
+        # self.is_revoked is a SQLAlchemy Column, not a Python bool
+        # To get the actual value, use getattr if necessary
+        is_revoked = getattr(self, "is_revoked", None)
+        # Defensive: treat None as revoked (invalid)
+        if is_revoked is None:
+            return False
+        # Defensive: handle SQLAlchemy-instrumented attributes vs. loaded values
+        try:
+            if hasattr(is_revoked, '__bool__'):
+                revoked = bool(is_revoked)
+            else:
+                revoked = is_revoked
+        except Exception:
+            revoked = True  # If evaluation fails, revoke for safety
+
+        return not revoked and not self.is_expired
 
 
 class AuthEvent(Base):
-    """Audit log for authentication events"""
     __tablename__ = "auth_events"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -518,14 +575,21 @@ class ListingItem(Base):
 
     description = Column(Text, nullable=True, default="")
 
+    # Soft delete for completed exchanges
+    is_archived = Column(Boolean, nullable=False, default=False, index=True)
+
     # Audit fields
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relationship
+    # Relationships
     listing = relationship("Listing", backref="items")
+    reports = relationship("Report", back_populates="target_listing")
 
     def __repr__(self):
+        duration = getattr(self, "duration_days", None)
+        duration_str = f" days={duration}" if duration not in (None, 0) else ""
+
         return (
             f"<ListingItem "
             f"id={self.id} "
@@ -533,7 +597,7 @@ class ListingItem(Base):
             f"category={self.category} "
             f"exchange={self.exchange_type} "
             f"value={self.value_tenge}₸"
-            f"{f' days={self.duration_days}' if self.duration_days else ''}"
+            f"{duration_str}"
             f">"
         )
 
@@ -546,9 +610,19 @@ class ListingItem(Base):
         For PERMANENT: returns None
         Formula: value_tenge / duration_days
         """
-        if self.exchange_type == ExchangeType.TEMPORARY and self.duration_days:
-            return self.value_tenge / self.duration_days
-        return None
+        exchange_type = getattr(self, "exchange_type", None)
+        duration_days = getattr(self, "duration_days", None)
+        value = getattr(self, "value_tenge", None)
+
+        if exchange_type == ExchangeType.TEMPORARY:
+            if duration_days in (None, 0) or value is None:
+                return 0.0
+            try:
+                return float(value) / float(duration_days)
+            except (ZeroDivisionError, TypeError, ValueError):
+                return 0.0
+
+        return 0.0
 
     @property
     def is_valid(self) -> bool:
@@ -556,15 +630,29 @@ class ListingItem(Base):
         Validate item data:
         - value_tenge must be > 0
         - TEMPORARY: duration_days must be 1-365
-        - PERMANENT: duration_days must be NULL
+        - PERMANENT: duration_days must be None
         """
-        if self.value_tenge <= 0:
+        value = getattr(self, "value_tenge", None)
+        exchange_type = getattr(self, "exchange_type", None)
+        duration = getattr(self, "duration_days", None)
+
+        if value is not None and value <= 0:
             return False
 
-        if self.exchange_type == ExchangeType.TEMPORARY:
-            return 1 <= self.duration_days <= 365 if self.duration_days else False
-        else:  # PERMANENT
-            return self.duration_days is None
+        if exchange_type == ExchangeType.TEMPORARY:
+            if duration is None:
+                return False
+            try:
+                duration_int = int(duration)
+            except (TypeError, ValueError):
+                return False
+            return 1 <= duration_int <= 365
+
+        if exchange_type == ExchangeType.PERMANENT:
+            return duration is None
+
+        # If exchange_type is unknown, default to False for safety
+        return False
 
     @property
     def equivalence_key(self) -> tuple:
@@ -572,7 +660,392 @@ class ListingItem(Base):
         Create unique key for matching algorithm.
         Used to identify duplicate matching criteria.
         """
-        if self.exchange_type == ExchangeType.TEMPORARY:
-            return (self.category, self.exchange_type, round(self.daily_rate, 2))
-        else:  # PERMANENT
-            return (self.category, self.exchange_type, self.value_tenge)
+        exchange_type = getattr(self, "exchange_type", None)
+        category = getattr(self, "category", None)
+        value = getattr(self, "value_tenge", None)
+
+        if exchange_type == ExchangeType.TEMPORARY:
+            daily_rate = self.daily_rate
+            normalized_rate = round(daily_rate, 2) if isinstance(daily_rate, (int, float)) else None
+            return (
+                category,
+                exchange_type,
+                normalized_rate
+            )
+
+        if exchange_type == ExchangeType.PERMANENT:
+            return (
+                category,
+                exchange_type,
+                value
+            )
+
+        # Fallback for unknown exchange types
+        return (
+            category,
+            exchange_type,
+            value
+        )
+
+
+class ItemType(str, enum.Enum):
+    """Type of listing item"""
+    WANT = "want"
+    OFFER = "offer"
+
+
+class MatchIndex(Base):
+    """
+    Incremental matching index for optimized performance.
+
+    Stores user preferences by category and tags for fast matching queries.
+    Prevents full N×N recalculation by tracking only changed categories.
+    """
+    __tablename__ = "match_index"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    item_type = Column(String(10), nullable=False, index=True)  # 'want' | 'offer'
+    exchange_type = Column(String(20), nullable=False, index=True)  # 'PERMANENT' | 'TEMPORARY'
+    category = Column(String(50), nullable=False, index=True)
+    tags = Column(JSON, nullable=True)  # Array of tags for advanced filtering
+    updated_at = Column(DateTime(timezone=True), server_default=sa_text('now()'), onupdate=sa_text('now()'))
+    created_at = Column(DateTime(timezone=True), server_default=sa_text('now()'))
+
+    # Relationships
+    user = relationship("User", back_populates="match_indexes")
+
+    # Unique constraint to prevent duplicates
+    __table_args__ = (
+        UniqueConstraint('user_id', 'category', 'item_type', 'exchange_type',
+                        name='uq_match_index_user_category_type'),
+    )
+
+    def __repr__(self):
+        return f"<MatchIndex(user_id={self.user_id}, category='{self.category}', type='{self.item_type}')>"
+
+
+class MessageType(str, enum.Enum):
+    """Type of chat message"""
+    TEXT = "text"
+    IMAGE = "image"
+    SYSTEM = "system"  # Auto-generated messages
+
+
+class ExchangeMessage(Base):
+    """
+    Chat messages for exchange conversations.
+
+    Each exchange (mutual_X_Y_A_B) has its own chat thread.
+    Only participants can send/receive messages.
+    """
+    __tablename__ = "exchange_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    exchange_id = Column(String(100), nullable=False, index=True)  # mutual_X_Y_A_B format
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    message_text = Column(Text, nullable=False)
+    message_type = Column(SQLEnum(MessageType), nullable=False, default=MessageType.TEXT)
+    is_read = Column(Boolean, nullable=False, default=False, index=True)
+    delivered_at = Column(DateTime(timezone=True), nullable=True)  # When message was delivered to recipient
+    read_at = Column(DateTime(timezone=True), nullable=True)  # When message was read by recipient
+    created_at = Column(DateTime(timezone=True), server_default=sa_text('now()'), index=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=sa_text('now()'))
+
+    # Relationships
+    sender = relationship("User", back_populates="sent_messages")
+
+    def __repr__(self):
+        return f"<ExchangeMessage(id={self.id}, exchange='{self.exchange_id}', sender={self.sender_id})>"
+
+
+class EventType(str, enum.Enum):
+    """Types of user events/notifications"""
+    MESSAGE_RECEIVED = "MessageReceived"
+    OFFER_MATCHED = "OfferMatched"
+    EXCHANGE_CREATED = "ExchangeCreated"
+    EXCHANGE_CONFIRMED = "ExchangeConfirmed"
+    EXCHANGE_COMPLETED = "ExchangeCompleted"
+    REVIEW_RECEIVED = "ReviewReceived"
+    SYSTEM_WARNING = "SystemWarning"
+    BAN_ISSUED = "BanIssued"
+    PROFILE_VIEWED = "ProfileViewed"
+    LISTING_UPDATED = "ListingUpdated"
+
+
+class UserEvent(Base):
+    """
+    User notifications and events.
+
+    Tracks all user-facing events like messages, matches, completions, etc.
+    """
+    __tablename__ = "user_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_type = Column(SQLEnum(EventType), nullable=False, index=True)
+    related_id = Column(Integer, nullable=True)  # ID of related object
+    payload = Column(JSON, nullable=True)  # Additional event data
+    is_read = Column(Boolean, nullable=False, default=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=sa_text('now()'), index=True)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user = relationship("User", back_populates="events")
+
+    def __repr__(self):
+        return f"<UserEvent(id={self.id}, user={self.user_id}, type='{self.event_type.value}')>"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dict for API responses"""
+        return {
+            "id": self.id,
+            "event_type": self.event_type.value,
+            "related_id": self.related_id,
+            "payload": self.payload,
+            "is_read": self.is_read,
+            "created_at": self.created_at.isoformat() if getattr(self, "created_at", None) else None,
+            "read_at": self.read_at.isoformat() if getattr(self, "read_at", None) else None,
+        }
+
+class UserReview(Base):
+    """
+    User reviews and ratings after exchange completion.
+    """
+    __tablename__ = "user_reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    exchange_id = Column(String(100), nullable=False, index=True)
+    rating = Column(Integer, nullable=False)  # 1-5 stars
+    text = Column(Text, nullable=True)
+    is_public = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=sa_text('now()'), index=True)
+    updated_at = Column(DateTime(timezone=True), server_default=sa_text('now()'), onupdate=sa_text('now()'))
+
+    # Relationships
+    author = relationship("User", foreign_keys=[author_id], back_populates="reviews_given")
+    target = relationship("User", foreign_keys=[target_id], back_populates="reviews_received")
+
+    def __repr__(self):
+        return f"<UserReview(id={self.id}, author={self.author_id}, target={self.target_id}, rating={self.rating})>"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dict for API responses"""
+        created = getattr(self, "created_at", None)
+        created_str = created.isoformat() if isinstance(created, datetime) else None
+
+        return {
+            "id": self.id,
+            "author_id": self.author_id,
+            "author_name": self.author.full_name if self.author else "Unknown",
+            "target_id": self.target_id,
+            "target_name": self.target.full_name if self.target else "Unknown",
+            "exchange_id": self.exchange_id,
+            "rating": self.rating,
+            "text": self.text,
+            "is_public": self.is_public,
+            "created_at": created_str,
+        }
+
+
+class ExchangeEventType(str, enum.Enum):
+    """Types of exchange lifecycle events"""
+    CREATED = "created"
+    CONFIRMED = "confirmed"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    REVIEWED = "reviewed"
+
+
+class ExchangeHistory(Base):
+    """
+    Audit trail for exchange lifecycle events.
+    """
+    __tablename__ = "exchange_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    exchange_id = Column(String(100), nullable=False, index=True)
+    event_type = Column(SQLEnum(ExchangeEventType), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    details = Column(JSON, nullable=True)  # Additional event data
+    created_at = Column(DateTime(timezone=True), server_default=sa_text('now()'), index=True)
+
+    # Relationships
+    user = relationship("User", back_populates="exchange_actions")
+
+    def __repr__(self):
+        return f"<ExchangeHistory(id={self.id}, exchange='{self.exchange_id}', event='{self.event_type.value}')>"
+
+
+class UserActionType(str, enum.Enum):
+    """Types of user actions for audit logging"""
+    LOGIN = "login"
+    LOGOUT = "logout"
+    PROFILE_UPDATE = "profile_update"
+    LISTING_CREATE = "listing_create"
+    LISTING_UPDATE = "listing_update"
+    EXCHANGE_MATCH = "exchange_match"
+    EXCHANGE_CONFIRM = "exchange_confirm"
+    EXCHANGE_COMPLETE = "exchange_complete"
+    REVIEW_CREATE = "review_create"
+    MESSAGE_SEND = "message_send"
+    REPORT_CREATE = "report_create"
+
+
+class UserActionLog(Base):
+    """
+    Unified audit log for all user actions.
+    """
+    __tablename__ = "user_action_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    action_type = Column(SQLEnum(UserActionType), nullable=False, index=True)
+    target_id = Column(Integer, nullable=True)  # ID of affected object
+    metadata = Column(JSON, nullable=True)  # Additional action data
+    ip_address = Column(String(45), nullable=True)  # IPv4/IPv6
+    user_agent = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=sa_text('now()'), index=True)
+
+    # Relationships
+    user = relationship("User", back_populates="action_logs")
+
+    def __repr__(self):
+        return f"<UserActionLog(id={self.id}, user={self.user_id}, action='{self.action_type.value}')>"
+
+
+class UserTrustIndex(Base):
+    """
+    Trust index calculation for users based on activity and reputation.
+    """
+    __tablename__ = "user_trust_index"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True, unique=True)
+    trust_score = Column(Float, nullable=False, default=50.0)  # 0-100 scale
+    weighted_rating = Column(Float, nullable=False, default=0.0)
+
+    # Activity metrics
+    exchanges_completed = Column(Integer, nullable=False, default=0)
+    reviews_received = Column(Integer, nullable=False, default=0)
+    reports_filed = Column(Integer, nullable=False, default=0)
+    reports_received = Column(Integer, nullable=False, default=0)
+
+    # Risk factors
+    account_age_days = Column(Integer, nullable=False, default=0)
+    last_activity_days = Column(Integer, nullable=False, default=0)
+
+    # Cache timestamps
+    last_calculated = Column(DateTime(timezone=True), server_default=sa_text('now()'), index=True)
+    created_at = Column(DateTime(timezone=True), server_default=sa_text('now()'), nullable=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=sa_text('now()'))
+
+    # Relationships
+    user = relationship("User", back_populates="trust_index")
+
+    def __repr__(self):
+        return f"<UserTrustIndex(user={self.user_id}, trust={self.trust_score:.1f}, rating={self.weighted_rating:.2f})>"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dict for API responses"""
+        last_calculated_value = getattr(self, "last_calculated", None)
+        last_calculated_str = (
+            last_calculated_value.isoformat()
+            if isinstance(last_calculated_value, datetime)
+            else None
+        )
+
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "trust_score": self.trust_score,
+            "weighted_rating": self.weighted_rating,
+            "exchanges_completed": self.exchanges_completed,
+            "reviews_received": self.reviews_received,
+            "reports_filed": self.reports_filed,
+            "reports_received": self.reports_received,
+            "account_age_days": self.account_age_days,
+            "last_activity_days": self.last_activity_days,
+            "last_calculated": last_calculated_str,
+        }
+
+
+class ReportReason(str, enum.Enum):
+    """Reasons for reporting listings or users"""
+    PRICE_MISMATCH = "price_mismatch"
+    UNAVAILABLE_ITEM = "unavailable_item"
+    FAKE_LISTING = "fake_listing"
+    INAPPROPRIATE_CONTENT = "inappropriate_content"
+    SPAM = "spam"
+    HARASSMENT = "harassment"
+    FRAUD = "fraud"
+    OTHER = "other"
+
+
+class ReportStatus(str, enum.Enum):
+    """Report processing status"""
+    PENDING = "pending"
+    UNDER_REVIEW = "under_review"
+    RESOLVED = "resolved"
+    DISMISSED = "dismissed"
+    ESCALATED = "escalated"
+
+
+class Report(Base):
+    """
+    User reports for moderation.
+    """
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reporter_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_listing_id = Column(Integer, ForeignKey("listing_items.id", ondelete="CASCADE"), nullable=True, index=True)
+    target_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    reason = Column(SQLEnum(ReportReason), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(SQLEnum(ReportStatus), nullable=False, default=ReportStatus.PENDING)
+
+    # Moderation fields
+    admin_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    admin_notes = Column(Text, nullable=True)
+    resolution = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=sa_text('now()'), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=sa_text('now()'))
+
+    # Relationships
+    reporter = relationship("User", foreign_keys=[reporter_id], back_populates="reports_filed")
+    target_listing = relationship("ListingItem", back_populates="reports")
+    target_user = relationship("User", foreign_keys=[target_user_id], back_populates="reports_received")
+    admin = relationship("User", foreign_keys=[admin_id], back_populates="reports_moderated")
+
+    def __repr__(self):
+        return f"<Report(id={self.id}, reporter={self.reporter_id}, reason='{self.reason.value}', status='{self.status.value}')>"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dict for API responses"""
+        return {
+            "id": self.id,
+            "reporter_id": self.reporter_id,
+            "reporter_name": self.reporter.full_name if self.reporter else "Unknown",
+            "target_listing_id": self.target_listing_id,
+            "target_user_id": self.target_user_id,
+            "target_user_name": self.target_user.full_name if self.target_user else None,
+            "reason": self.reason.value,
+            "description": self.description,
+            "status": self.status.value,
+            "admin_id": self.admin_id,
+            "admin_notes": self.admin_notes,
+            "resolution": self.resolution,
+            "created_at": self._isoformat_datetime("created_at"),
+            "resolved_at": self._isoformat_datetime("resolved_at"),
+        }
+
+    def _isoformat_datetime(self, attr_name: str) -> Optional[str]:
+        value = getattr(self, attr_name, None)
+        return value.isoformat() if isinstance(value, datetime) else None

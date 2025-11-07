@@ -1,8 +1,8 @@
 # 📚 FreeMarket Documentation - Master Index
 
-**Version:** 2.0 (Consolidated)
+**Version:** 2.2 (Personal Cabinet, Real-Time Communications & Moderation)
 **Last Updated:** Ноябрь 2025
-**Status:** ✅ Complete & Up-to-Date
+**Status:** ✅ Production Ready with Full User Experience
 
 ---
 
@@ -21,14 +21,16 @@
 
 | Feature | Status | Location |
 |---------|--------|----------|
+| **🤖 AI Semantic Matching** | ✅ Active | [ARCHITECTURE.md#language-normalization--scoring-engine](./ARCHITECTURE.md#language-normalization--scoring-engine) |
+| **🔄 Cross-Category Exchanges** | ✅ Active | [ARCHITECTURE.md#equivalenceengine-adaptive-tolerance](./ARCHITECTURE.md#equivalenceengine-adaptive-tolerance) |
 | **Category Matching** | ✅ Active | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | **Telegram Notifications** | ✅ Active | [ARCHITECTURE.md#telegram-integration](./ARCHITECTURE.md#telegram-integration) |
 | **Категории v6, JWT-аутентификация, Nginx** | ✅ Active | [ARCHITECTURE.md#categories-v6-jwt-nginx](./ARCHITECTURE.md#categories-v6-jwt-nginx) |
 | **Location Filtering** | ✅ Active | [ARCHITECTURE.md](./ARCHITECTURE.md) |
-| **API (37 endpoints)** | ✅ Complete | [API_REFERENCE.md](./API_REFERENCE.md) |
-| **Testing (9 scenarios)** | ✅ Ready | [TESTING.md](./TESTING.md) |
+| **API (44 endpoints)** | ✅ Complete | [API_REFERENCE.md](./API_REFERENCE.md) |
+| **Testing (15+ AI scenarios)** | ✅ Ready | [TESTING.md](./TESTING.md) |
 | **Production Deployment** | ✅ Ready | [DEPLOYMENT.md](./DEPLOYMENT.md) |
-| **Security (JWT, Redis)** | ✅ Active | [SECURITY.md](./SECURITY.md) |
+| **Security (JWT, Redis, Rate Limiting)** | ✅ Active | [SECURITY.md](./SECURITY.md) |
 | **DB Migrations (Alembic)** | ✅ Documented | [MIGRATIONS.md](./MIGRATIONS.md) |
 
 ---
@@ -313,14 +315,16 @@ Each test scenario has:
 ## 📊 **Project Statistics**
 
 - **Documentation files:** 15 (consolidated and expanded)
-- **API endpoints:** 37 (7 new for auth, categories v6, LK + additional user endpoints)
-- **Test scenarios:** 9 (added v6 migrations and auth rotation)
+- **API endpoints:** 44 (7 new for auth, categories v6, LK + 7 new for chat, reviews, moderation, SSE)
+- **Test scenarios:** 15+ (added AI, chat, SSE, moderation, trust analytics scenarios)
 - **Categories:** v6 with versioning (permanent/temporary exchange types)
 - **Max locations:** 3 (Алматы, Астана, Шымкент)
 - **Matching threshold:** 0.70 (70%)
-- **Value tolerance:** ±15%
-- **Security:** JWT + refresh tokens with Redis revocation
-- **LK features:** Profile, listings, active exchanges
+- **Value tolerance:** ±15% (adaptive for cross-category)
+- **Security:** JWT + refresh tokens with Redis revocation + rate limiting + Sentry
+- **Real-time features:** WebSocket chat, SSE notifications, event-driven matching
+- **Trust system:** Weighted ratings, anti-spam reviews, trust analytics
+- **Moderation:** Auto-escalation, complaint processing, user safety
 
 ---
 

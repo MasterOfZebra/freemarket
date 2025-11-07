@@ -1,6 +1,8 @@
 """
 Database configuration and session management
 """
+from typing import Generator
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
@@ -20,7 +22,7 @@ redis_client = redis.from_url(REDIS_URL)
 
 
 # Dependency to get DB session
-def get_db() -> Session:
+def get_db() -> Generator[Session, None, None]:
     """
     Dependency function to get database session.
     Yields a database session and ensures it's closed after use.

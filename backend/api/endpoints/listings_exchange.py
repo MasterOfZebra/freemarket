@@ -9,7 +9,7 @@ This module handles:
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
 import logging
 
 from backend.database import SessionLocal
@@ -21,6 +21,8 @@ from backend.schemas import (
 )
 from backend.equivalence_engine import ExchangeEquivalence
 from backend.language_normalization import get_normalizer
+from backend.events import emit_profile_change
+from backend.match_index_service import get_match_index_service
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +194,7 @@ def get_offers_items(
 @router.post("/create-by-categories", response_model=Dict)
 def create_listing_by_categories(
     user_id: int = Query(..., description="User ID"),
-    listing: ListingItemsByCategoryCreate = None,
+    listing: Optional[ListingItemsByCategoryCreate] = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -229,22 +231,29 @@ def create_listing_by_categories(
         if not user:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found")
 
+        # Verify listing is provided
+        if not listing:
+            raise HTTPException(status_code=400, detail="Listing data is required")
+
+        # Type narrowing: listing is guaranteed to be not None after the check above
+        listing = cast(ListingItemsByCategoryCreate, listing)
+
         # Update user data if provided
         if listing.user_data:
             user_data = listing.user_data
             if user_data.get('name'):
-                user.username = user_data['name']
+                setattr(user, 'username', user_data['name'])  # type: ignore[assignment]
             if user_data.get('telegram'):
                 telegram = user_data['telegram'].strip()
                 if telegram.startswith('@'):
-                    user.telegram_username = telegram
+                    setattr(user, 'telegram_username', telegram)  # type: ignore[assignment]
                 elif telegram.isdigit() or (telegram.startswith('+') and telegram[1:].isdigit()):
                     try:
-                        user.telegram_id = int(telegram.replace('+', ''))
+                        setattr(user, 'telegram_id', int(telegram.replace('+', '')))  # type: ignore[assignment]
                     except:
                         pass
                 else:
-                    user.telegram_username = telegram
+                    setattr(user, 'telegram_username', telegram)  # type: ignore[assignment]
             db.flush()
 
         # Create listing
@@ -320,12 +329,50 @@ def create_listing_by_categories(
 
         # Update user locations if provided
         if listing.locations:
-            user.locations = listing.locations
+            setattr(user, 'locations', listing.locations)  # type: ignore[assignment]
 
         db.commit()
         db.refresh(db_listing)
 
         logger.info(f"Created listing {db_listing.id} for user {user_id} with {items_created} items")
+
+        # Update match index for new listing
+        try:
+            index_service = get_match_index_service(db)
+            index_service.build_user_index(user_id)
+            logger.info(f"Built match index for user {user_id}")
+        except Exception as index_error:
+            logger.warning(f"Failed to build match index for user {user_id}: {index_error}")
+
+        # Emit profile change event
+        try:
+            # Extract added items for event
+            added_items = {"wants": [], "offers": []}
+
+            # Collect wants
+            for category, items in wants_summary.items():
+                for item in items:
+                    added_items["wants"].append({
+                        "category": category,
+                        "exchange_type": item["exchange_type"],
+                        "item_name": item["item_name"]
+                    })
+
+            # Collect offers
+            for category, items in offers_summary.items():
+                for item in items:
+                    added_items["offers"].append({
+                        "category": category,
+                        "exchange_type": item["exchange_type"],
+                        "item_name": item["item_name"]
+                    })
+
+            # Emit event asynchronously (don't block response)
+            import asyncio
+            asyncio.create_task(emit_profile_change(user_id, added=added_items))
+
+        except Exception as event_error:
+            logger.warning(f"Failed to emit profile change event for user {user_id}: {event_error}")
 
         # Automatically trigger matching after listing creation
         matches_found = 0
@@ -362,7 +409,7 @@ def create_listing_by_categories(
 @router.post("/create", response_model=Dict)
 def create_listing(
     user_id: int = Query(..., description="User ID"),
-    listing: ListingItemsByCategoryCreate = None,
+    listing: Optional[ListingItemsByCategoryCreate] = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -396,29 +443,36 @@ def create_listing(
         if not user:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found")
 
+        # Verify listing is provided
+        if not listing:
+            raise HTTPException(status_code=400, detail="Listing data is required")
+
+        # Type narrowing: listing is guaranteed to be not None after the check above
+        listing = cast(ListingItemsByCategoryCreate, listing)
+
         # Update user data if provided
         if listing.user_data:
             user_data = listing.user_data
             if user_data.get('name'):
-                user.username = user_data['name']
+                setattr(user, 'username', user_data['name'])  # type: ignore[assignment]
             if user_data.get('telegram'):
                 telegram = user_data['telegram'].strip()
                 if telegram.startswith('@'):
-                    user.telegram_username = telegram
+                    setattr(user, 'telegram_username', telegram)  # type: ignore[assignment]
                 elif telegram.isdigit() or (telegram.startswith('+') and telegram[1:].isdigit()):
                     try:
-                        user.telegram_id = int(telegram.replace('+', ''))
+                        setattr(user, 'telegram_id', int(telegram.replace('+', '')))  # type: ignore[assignment]
                     except:
                         pass
                 else:
-                    user.telegram_username = telegram
+                    setattr(user, 'telegram_username', telegram)  # type: ignore[assignment]
             if user_data.get('city'):
-                user.locations = [user_data['city']]
+                setattr(user, 'locations', [user_data['city']])  # type: ignore[assignment]
             db.flush()
 
         # Save locations from listing if provided separately
         if listing.locations and not (listing.user_data and listing.user_data.get('city')):
-            user.locations = listing.locations
+            setattr(user, 'locations', listing.locations)  # type: ignore[assignment]
             db.flush()
 
         # Create listing
@@ -612,7 +666,7 @@ def get_user_listings(
 def _find_matches_internal(
     user_id: int,
     exchange_type: Optional[str] = None,
-    db: Session = None
+    db: Optional[Session] = None
 ):
     """
     Internal matching function that can be called from other endpoints.
@@ -659,6 +713,16 @@ def _find_matches_internal(
           }]
         }
     """
+
+    # Create session if not provided
+    if db is None:
+        db = SessionLocal()
+        should_close = True
+    else:
+        should_close = False
+
+    # Type narrowing: db is guaranteed to be not None after the check above
+    db = cast(Session, db)
 
     try:
         # Verify user exists
@@ -716,7 +780,7 @@ def _find_matches_internal(
                 for their_offer in other_offers:
                     # Allow cross-category matching - items from any category can exchange
                     # based on equivalent value/cost, not category restrictions
-                    if my_want.exchange_type != their_offer.exchange_type:
+                    if my_want.exchange_type != their_offer.exchange_type:  # type: ignore[comparison]
                         continue
 
                     # Calculate equivalence score with cross-category adjustment
@@ -773,7 +837,7 @@ def _find_matches_internal(
                 for their_want in other_wants:
                     # Allow cross-category matching - items from any category can exchange
                     # based on equivalent value/cost, not category restrictions
-                    if my_offer.exchange_type != their_want.exchange_type:
+                    if my_offer.exchange_type != their_want.exchange_type:  # type: ignore[comparison]
                         continue
 
                     # Calculate equivalence score with cross-category adjustment
@@ -831,11 +895,17 @@ def _find_matches_internal(
                 # Calculate overall exchange score (average of both directions)
                 overall_score = (best_want_offer["score"] + best_offer_want["score"]) / 2
 
+                # Get partner rating for sorting
+                from backend.reviews_service import get_reviews_service
+                reviews_service = get_reviews_service(db)
+                partner_rating = reviews_service.get_user_rating(other_user.id)
+
                 matches.append({
                     "match_id": f"mutual_{user_id}_{other_user.id}_{best_want_offer['my_want'].id}_{best_offer_want['my_offer'].id}",
                     "type": "mutual_exchange",
                     "partner_user_id": other_user.id,
                     "partner_contact": other_user.contact,
+                    "partner_rating": partner_rating,
                     "exchange_type": best_want_offer["my_want"].exchange_type.value,
 
                     # Best want->offer match
@@ -965,13 +1035,21 @@ def _find_matches_internal(
 
         db.commit()  # Commit notifications
 
+        # Sort matches by rating (high rating first), then by overall score
+        def sort_key(match):
+            rating = match.get("partner_rating", {}).get("rating_avg", 0.0)
+            score = match.get("overall_score", 0.0)
+            return (-rating, -score)  # Negative for descending order
+
+        matches_sorted = sorted(matches, key=sort_key)
+
         logger.info(f"Found {len(matches)} matches for user {user_id}, created {notifications_created} notifications")
 
         return {
             "user_id": user_id,
             "matches_found": len(matches),
             "notifications_created": notifications_created,
-            "matches": matches
+            "matches": matches_sorted
         }
 
     except ValueError as ve:
@@ -982,6 +1060,471 @@ def _find_matches_internal(
         raise
     except Exception as e:
         logger.error(f"Error finding matches: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Close session if it was created inside this function
+        if should_close and db is not None:
+            db.close()
+
+
+# ============================================================
+# PARTIAL LISTING UPDATES - INCREMENTAL MATCHING
+# ============================================================
+
+@router.patch("/listings/{listing_id}")
+def update_listing_partial(
+    listing_id: int,
+    updates: Dict[str, Any],  # JSON Patch style updates
+    user_id: int = Query(..., description="User ID for authorization"),
+    db: Session = Depends(get_db)
+):
+    """
+    Partially update a listing with incremental matching support.
+
+    Supports JSON Patch-style operations for adding/removing items without full replacement.
+    Automatically triggers incremental index updates and match recalculation.
+
+    Supported operations:
+    - Add new items: {"wants": {"electronics": [{"item_name": "...", ...}]}}
+    - Remove items: {"remove_items": [item_id1, item_id2]}
+
+    Args:
+        listing_id: ID of the listing to update
+        updates: Partial update payload
+        user_id: User ID for authorization
+
+    Returns:
+        Updated listing information
+    """
+    try:
+        # Verify listing ownership
+        listing = db.query(Listing).filter(
+            Listing.id == listing_id,
+            Listing.user_id == user_id
+        ).first()
+
+        if not listing:
+            raise HTTPException(status_code=404, detail="Listing not found or access denied")
+
+        # Track changes for event emission
+        added_items = {"wants": [], "offers": []}
+        removed_items = {"wants": [], "offers": []}
+
+        # Handle item additions
+        if "wants" in updates:
+            for category, items in updates["wants"].items():
+                for item_data in items:
+                    # Validate item data
+                    if not item_data.get("item_name") or not item_data.get("value_tenge"):
+                        continue
+
+                    # Create new listing item
+                    new_item = ListingItem(
+                        listing_id=listing_id,
+                        item_type=ListingItemType.WANT,
+                        category=category,
+                        exchange_type=item_data.get("exchange_type", "PERMANENT"),
+                        item_name=item_data["item_name"],
+                        value_tenge=item_data["value_tenge"],
+                        duration_days=item_data.get("duration_days"),
+                        description=item_data.get("description", "")
+                    )
+
+                    if not new_item.is_valid:
+                        continue
+
+                    db.add(new_item)
+
+                    # Track for events
+                    added_items["wants"].append({
+                        "category": category,
+                        "exchange_type": new_item.exchange_type.value,
+                        "item_name": new_item.item_name
+                    })
+
+        if "offers" in updates:
+            for category, items in updates["offers"].items():
+                for item_data in items:
+                    # Validate item data
+                    if not item_data.get("item_name") or not item_data.get("value_tenge"):
+                        continue
+
+                    # Create new listing item
+                    new_item = ListingItem(
+                        listing_id=listing_id,
+                        item_type=ListingItemType.OFFER,
+                        category=category,
+                        exchange_type=item_data.get("exchange_type", "PERMANENT"),
+                        item_name=item_data["item_name"],
+                        value_tenge=item_data["value_tenge"],
+                        duration_days=item_data.get("duration_days"),
+                        description=item_data.get("description", "")
+                    )
+
+                    if not new_item.is_valid:
+                        continue
+
+                    db.add(new_item)
+
+                    # Track for events
+                    added_items["offers"].append({
+                        "category": category,
+                        "exchange_type": new_item.exchange_type.value,
+                        "item_name": new_item.item_name
+                    })
+
+        # Handle item removals
+        if "remove_items" in updates:
+            item_ids_to_remove = updates["remove_items"]
+            if not isinstance(item_ids_to_remove, list):
+                item_ids_to_remove = [item_ids_to_remove]
+
+            for item_id in item_ids_to_remove:
+                # Find and soft-delete item
+                item = db.query(ListingItem).filter(
+                    ListingItem.id == item_id,
+                    ListingItem.listing_id == listing_id,
+                    ListingItem.is_archived == False
+                ).first()
+
+                if item:
+                    item.is_archived = True
+
+                    # Track for events
+                    item_type_str = "wants" if item.item_type == ListingItemType.WANT else "offers"
+                    removed_items[item_type_str].append({
+                        "category": item.category,
+                        "exchange_type": item.exchange_type.value,
+                        "item_name": item.item_name
+                    })
+
+        # Commit changes
+        db.commit()
+        db.refresh(listing)
+
+        # Emit profile change event
+        try:
+            import asyncio
+            from backend.events import emit_profile_change
+
+            # Only emit if there are actual changes
+            has_changes = (added_items["wants"] or added_items["offers"] or
+                          removed_items["wants"] or removed_items["offers"])
+
+            if has_changes:
+                asyncio.create_task(emit_profile_change(user_id, added=added_items, removed=removed_items))
+                logger.info(f"Emitted profile change event for user {user_id} after partial update")
+
+        except Exception as event_error:
+            logger.warning(f"Failed to emit profile change event: {event_error}")
+
+        # Build response with updated item counts
+        wants_count = db.query(ListingItem).filter(
+            ListingItem.listing_id == listing_id,
+            ListingItem.item_type == ListingItemType.WANT,
+            ListingItem.is_archived == False
+        ).count()
+
+        offers_count = db.query(ListingItem).filter(
+            ListingItem.listing_id == listing_id,
+            ListingItem.item_type == ListingItemType.OFFER,
+            ListingItem.is_archived == False
+        ).count()
+
+        return {
+            "status": "success",
+            "listing_id": listing_id,
+            "user_id": user_id,
+            "items_added": len(added_items["wants"]) + len(added_items["offers"]),
+            "items_removed": len(removed_items["wants"]) + len(removed_items["offers"]),
+            "current_counts": {
+                "wants": wants_count,
+                "offers": offers_count
+            },
+            "message": "Listing updated successfully with incremental matching triggered"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating listing {listing_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
+# EXCHANGE CONFIRMATION - AUTO CLEANUP
+# ============================================================
+
+@router.post("/exchanges/{exchange_id}/confirm")
+def confirm_exchange(
+    exchange_id: str,
+    confirmer_user_id: int = Query(..., description="ID of user confirming the exchange"),
+    db: Session = Depends(get_db)
+):
+    """
+    Confirm successful exchange completion and auto-cleanup exchanged items.
+
+    This endpoint:
+    1. Validates that the exchange exists and involves the confirmer
+    2. Marks the exchange as completed
+    3. Automatically archives exchanged items from both users' wants/offers
+    4. Updates match indexes and triggers incremental matching
+    5. Sends completion notifications
+
+    Args:
+        exchange_id: Unique exchange identifier (e.g., "mutual_1_2_10_15")
+        confirmer_user_id: ID of the user confirming completion
+
+    Returns:
+        Confirmation status with cleanup details
+    """
+    try:
+        # Parse exchange_id to extract user/item information
+        # Format: "mutual_{user_a}_{user_b}_{item_a}_{item_b}"
+        parts = exchange_id.split("_")
+        if len(parts) != 5 or parts[0] != "mutual":
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid exchange_id format. Expected: mutual_{user_a}_{user_b}_{item_a}_{item_b}"
+            )
+
+        try:
+            user_a_id = int(parts[1])
+            user_b_id = int(parts[2])
+            item_a_id = int(parts[3])
+            item_b_id = int(parts[4])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid exchange_id: non-numeric IDs")
+
+        # Validate that confirmer is one of the participants
+        if confirmer_user_id not in [user_a_id, user_b_id]:
+            raise HTTPException(
+                status_code=403,
+                detail="You are not a participant in this exchange"
+            )
+
+        # Get the exchanged items
+        from backend.models import ListingItem
+
+        item_a = db.query(ListingItem).filter(
+            ListingItem.id == item_a_id,
+            ListingItem.is_archived == False
+        ).first()
+
+        item_b = db.query(ListingItem).filter(
+            ListingItem.id == item_b_id,
+            ListingItem.is_archived == False
+        ).first()
+
+        if not item_a or not item_b:
+            raise HTTPException(status_code=404, detail="One or more exchanged items not found")
+
+        # Validate that items belong to correct users
+        item_a_listing = item_a.listing
+        item_b_listing = item_b.listing
+
+        if item_a_listing.user_id != user_a_id or item_b_listing.user_id != user_b_id:
+            raise HTTPException(status_code=400, detail="Exchange participants don't match item ownership")
+
+        # Begin transaction for atomic operation
+        items_archived = []
+
+        # Archive exchanged items (soft delete)
+        item_a.is_archived = True
+        item_b.is_archived = True
+        items_archived.extend([item_a_id, item_b_id])
+
+        # Check if users have other items in the same categories
+        # If not, we might need to remove from match index, but let's keep it simple for now
+
+        # Log the completed exchange (could create an ExchangeHistory record)
+        logger.info(f"Exchange confirmed: {exchange_id} by user {confirmer_user_id}")
+
+        db.commit()
+
+        # Emit profile change events for both users (removed items)
+        try:
+            import asyncio
+            from backend.events import emit_profile_change
+
+            # For user A (removed their offered item, gained wanted item)
+            removed_a = {
+                "offers": [{
+                    "category": item_a.category,
+                    "exchange_type": item_a.exchange_type.value,
+                    "item_name": item_a.item_name
+                }]
+            }
+            asyncio.create_task(emit_profile_change(user_a_id, removed=removed_a))
+
+            # For user B (removed their offered item, gained wanted item)
+            removed_b = {
+                "offers": [{
+                    "category": item_b.category,
+                    "exchange_type": item_b.exchange_type.value,
+                    "item_name": item_b.item_name
+                }]
+            }
+            asyncio.create_task(emit_profile_change(user_b_id, removed=removed_b))
+
+        except Exception as event_error:
+            logger.warning(f"Failed to emit profile change events after exchange confirmation: {event_error}")
+
+                # Log exchange completion event
+                from backend.exchange_history_service import get_exchange_history_service
+                history_service = get_exchange_history_service(db)
+                history_service.log_event(
+                    exchange_id=exchange_id,
+                    event_type=ExchangeEventType.COMPLETED,
+                    user_id=confirmer_user_id,
+                    details={
+                        "confirmed_by": confirmer_user_id,
+                        "items_archived": items_archived
+                    }
+                )
+
+                # Send completion notifications
+                try:
+                    from backend.notifications.notification_service import create_notification
+
+                    # Notify both participants
+                    for participant_id in [user_a_id, user_b_id]:
+                        notification = {
+                            "user_id": participant_id,
+                            "type": "exchange_completed",
+                            "title": "Exchange Completed Successfully! 🎉",
+                            "message": f"Your exchange has been confirmed and completed. Items have been removed from your listings.",
+                            "data": {
+                                "exchange_id": exchange_id,
+                                "confirmed_by": confirmer_user_id,
+                                "items_archived": items_archived
+                            }
+                        }
+                        create_notification(db, notification)
+
+        except Exception as notif_error:
+            logger.warning(f"Failed to send exchange completion notifications: {notif_error}")
+
+        return {
+            "status": "success",
+            "exchange_id": exchange_id,
+            "confirmed_by": confirmer_user_id,
+            "participants": [user_a_id, user_b_id],
+            "items_archived": items_archived,
+            "message": "Exchange confirmed and items automatically cleaned up from listings"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error confirming exchange {exchange_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/listings/{listing_id}/duplicate")
+def duplicate_listing(
+    listing_id: int,
+    current_user=Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """
+    Duplicate an existing listing to create a new one.
+
+    This allows users to quickly "repeat" a previous exchange by copying
+    their wants/offers configuration.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        # Get original listing
+        original_listing = db.query(Listing).filter(
+            Listing.id == listing_id,
+            Listing.user_id == current_user.id
+        ).first()
+
+        if not original_listing:
+            raise HTTPException(status_code=404, detail="Listing not found or access denied")
+
+        # Get original items
+        original_wants = db.query(ListingItem).filter(
+            ListingItem.listing_id == listing_id,
+            ListingItem.item_type == ListingItemType.WANT
+        ).all()
+
+        original_offers = db.query(ListingItem).filter(
+            ListingItem.listing_id == listing_id,
+            ListingItem.item_type == ListingItemType.OFFER
+        ).all()
+
+        # Create new listing
+        new_listing = Listing(
+            user_id=current_user.id,
+            created_at=datetime.utcnow()
+        )
+        db.add(new_listing)
+        db.flush()  # Get ID without committing
+
+        # Duplicate items
+        duplicated_items = []
+
+        for item in original_wants + original_offers:
+            new_item = ListingItem(
+                listing_id=new_listing.id,
+                item_type=item.item_type,
+                category=item.category,
+                exchange_type=item.exchange_type,
+                item_name=item.item_name,
+                value_tenge=item.value_tenge,
+                duration_days=item.duration_days,
+                description=item.description,
+                created_at=datetime.utcnow()
+            )
+            db.add(new_item)
+            duplicated_items.append(new_item)
+
+        db.commit()
+        db.refresh(new_listing)
+
+        # Trigger matching for new listing
+        try:
+            matches_result = _find_matches_internal(current_user.id, db=db)
+            matches_found = matches_result.get("matches_found", 0)
+        except Exception as match_error:
+            logger.warning(f"Failed to find matches for duplicated listing: {match_error}")
+            matches_found = 0
+
+        # Log the duplication
+        from backend.exchange_history_service import get_exchange_history_service
+        history_service = get_exchange_history_service(db)
+        history_service.log_event(
+            exchange_id=f"listing_{new_listing.id}",
+            event_type=ExchangeEventType.CREATED,
+            user_id=current_user.id,
+            details={
+                "duplicated_from": listing_id,
+                "items_count": len(duplicated_items)
+            }
+        )
+
+        return {
+            "status": "duplicated",
+            "original_listing_id": listing_id,
+            "new_listing_id": new_listing.id,
+            "items_duplicated": len(duplicated_items),
+            "wants_count": len(original_wants),
+            "offers_count": len(original_offers),
+            "matches_found": matches_found,
+            "message": "Listing duplicated successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error duplicating listing {listing_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

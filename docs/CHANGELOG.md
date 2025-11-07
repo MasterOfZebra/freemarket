@@ -10,46 +10,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-11-XX
 
 ### Added
-- **Категории v6**: Новая версия системы категорий с версионированием
-  - Таблицы: `category_versions`, `categories_v6`, `category_mappings`
-  - API endpoints: `GET /v1/categories`, `GET /v1/categories/permanent`, `GET /v1/categories/temporary`
-  - Поддержка миграции legacy объявлений в новые структуры
-
-- **Минимальный личный кабинет (LK)**
-  - API endpoints: `GET /user/cabinet`, `GET /user/listings`, `GET /user/exchanges`
-  - Профиль пользователя, список объявлений, активные обмены
-  - Интеграция с фронтендом (LoginModal, UserCabinet компоненты)
-
-- **JWT аутентификация с refresh токенами**
-  - Short-lived access tokens (15 минут) + long-lived refresh tokens (30 дней)
-  - Refresh tokens в HttpOnly, Secure cookies
-  - Server-side revocation через Redis
-  - Token rotation при каждом refresh
-  - Rate limiting на auth endpoints
-
-- **Документация безопасности (SECURITY.md)**
-  - JWT flow и rotation
-  - HttpOnly/Secure cookies
-  - Redis revocation store
-  - Password hashing (Argon2id/bcrypt)
-  - Data privacy guidelines
-
-- **Руководство по миграциям (MIGRATIONS.md)**
-  - Step-by-step rollback procedures
-  - Troubleshooting migration issues
-  - Best practices для development/production
+- **Phase 2.5 Production Hardening**
+  - Separate WebSocket gateway container (`freemarket-ws`)
+  - Rate limiting middleware (Redis-based)
+  - Sentry error tracking integration
+  - Message delivery guarantees (TTL cache, re-delivery)
+  - Auto-moderation escalation rules
 
 ### Changed
-- **API endpoints**: Добавлено 7 новых endpoints для auth, categories v6, LK
-- **Database schema**: Исправлена миграция `50c3593832b4` - теперь создает `listings` вместо `market_listings`
-- **UI improvements**: Удалены дублирующие элементы на главной странице
-- **Nginx proxy**: Исправлено сохранение `/api` префикса при proxy_pass
-- **Документация**: Обновлена в соответствии с текущей кодовой базой
+- **Documentation**: Comprehensive updates across all docs for Phase 2.2 features
+- **API endpoints**: Updated to 44 total endpoints
+- **Testing scenarios**: Expanded to 15 comprehensive test cases
+
+---
+
+## [2.2.0] - 2025-11-XX
+
+### Added
+- **Phase 2.5: Personal Cabinet, Communications & Moderation**
+  - Real-time WebSocket chat with delivery guarantees
+  - Server-Sent Events (SSE) for live notifications
+  - Review & trust analytics system with anti-spam
+  - Comprehensive moderation & complaint system
+  - Exchange history with export functionality
+  - User action audit logging
+  - Auto-cleanup of completed exchanges
+
+- **New Database Tables (8 additional)**
+  - `exchange_messages` - Chat messages with delivery tracking
+  - `user_events` - Notification events system
+  - `user_reviews` - Trust rating system
+  - `exchange_history` - Complete exchange timelines
+  - `reports` - Moderation complaint system
+  - `user_trust_index` - Trust score analytics
+  - `user_action_log` - Audit trail
+  - `match_index` - Incremental matching optimization
+
+- **API Endpoints (7 new groups, 44 total)**
+  - Chat: WebSocket `/ws/exchange/{id}`, history, unread counts
+  - SSE: `/api/events/stream` for real-time updates
+  - Reviews: `/api/reviews`, trust ratings, analytics
+  - Moderation: `/api/reports`, admin actions, dashboard
+  - History: `/api/history/my-exchanges`, export functionality
+
+### Changed
+- **Architecture**: Event-driven system with Redis Streams
+- **Matching**: 7-phase pipeline with incremental updates
+- **Frontend**: Real-time synchronization without polling
+- **Security**: Enhanced with rate limiting and monitoring
+
+---
+
+## [2.1.0] - 2025-11-XX
+
+### Added
+- **Phase 2: AI-Enhanced Matching & Incremental Updates**
+  - Incremental matching system (MatchIndex table)
+  - Event-driven match recalculations
+  - Partial listing updates API
+  - Auto-archive of completed exchanges
+  - Enhanced AI semantic matching
+  - Cross-category exchange support
+
+### Changed
+- **Matching Pipeline**: 7 phases with event-driven updates
+- **API**: PATCH `/listings/{id}` for incremental updates
+- **Database**: Optimized with GIN indexes and partial updates
+
+---
+
+## [2.0.0] - 2025-11-XX
+
+### Added
+- **Phase 1: Categories v6, JWT Authentication, Nginx**
+  - Версионированная система категорий (35 permanent, 25 temporary)
+  - JWT аутентификация с refresh токенами
+  - HttpOnly, Secure cookies для безопасности
+  - Nginx reverse proxy configuration
+  - Минимальный личный кабинет
+  - Rate limiting на auth endpoints
+
+### Changed
+- **Database Schema**: Полная реструктуризация с нормализацией
+- **API**: 22 базовых endpoint'а
+- **Architecture**: 7-layer system design
 
 ### Fixed
-- **Migration order**: Исправлена последовательность создания таблиц в Alembic миграциях
-- **Foreign key constraints**: `listing_items` теперь корректно ссылается на `listings`
-- **API proxy routing**: Nginx правильно проксирует `/api/*` запросы
+- **Migration Order**: Исправлена последовательность создания таблиц
+- **Foreign Key Constraints**: Корректные связи между таблицами
+- **API Proxy Routing**: Nginx правильно сохраняет URL префиксы
 
 ---
 

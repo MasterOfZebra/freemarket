@@ -12,11 +12,27 @@ Used in matching engine to ensure consistent matching across language variations
 
 import re
 import unicodedata
-from typing import List, Dict, Tuple, Optional
+import json
+import os
+from pathlib import Path
+from typing import List, Dict, Tuple, Optional, Set
 from difflib import SequenceMatcher
 import logging
 
 logger = logging.getLogger(__name__)
+
+try:
+    from sentence_transformers import SentenceTransformer
+    import numpy as np
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+
+try:
+    from rapidfuzz import fuzz, process  # type: ignore
+    RAPIDFUZZ_AVAILABLE = True
+except ImportError:
+    RAPIDFUZZ_AVAILABLE = False
 
 
 class LanguageNormalizer:
@@ -40,113 +56,67 @@ class LanguageNormalizer:
         'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya',
     }
 
-    # Synonym mappings (canonical → [synonyms])
-    # IMPORTANT: Include both directions for better matching
-    SYNONYM_MAP = {
-        # Electronics
-        'iphone': ['айфон', 'iphone', 'айфон', 'телефон', 'мобила', 'смартфон', 'мобильный телефон'],
-        'phone': ['телефон', 'мобила', 'смартфон', 'мобильный телефон', 'айфон'],
-        'smartphone': ['смартфон', 'мобила', 'телефон', 'айфон'],
-        'samsung': ['самсунг', 'samsung'],
-        'galaxy': ['галактика', 'galaxy', 'гэлэкси'],
-        'laptop': ['ноутбук', 'портативный компьютер', 'лэптоп'],
-        'notebook': ['ноутбук', 'notebook'],
-        'computer': ['компьютер', 'пк', 'pc'],
-        'dell': ['делл', 'dell'],
-        'xps': ['икспиэс', 'xps'],
+    # Synonym mappings loaded from JSON file
+    SYNONYM_MAP: Dict[str, List[str]] = {}
 
-        # Transport
-        'bike': ['велосипед', 'велик', 'bicycle', 'байк'],
-        'bicycle': ['велосипед', 'велик', 'bike'],
-        'car': ['автомобиль', 'машина', 'авто', 'automobile'],
-        'automobile': ['автомобиль', 'машина', 'авто', 'car'],
-        'toyota': ['тойота', 'toyota'],
-        'mountain': ['горный', 'mountain', 'маунтин'],
+    @classmethod
+    def _load_synonyms(cls) -> Dict[str, List[str]]:
+        """Load synonyms from JSON file"""
+        synonyms_file = Path(__file__).parent / "data" / "synonyms.json"
 
-        # Furniture
-        'desk': ['стол', 'письменный стол', 'table', 'стол письменный'],
-        'table': ['стол', 'desk'],
-        'chair': ['стул', 'стулья', 'кресло', 'chair'],
-        'office': ['офисный', 'office', 'офис'],
+        try:
+            with open(synonyms_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
 
-        # Services & Education
-        'service': ['услуга', 'услуги', 'работа', 'помощь', 'услуга'],
-        'lesson': ['урок', 'занятие', 'курс', 'обучение'],
-        'course': ['курс', 'курсы', 'обучение', 'занятия', 'уроки'],
-        'tutoring': ['репетиторство', 'репетитор', 'обучение', 'уроки'],
-        'consultation': ['консультация', 'консультации', 'совет', 'помощь'],
-        'repair': ['ремонт', 'починка', 'исправление', 'наладка'],
-        'design': ['дизайн', 'оформление', 'дизайнер', 'графика'],
-        'programming': ['программирование', 'разработка', 'кодинг', 'программист'],
-        'photography': ['фотография', 'фото', 'фотосъемка', 'фотограф'],
-        'video': ['видео', 'видеосъемка', 'видеограф', 'оператор'],
+            # Flatten all synonym groups into single dict
+            synonyms = {}
+            for category, category_synonyms in data.get('synonyms', {}).items():
+                synonyms.update(category_synonyms)
 
-        # Rental & Accommodation
-        'rent': ['аренда', 'прокат', 'съем', 'наем', 'арендовать'],
-        'rental': ['аренда', 'прокат', 'арендный'],
-        'lease': ['аренда', 'лизинг', 'прокат'],
-        'apartment': ['квартира', 'квартиры', 'жилье', 'квартирка'],
-        'room': ['комната', 'комнаты', 'номер'],
-        'house': ['дом', 'дома', 'коттедж', 'дача'],
-        'office': ['офис', 'офисы', 'офисное помещение', 'рабочее место'],
-        'space': ['пространство', 'помещение', 'площадь'],
+            logger.info(f"Loaded {len(synonyms)} synonym entries from {synonyms_file}")
+            return synonyms
 
-        # Music & Entertainment
-        'guitar': ['гитара', 'гитары', 'гитарка'],
-        'piano': ['пианино', 'фортепиано', 'рояль'],
-        'drums': ['барабаны', 'ударные', 'перкуссия'],
-        'violin': ['скрипка', 'скрипки'],
-        'music': ['музыка', 'музыкальный', 'музыкальные инструменты'],
-        'instrument': ['инструмент', 'инструменты', 'музыкальный инструмент'],
-        'lesson': ['урок', 'занятие', 'курс', 'обучение', 'репетиторство'],
-        'course': ['курс', 'курсы', 'обучение', 'занятия', 'уроки'],
-        'english': ['английский', 'иностранный язык', 'язык'],
-        'language': ['язык', 'иностранный', 'английский'],
+        except Exception as e:
+            logger.warning(f"Could not load synonyms from {synonyms_file}: {e}")
+            # Fallback to minimal synonyms
+            return {
+                'iphone': ['айфон', 'телефон'],
+                'phone': ['телефон', 'айфон'],
+                'bike': ['велосипед', 'байк'],
+                'guitar': ['гитара'],
+                'service': ['услуга', 'работа'],
+                'rent': ['аренда', 'прокат'],
+            }
 
-        # Sports & Recreation
-        'sport': ['спорт', 'спортивный', 'фитнес'],
-        'fitness': ['фитнес', 'тренажеры', 'спорт'],
-        'equipment': ['оборудование', 'инвентарь', 'снаряжение'],
-        'camping': ['кемпинг', 'поход', 'туризм', 'палатки'],
-        'board': ['настольный', 'настольные игры', 'игры'],
-        'game': ['игра', 'игры', 'игрушки'],
+    @classmethod
+    def _load_stopwords(cls) -> Set[str]:
+        """Load stopwords from text file"""
+        stopwords_file = Path(__file__).parent / "data" / "stopwords.txt"
 
-        # General & Other
-        'book': ['книга', 'книги', 'литература', 'книжка'],
-        'money': ['деньги', 'денег', 'тенге', 'tenge', 'валюта'],
-        'tool': ['инструмент', 'инструменты', 'оборудование', 'прибор'],
-        'device': ['устройство', 'гаджет', 'прибор', 'аппарат'],
-        'machine': ['машина', 'механизм', 'оборудование', 'станок'],
+        try:
+            stopwords = set()
+            with open(stopwords_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip comments and empty lines
+                    if line and not line.startswith('#'):
+                        stopwords.add(line.lower())
 
-        # Time-related (for temporary exchanges)
-        'day': ['день', 'дни', 'сутки', 'суток'],
-        'week': ['неделя', 'недели', 'недель'],
-        'month': ['месяц', 'месяцы', 'месяцев'],
-        'hour': ['час', 'часы', 'часов'],
+            logger.info(f"Loaded {len(stopwords)} stopwords from {stopwords_file}")
+            return stopwords
 
-        # Number forms (singular/plural)
-        'приставка': ['приставки', 'игровая приставка', 'игровые приставки'],
-        'велосипед': ['велосипеды', 'байк', 'байки', 'велик', 'велики'],
-        'квартира': ['квартиры', 'жилье'],
-        'комната': ['комнаты', 'номер', 'номера'],
-        'книга': ['книги', 'литература'],
-        'инструмент': ['инструменты', 'оборудование'],
-        'услуга': ['услуги', 'работа', 'работы'],
+        except Exception as e:
+            logger.warning(f"Could not load stopwords from {stopwords_file}: {e}")
+            # Fallback to minimal stopwords
+            return {
+                'и', 'или', 'но', 'в', 'на', 'из', 'к', 'за', 'с', 'по',
+                'от', 'из', 'у', 'не', 'да', 'нет', 'что', 'кто', 'это',
+                'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at',
+                'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were'
+            }
 
-        # Fix transliteration issues
-        'дизайнер': ['дизайн', 'оформление', 'графика'],
-        'программист': ['программирование', 'разработка', 'кодинг'],
-    }
-
-    # Stopwords to remove
-    STOPWORDS = {
-        # English
-        'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at',
-        'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were',
-        # Russian
-        'и', 'или', 'но', 'в', 'на', 'из', 'к', 'за', 'с', 'по',
-        'от', 'из', 'у', 'не', 'да', 'нет', 'что', 'кто', 'это',
-    }
+    # Stopwords to remove (loaded from file)
+    STOPWORDS: Set[str] = set()
 
     def __init__(self, enable_cache: bool = True, cache_size: int = 10000):
         """
@@ -160,6 +130,22 @@ class LanguageNormalizer:
         self.cache_size = cache_size
         self._normalize_cache: Dict[str, str] = {}
         self._similarity_cache: Dict[Tuple[str, str], float] = {}
+
+        # Initialize sentence transformer model for semantic similarity
+        self.semantic_model = None
+        if SENTENCE_TRANSFORMERS_AVAILABLE:
+            try:
+                self.semantic_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+                logger.info("Loaded sentence transformer model for semantic similarity")
+            except Exception as e:
+                logger.warning(f"Failed to load sentence transformer model: {e}")
+
+        # Load synonyms and stopwords from file
+        if not self.__class__.SYNONYM_MAP:
+            self.__class__.SYNONYM_MAP = self._load_synonyms()
+
+        if not self.__class__.STOPWORDS:
+            self.__class__.STOPWORDS = self._load_stopwords()
 
     def transliterate_cyrillic_to_latin(self, text: str) -> str:
         """Convert Cyrillic text to Latin representation"""
@@ -368,11 +354,59 @@ class LanguageNormalizer:
                 # Fallback to Levenshtein
                 score = SequenceMatcher(None, a_norm, b_norm).ratio()
 
+        # Add fuzzy matching boost for typos using rapidfuzz
+        if RAPIDFUZZ_AVAILABLE:
+            fuzzy_ratio = fuzz.ratio(text_a.lower(), text_b.lower()) / 100.0
+            fuzzy_token_sort = fuzz.token_sort_ratio(text_a.lower(), text_b.lower()) / 100.0
+            fuzzy_score = (fuzzy_ratio * 0.6 + fuzzy_token_sort * 0.4)
+
+            # Boost score if fuzzy matching is significantly better
+            if fuzzy_score > score and fuzzy_score > 0.8:
+                score = min(1.0, score * 1.2)  # Boost by 20% but cap at 1.0
+        else:
+            # rapidfuzz not available, skip fuzzy boost
+            pass
+
+        # Add semantic vector similarity (0.4 weight)
+        vector_sim = self.vector_similarity(text_a, text_b)
+
+        # Combine lexical score (0.6) with semantic score (0.4)
+        final_score = score * 0.6 + vector_sim * 0.4
+
         # Cache result
         if self.enable_cache and len(self._similarity_cache) < self.cache_size:
-            self._similarity_cache[cache_key] = score
+            self._similarity_cache[cache_key] = final_score
 
-        return score
+        return final_score
+
+    def vector_similarity(self, text_a: str, text_b: str) -> float:
+        """
+        Calculate semantic similarity using sentence transformers
+
+        Args:
+            text_a: First text
+            text_b: Second text
+
+        Returns:
+            Similarity score (0.0 - 1.0) or 0.0 if model not available
+        """
+        if not self.semantic_model or not SENTENCE_TRANSFORMERS_AVAILABLE:
+            return 0.0
+
+        if not text_a or not text_b:
+            return 0.0
+
+        try:
+            # Encode texts to vectors
+            embeddings = self.semantic_model.encode([text_a, text_b])
+            # Calculate cosine similarity
+            similarity = np.dot(embeddings[0], embeddings[1]) / (
+                np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1])
+            )
+            return max(0.0, min(1.0, similarity))  # Clamp to [0,1]
+        except Exception as e:
+            logger.warning(f"Error calculating vector similarity: {e}")
+            return 0.0
 
     def extract_keywords(self, text: str) -> List[str]:
         """Extract meaningful keywords from text"""

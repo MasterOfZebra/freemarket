@@ -1,6 +1,6 @@
 # 🧪 FreeMarket Testing Guide
 
-**Version:** 2.0 | **Last Updated:** Ноябрь 2025
+**Version:** 2.2 (Real-Time & Moderation) | **Last Updated:** Ноябрь 2025
 
 ---
 ### Test Scenario 8: Категории v6 миграции
@@ -39,17 +39,129 @@
 
 **Ожидаемый результат:** политика rotate+revoke работают, cookies помечаются как Secure/HttpOnly, Redis хранит хэш-refresh, старые токены отзываются, доступ к LK через авторизацию работает корректно.
 
+---
+
+### Test Scenario 10: AI Semantic Matching Validation
+
+**Что тестируем:** корректность работы AI компонентов мэтчинга: SentenceTransformers векторная близость, RapidFuzz fuzzy matching, композитный скоринг и адаптивную толерантность.
+
+**Данные:** Создаются тестовые объявления с различными текстовыми вариациями и категориями.
+
+**Шаги:**
+- **Семантическая близость:** `curl -X POST https://assistance-kz.ru/api/matching/test-semantic -d '{"text_a": "гитара", "text_b": "уроки музыки"}'` (ожидаем score > 0.7)
+- **Fuzzy matching:** `curl -X POST https://assistance-kz.ru/api/matching/test-fuzzy -d '{"text_a": "гитара", "text_b": "гттара"}'` (ожидаем score > 0.8)
+- **Cross-category:** Создать объявления в разных категориях и проверить мэтчинг с `is_cross_category=true`
+- **Композитный скор:** Проверить, что итоговый score = semantic(0.4) + overlap(0.6) + cost_priority
+- **Адаптивная толерантность:** Убедиться, что для cross-category обменов tolerance = 0.5 вместо 0.15
+
+**Ожидаемый результат:** AI компоненты работают корректно, semantic matching находит релевантные связи, fuzzy matching обрабатывает опечатки, cross-category обмены возможны с соответствующими порогами.
+
+---
+
+### Test Scenario 11: WebSocket Chat Functionality
+
+**Что тестируем:** реальное время чата, гарантия доставки сообщений, read receipts, Redis Pub/Sub broadcasting.
+
+**Данные:** Два пользователя в одном обмене.
+
+**Шаги:**
+- **Подключение:** Установить WebSocket соединение с JWT токеном: `wss://assistance-kz.ru/ws/exchange/mutual_1_2_10_15?token=jwt_token`
+- **Отправка сообщения:** Отправить JSON `{"type": "message", "text": "Hello!", "message_type": "TEXT"}`
+- **Проверка доставки:** Убедиться, что сообщение появляется у второго участника
+- **Read receipt:** Отправить запрос `POST /api/chat/exchange/{id}/mark-read` и проверить `read_at` timestamp
+- **История:** Получить `GET /api/chat/exchange/{id}/history` и проверить порядок сообщений
+- **Unread counts:** Проверить `GET /api/chat/unread-counts` возвращает корректные счетчики
+
+**Ожидаемый результат:** Сообщения доставляются мгновенно, read receipts работают, история сохраняется, счетчики непрочитанных обновляются.
+
+---
+
+### Test Scenario 12: Server-Sent Events (SSE) Stream
+
+**Что тестируем:** реальное время уведомлений, event broadcasting, Redis Streams journaling.
+
+**Данные:** Пользователь с активными обменами.
+
+**Шаги:**
+- **Подключение SSE:** `const eventSource = new EventSource('/api/events/stream', {headers: {Authorization: 'Bearer ' + token}});`
+- **Генерация события:** Создать новый мэтч или отправить сообщение
+- **Проверка получения:** Убедиться, что событие приходит в real-time
+- **Event types:** Проверить типы событий (message_received, notification_new, exchange_updated)
+- **Reconnection:** Отключить и переподключить, проверить replay последних событий
+
+**Ожидаемый результат:** События приходят мгновенно, все типы событий работают, reconnection восстанавливает состояние.
+
+---
+
+### Test Scenario 13: Review & Trust System
+
+**Что тестируем:** создание отзывов, расчет trust score, анти-спам защита, кеширование рейтингов.
+
+**Данные:** Завершенный обмен между двумя пользователями.
+
+**Шаги:**
+- **Создание отзыва:** `POST /api/reviews` с rating 5 и текстом отзыва
+- **Проверка анти-спама:** Попытаться создать второй отзыв на тот же обмен (должно быть отклонено)
+- **Rate limiting:** Создать 6 отзывов за час (5-е должно быть ограничено)
+- **Trust calculation:** Проверить `GET /api/reviews/users/{id}/rating` возвращает корректный trust score
+- **Кеширование:** Проверить, что повторные запросы рейтинга работают быстро
+
+**Ожидаемый результат:** Отзывы создаются, анти-спам работает, trust score рассчитывается правильно, кеширование ускоряет запросы.
+
+---
+
+### Test Scenario 14: Moderation & Complaint System
+
+**Что тестируем:** создание жалоб, авто-модерация, эскалация, админские действия.
+
+**Данные:** Листинг с подозрительной ценой.
+
+**Шаги:**
+- **Создание жалобы:** `POST /api/reports` с reason "PRICE_MISMATCH"
+- **Авто-эскалация:** Создать 3 жалобы на один листинг, проверить auto-hide
+- **Admin review:** `GET /api/admin/reports` и `POST /api/admin/reports/{id}/resolve`
+- **User banning:** `POST /api/admin/users/{id}/ban` с reason "MULTIPLE_REPORTS"
+- **Dashboard stats:** Проверить `GET /api/admin/dashboard` показывает корректную статистику
+
+**Ожидаемый результат:** Жалобы обрабатываются, авто-модерация работает, админские действия выполняются, статистика обновляется.
+
+---
+
+### Test Scenario 15: Exchange History & Export
+
+**Что тестируем:** история обменов, timeline событий, экспорт данных, фильтры.
+
+**Данные:** Пользователь с несколькими завершенными обменами.
+
+**Шаги:**
+- **История обменов:** `GET /api/history/my-exchanges` с фильтрами по статусу
+- **Детальная история:** `GET /api/history/exchanges/{id}` проверить timeline событий
+- **Экспорт JSON:** `GET /api/history/my-exchanges/export?format=JSON`
+- **Экспорт CSV:** `GET /api/history/my-exchanges/export?format=CSV` проверить CSV формат
+- **Фильтры:** Проверить фильтры по дате и статусу
+
+**Ожидаемый результат:** История отображается корректно, timeline содержит все события, экспорт работает в обоих форматах, фильтры применяются правильно.
+
+---
 
 ## 🎯 Testing Overview
 
 This guide covers:
 - ✅ Quick structural tests (no database needed)
 - ✅ Full integration tests (with database)
-- ✅ Test scenarios (all 7 core flows)
-- ✅ Matching algorithm verification
+- ✅ Test scenarios (all 15 real-time & moderation flows)
+- ✅ AI Matching algorithm verification
+- ✅ Cross-category exchange validation
+- ✅ Semantic similarity testing
+- ✅ Fuzzy matching accuracy
+- ✅ WebSocket chat functionality
+- ✅ Server-Sent Events streaming
+- ✅ Review & trust analytics
+- ✅ Moderation & complaint system
+- ✅ Exchange history & export
 - ✅ Location filtering validation
 - ✅ Chain discovery testing
-- ✅ API endpoint testing
+- ✅ API endpoint testing (44 endpoints)
 
 ---
 
@@ -617,11 +729,48 @@ Phase 6: Locations
   ☐ Users in same city match
   ☐ Location bonus applied to score
 
-Phase 7: Production Readiness
+Phase 7: Real-Time Chat
+  ☐ WebSocket connections established
+  ☐ Messages delivered instantly
+  ☐ Read receipts working
+  ☐ Chat history persists
+  ☐ Unread counts accurate
+
+Phase 8: SSE Notifications
+  ☐ EventSource connects successfully
+  ☐ Real-time events received
+  ☐ All event types working
+  ☐ Reconnection recovers state
+  ☐ No polling required
+
+Phase 9: Reviews & Trust
+  ☐ Reviews created successfully
+  ☐ Anti-spam controls active
+  ☐ Trust scores calculated
+  ☐ Ratings cached properly
+  ☐ Rate limiting enforced
+
+Phase 10: Moderation System
+  ☐ Reports submitted correctly
+  ☐ Auto-moderation triggers
+  ☐ Admin actions work
+  ☐ User bans applied
+  ☐ Statistics updated
+
+Phase 11: History & Export
+  ☐ Exchange history displays
+  ☐ Event timelines complete
+  ☐ JSON export works
+  ☐ CSV export formatted
+  ☐ Filters applied correctly
+
+Phase 12: Production Readiness
   ☐ No hardcoded values
   ☐ Error handling implemented
   ☐ Logging working
   ☐ Performance acceptable (< 500ms)
+  ☐ Rate limiting active
+  ☐ Sentry integration working
 ```
 
 ---

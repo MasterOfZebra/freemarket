@@ -49,6 +49,7 @@ class ExchangeEquivalenceConfig:
 
     # Load from environment variables (with defaults)
     VALUE_TOLERANCE = float(os.getenv("EXCHANGE_TOLERANCE", "0.15"))          # ±15%
+    CROSS_CATEGORY_TOLERANCE = float(os.getenv("EXCHANGE_CROSS_CATEGORY_TOLERANCE", "0.50"))  # ±50% for cross-category
     MIN_MATCH_SCORE = float(os.getenv("EXCHANGE_MIN_SCORE", "0.70"))          # 70%
     MAX_DURATION_DAYS = int(os.getenv("EXCHANGE_MAX_DURATION", "365"))        # 1 year
     MIN_DURATION_DAYS = int(os.getenv("EXCHANGE_MIN_DURATION", "1"))          # 1 day
@@ -75,6 +76,7 @@ class ExchangeEquivalenceConfig:
         """Export configuration as dictionary"""
         return {
             "VALUE_TOLERANCE": cls.VALUE_TOLERANCE,
+            "CROSS_CATEGORY_TOLERANCE": cls.CROSS_CATEGORY_TOLERANCE,
             "MIN_MATCH_SCORE": cls.MIN_MATCH_SCORE,
             "MAX_DURATION_DAYS": cls.MAX_DURATION_DAYS,
             "MIN_DURATION_DAYS": cls.MIN_DURATION_DAYS,
@@ -107,7 +109,8 @@ class ExchangeEquivalence:
     def calculate_permanent_score(
         value_a: int,
         value_b: int,
-        tolerance: Optional[float] = None
+        tolerance: Optional[float] = None,
+        is_cross_category: bool = False
     ) -> EquivalenceResult:
         """
         Calculate equivalence score for PERMANENT exchange.
@@ -194,7 +197,8 @@ class ExchangeEquivalence:
         duration_a: int,
         value_b: int,
         duration_b: int,
-        tolerance: Optional[float] = None
+        tolerance: Optional[float] = None,
+        is_cross_category: bool = False
     ) -> EquivalenceResult:
         """
         Calculate equivalence score for TEMPORARY exchange.
@@ -220,7 +224,10 @@ class ExchangeEquivalence:
             Result: score = 0.98 (diff: 2%)
         """
 
-        tolerance = tolerance or ExchangeEquivalence.config.VALUE_TOLERANCE
+        tolerance = tolerance or (
+            ExchangeEquivalence.config.CROSS_CATEGORY_TOLERANCE if is_cross_category
+            else ExchangeEquivalence.config.VALUE_TOLERANCE
+        )
         min_value = ExchangeEquivalence.config.MIN_VALUE_TENGE
         min_dur = ExchangeEquivalence.config.MIN_DURATION_DAYS
         max_dur = ExchangeEquivalence.config.MAX_DURATION_DAYS
@@ -301,7 +308,8 @@ class ExchangeEquivalence:
         permanent_value: int,
         temporary_value: int,
         temporary_duration: int,
-        tolerance: Optional[float] = None
+        tolerance: Optional[float] = None,
+        is_cross_category: bool = False
     ) -> EquivalenceResult:
         """
         Calculate equivalence score for MIXED exchange (permanent + temporary).
@@ -329,7 +337,10 @@ class ExchangeEquivalence:
             Result: Can match for 35-day rental
         """
 
-        tolerance = tolerance or ExchangeEquivalence.config.VALUE_TOLERANCE
+        tolerance = tolerance or (
+            ExchangeEquivalence.config.CROSS_CATEGORY_TOLERANCE if is_cross_category
+            else ExchangeEquivalence.config.VALUE_TOLERANCE
+        )
         min_dur = ExchangeEquivalence.config.MIN_DURATION_DAYS
         max_dur = ExchangeEquivalence.config.MAX_DURATION_DAYS
 

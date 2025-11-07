@@ -12,12 +12,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
+from contextlib import asynccontextmanager
 import uvicorn
 
 from backend.config import API_TITLE, API_VERSION, API_DESCRIPTION, CORS_ORIGINS, ENV
 from backend.database import engine
 from backend.models import Base as ModelBase
 from backend.api import router as api_router
+from backend.chat_worker import chat_lifespan
+from backend.report_processor import report_processor_lifespan
+from backend.exchange_sync import exchange_sync_lifespan
+from backend.rate_limiting import RateLimitMiddleware
+from backend.error_tracking import init_sentry
+
+# Initialize error tracking
+init_sentry(environment=ENV)
 
 
 class UTF8JSONResponse(JSONResponse):
@@ -32,13 +41,30 @@ class UTF8JSONResponse(JSONResponse):
         ).encode("utf-8")
 
 
+# Combined lifespan for all background services
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan context manager"""
+    # Startup
+    async with chat_lifespan():
+        async with report_processor_lifespan():
+            async with exchange_sync_lifespan():
+                yield
+
+    # Shutdown - handled by individual lifespans
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title=API_TITLE,
     version=API_VERSION,
     description=API_DESCRIPTION,
     default_response_class=UTF8JSONResponse,
+    lifespan=lifespan,
 )
+
+# Add rate limiting middleware
+app.add_middleware(RateLimitMiddleware)
 
 # Add CORS middleware
 app.add_middleware(
