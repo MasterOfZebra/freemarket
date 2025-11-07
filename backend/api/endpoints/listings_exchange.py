@@ -9,7 +9,7 @@ This module handles:
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Dict, List, Optional, cast
+from typing import Dict, List, Optional, Any, cast
 import logging
 
 from backend.database import SessionLocal
@@ -22,6 +22,7 @@ from backend.schemas import (
 from backend.equivalence_engine import ExchangeEquivalence
 from backend.language_normalization import get_normalizer
 from backend.events import emit_profile_change
+from backend.auth import get_current_user_optional
 from backend.match_index_service import get_match_index_service
 
 logger = logging.getLogger(__name__)
@@ -1371,37 +1372,37 @@ def confirm_exchange(
         except Exception as event_error:
             logger.warning(f"Failed to emit profile change events after exchange confirmation: {event_error}")
 
-                # Log exchange completion event
-                from backend.exchange_history_service import get_exchange_history_service
-                history_service = get_exchange_history_service(db)
-                history_service.log_event(
-                    exchange_id=exchange_id,
-                    event_type=ExchangeEventType.COMPLETED,
-                    user_id=confirmer_user_id,
-                    details={
+        # Log exchange completion event
+        from backend.exchange_history_service import get_exchange_history_service
+        history_service = get_exchange_history_service(db)
+        history_service.log_event(
+            exchange_id=exchange_id,
+            event_type=ExchangeEventType.COMPLETED,
+            user_id=confirmer_user_id,
+            details={
+                "confirmed_by": confirmer_user_id,
+                "items_archived": items_archived
+            }
+        )
+
+        # Send completion notifications
+        try:
+            from backend.notifications.notification_service import create_notification
+
+            # Notify both participants
+            for participant_id in [user_a_id, user_b_id]:
+                notification = {
+                    "user_id": participant_id,
+                    "type": "exchange_completed",
+                    "title": "Exchange Completed Successfully! 🎉",
+                    "message": f"Your exchange has been confirmed and completed. Items have been removed from your listings.",
+                    "data": {
+                        "exchange_id": exchange_id,
                         "confirmed_by": confirmer_user_id,
                         "items_archived": items_archived
                     }
-                )
-
-                # Send completion notifications
-                try:
-                    from backend.notifications.notification_service import create_notification
-
-                    # Notify both participants
-                    for participant_id in [user_a_id, user_b_id]:
-                        notification = {
-                            "user_id": participant_id,
-                            "type": "exchange_completed",
-                            "title": "Exchange Completed Successfully! 🎉",
-                            "message": f"Your exchange has been confirmed and completed. Items have been removed from your listings.",
-                            "data": {
-                                "exchange_id": exchange_id,
-                                "confirmed_by": confirmer_user_id,
-                                "items_archived": items_archived
-                            }
-                        }
-                        create_notification(db, notification)
+                }
+                create_notification(db, notification)
 
         except Exception as notif_error:
             logger.warning(f"Failed to send exchange completion notifications: {notif_error}")
