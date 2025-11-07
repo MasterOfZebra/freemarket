@@ -29,7 +29,7 @@ sentence-transformers==3.0.1  # Vector semantic similarity
 rapidfuzz==3.9.0               # Fuzzy string matching
 nltk==3.9.1                    # Natural language processing
 spacy==3.8.2                   # Advanced NLP
-pymorphy3==2.1.2               # Russian morphology
+pymorphy3==2.0.6               # Russian morphology
 pandas==2.2.2                  # Data analysis
 numpy==1.26.4                  # Numerical computing
 tqdm==4.67.1                   # Progress bars
