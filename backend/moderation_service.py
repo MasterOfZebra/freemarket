@@ -419,7 +419,7 @@ class ModerationService:
                 user_id=user_id,
                 action_type=UserActionType.BAN_ISSUED,
                 target_id=admin_id,
-                metadata={
+                action_metadata={
                     "reason": reason,
                     "duration_days": duration_days,
                     "banned_by": admin_id
@@ -479,7 +479,7 @@ class ModerationService:
                 user_id=listing.listing.user_id if listing.listing else None,
                 action_type=UserActionType.LISTING_UPDATE,
                 target_id=listing_id,
-                metadata={
+                action_metadata={
                     "action": "hidden",
                     "reason": reason,
                     "hidden_by": admin_id

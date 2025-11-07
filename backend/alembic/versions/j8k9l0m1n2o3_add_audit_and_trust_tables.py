@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('action_type', sa.String(length=50), nullable=False),
         sa.Column('target_id', sa.Integer(), nullable=True),
-        sa.Column('metadata', sa.JSON(), nullable=True),
+        sa.Column('action_metadata', sa.JSON(), nullable=True),
         sa.Column('ip_address', sa.String(length=45), nullable=True),
         sa.Column('user_agent', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),

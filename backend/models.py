@@ -904,7 +904,7 @@ class UserActionLog(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     action_type = Column(SQLEnum(UserActionType), nullable=False, index=True)
     target_id = Column(Integer, nullable=True)  # ID of affected object
-    metadata = Column(JSON, nullable=True)  # Additional action data
+    action_metadata = Column(JSON, nullable=True)  # Additional action data
     ip_address = Column(String(45), nullable=True)  # IPv4/IPv6
     user_agent = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=sa_text('now()'), index=True)
