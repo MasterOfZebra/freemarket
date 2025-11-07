@@ -160,6 +160,29 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """Get current authenticated user from JWT token, or None if not authenticated"""
+    if not credentials:
+        return None
+
+    payload = verify_token(credentials.credentials)
+    if not payload:
+        return None
+
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active:
+        return None
+
+    return user
+
+
 def log_auth_event(
     db: Session,
     user_id: Optional[int],
