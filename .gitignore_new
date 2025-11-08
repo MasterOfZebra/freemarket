@@ -27,4 +27,3 @@ backend/models/
 backend/models/*
 *.db
 *.sqlite3
-*.db-journal
