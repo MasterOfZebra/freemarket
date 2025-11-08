@@ -281,24 +281,19 @@ async def register_user(
         raise HTTPException(status_code=500, detail="Registration failed")
 
 
-class LoginRequest(BaseModel):
-    """Login request body"""
-    password: str
-    email: Optional[str] = None
-    identifier: Optional[str] = None
-
-
 @router.post("/login", response_model=LoginResponse)
 async def login_user(
-    login_data: LoginRequest,
-    response: Response,
-    request: Request,
+    password: str,
+    email: Optional[str] = None,
+    identifier: Optional[str] = None,
+    response: Response = None,
+    request: Request = None,
     db: Session = Depends(get_db)
 ):
     """Login user and return JWT tokens"""
     try:
         # Use email if provided, otherwise identifier
-        login_identifier = login_data.email or login_data.identifier
+        login_identifier = email or identifier
 
         # Find user by identifier
         user = db.query(User).filter(
@@ -309,7 +304,7 @@ async def login_user(
             )
         ).first()
 
-        if not user or not verify_password(login_data.password, user.password_hash):  # type: ignore
+        if not user or not verify_password(password, user.password_hash):  # type: ignore
             log_auth_event(db, int(user.id) if user and isinstance(user.id, int) else None, "failed_login", request, False)
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
