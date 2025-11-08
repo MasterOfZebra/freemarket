@@ -581,7 +581,10 @@ def get_my_listings(
     """
     if not current_user:
         return {"error": "Authentication required"}
-    return get_user_listings(current_user.id, exchange_type, db)
+    try:
+        return get_user_listings(current_user.id, exchange_type, db)
+    except Exception as e:
+        return {"error": f"Internal error: {str(e)}"}
 
 
 @router.get("/user/{user_id}", response_model=Dict)

@@ -174,7 +174,7 @@ async def get_active_exchanges(
 
 
 @router.get("/profile")
-async def get_profile(
+def get_profile(
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):

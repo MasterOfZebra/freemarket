@@ -22,6 +22,7 @@ from backend.schemas import (
     UserRegister, UserLogin, UserProfile, LoginResponse, TokenResponse,
     RefreshTokenRequest, ChangePasswordRequest
 )
+from pydantic import BaseModel
 
 # Security configuration
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
@@ -261,19 +262,24 @@ async def register_user(
         raise HTTPException(status_code=500, detail="Registration failed")
 
 
+class LoginRequest(BaseModel):
+    """Login request body"""
+    password: str
+    email: Optional[str] = None
+    identifier: Optional[str] = None
+
+
 @router.post("/login", response_model=LoginResponse)
 async def login_user(
-    password: str,
+    login_data: LoginRequest,
     response: Response,
     request: Request,
-    email: str = None,
-    identifier: str = None,
     db: Session = Depends(get_db)
 ):
     """Login user and return JWT tokens"""
     try:
         # Use email if provided, otherwise identifier
-        login_identifier = email or identifier
+        login_identifier = login_data.email or login_data.identifier
 
         # Find user by identifier
         user = db.query(User).filter(
@@ -284,7 +290,7 @@ async def login_user(
             )
         ).first()
 
-        if not user or not verify_password(password, user.password_hash):
+        if not user or not verify_password(login_data.password, user.password_hash):
             log_auth_event(db, user.id if user else None, "failed_login", request, False)
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
