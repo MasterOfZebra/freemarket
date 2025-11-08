@@ -570,15 +570,17 @@ def create_listing(
 # RETRIEVE LISTING ENDPOINTS
 # ============================================================
 
-@router.get("/my", response_model=Dict)
+@router.get("/my")
 def get_my_listings(
     exchange_type: Optional[str] = Query(None, description="Filter by exchange type (permanent/temporary)"),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
     Get current user's listings
     """
+    if not current_user:
+        return {"error": "Authentication required"}
     return get_user_listings(current_user.id, exchange_type, db)
 
 

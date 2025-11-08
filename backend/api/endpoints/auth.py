@@ -262,25 +262,29 @@ async def register_user(
 
 
 @router.post("/login", response_model=LoginResponse)
-@rate_limited_endpoint("login")
 async def login_user(
-    login_data: UserLogin,
+    email: str = None,
+    identifier: str = None,
+    password: str,
     response: Response,
     request: Request,
     db: Session = Depends(get_db)
 ):
     """Login user and return JWT tokens"""
     try:
+        # Use email if provided, otherwise identifier
+        login_identifier = email or identifier
+
         # Find user by identifier
         user = db.query(User).filter(
             or_(
-                User.email == login_data.identifier,
-                User.phone == login_data.identifier,
-                User.username == login_data.identifier
+                User.email == login_identifier,
+                User.phone == login_identifier,
+                User.username == login_identifier
             )
         ).first()
 
-        if not user or not verify_password(login_data.password, user.password_hash):
+        if not user or not verify_password(password, user.password_hash):
             log_auth_event(db, user.id if user else None, "failed_login", request, False)
             raise HTTPException(status_code=401, detail="Invalid credentials")
 

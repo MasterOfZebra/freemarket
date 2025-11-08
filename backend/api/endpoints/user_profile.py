@@ -5,7 +5,7 @@ User profile and personal cabinet API endpoints
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from backend.database import get_db
 from backend.models import User, Listing, ListingItem, ExchangeType
@@ -173,14 +173,16 @@ async def get_active_exchanges(
     return []
 
 
-@router.get("/profile", response_model=UserProfile)
+@router.get("/profile")
 async def get_profile(
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
     Get current user profile information
     """
+    if not current_user:
+        return {"error": "Authentication required"}
     return UserProfile.from_orm(current_user)
 
 
