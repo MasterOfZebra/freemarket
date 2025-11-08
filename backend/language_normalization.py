@@ -30,12 +30,8 @@ except ImportError:
     TORCH_AVAILABLE = False
     logger.warning("PyTorch not available - semantic similarity features disabled")
 
-try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError as e:
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
-    logger.warning(f"Sentence transformers not available: {e}")
+# Sentence transformers will be imported conditionally in methods
+SENTENCE_TRANSFORMERS_AVAILABLE = False
 
 try:
     from rapidfuzz import fuzz, process  # type: ignore
@@ -143,6 +139,21 @@ class LanguageNormalizer:
 
         # Initialize sentence transformer model for semantic similarity
         self.semantic_model = None
+
+        # Try to import sentence transformers only when needed
+        global SENTENCE_TRANSFORMERS_AVAILABLE
+        if not SENTENCE_TRANSFORMERS_AVAILABLE:
+            try:
+                from sentence_transformers import SentenceTransformer
+                SENTENCE_TRANSFORMERS_AVAILABLE = True
+                logger.info("Sentence transformers successfully imported")
+            except ImportError as e:
+                SENTENCE_TRANSFORMERS_AVAILABLE = False
+                logger.warning(f"Sentence transformers not available: {e}")
+            except Exception as e:
+                SENTENCE_TRANSFORMERS_AVAILABLE = False
+                logger.warning(f"Failed to import sentence transformers: {e}")
+
         if SENTENCE_TRANSFORMERS_AVAILABLE and TORCH_AVAILABLE:
             try:
                 # Use a smaller model to reduce memory usage
@@ -425,11 +436,11 @@ class LanguageNormalizer:
     def semantic_similarity(self, text1: str, text2: str) -> float:
         """
         Calculate semantic similarity between two texts using sentence transformers
-        
+
         Args:
             text1: First text
             text2: Second text
-            
+
         Returns:
             Similarity score between 0 and 1
         """
@@ -445,17 +456,17 @@ class LanguageNormalizer:
 
             # Get embeddings
             embeddings = self.semantic_model.encode([text1, text2])
-            
+
             # Calculate cosine similarity
-            similarity = float(np.dot(embeddings[0], embeddings[1]) / 
+            similarity = float(np.dot(embeddings[0], embeddings[1]) /
                              (np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1])))
-            
+
             # Cache result
             if len(self._similarity_cache) < self.cache_size:
                 self._similarity_cache[cache_key] = similarity
-                
+
             return similarity
-            
+
         except Exception as e:
             logger.warning(f"Semantic similarity calculation failed: {e}")
             return self.string_similarity(text1, text2)
