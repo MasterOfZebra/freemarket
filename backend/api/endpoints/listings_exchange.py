@@ -22,7 +22,7 @@ from backend.schemas import (
 from backend.equivalence_engine import ExchangeEquivalence
 from backend.language_normalization import get_normalizer
 from backend.events import emit_profile_change
-from backend.auth import get_current_user_optional
+from backend.auth import get_current_user, get_current_user_optional
 from backend.match_index_service import get_match_index_service
 
 logger = logging.getLogger(__name__)
