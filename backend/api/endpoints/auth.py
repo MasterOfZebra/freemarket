@@ -10,7 +10,7 @@ from typing import Optional
 import time
 from collections import defaultdict
 
-import jwt
+import jwt  # type: ignore
 from fastapi import APIRouter, Depends, HTTPException, Response, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -34,10 +34,15 @@ REFRESH_TOKEN_EXPIRE_DAYS = 30    # Long-lived refresh tokens
 try:
     from passlib.hash import argon2
     HAS_ARGON2 = True
+    HAS_BCRYPT = False
 except ImportError:
     # Fallback to bcrypt if argon2 is not available
-    import bcrypt
     HAS_ARGON2 = False
+    try:
+        import bcrypt  # type: ignore
+        HAS_BCRYPT = True
+    except ImportError:
+        HAS_BCRYPT = False
 
 # Rate limiting configuration
 RATE_LIMIT_REQUESTS = 5  # requests per window
@@ -86,20 +91,24 @@ def hash_password(password: str) -> str:
     """Hash password with Argon2id or bcrypt as fallback"""
     if HAS_ARGON2:
         return argon2.hash(password)
-    else:
+    elif HAS_BCRYPT:
         # Fallback to bcrypt
-        import bcrypt
         return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    else:
+        # No password hashing available - this should not happen in production
+        raise RuntimeError("No password hashing library available. Install passlib[argon2] or bcrypt.")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify password against hash"""
     if HAS_ARGON2:
-        return argon2.verify(password, hashed_password)
-    else:
+        return argon2.verify(plain_password, hashed_password)
+    elif HAS_BCRYPT:
         # Fallback to bcrypt
-        import bcrypt
-        return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    else:
+        # No password hashing available - this should not happen in production
+        raise RuntimeError("No password hashing library available. Install passlib[argon2] or bcrypt.")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -155,7 +164,12 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.is_active:
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+
+    # Check if user is active (loaded value should be boolean)
+    is_active = getattr(user, "is_active", True)
+    if not is_active:  # type: ignore
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
     return user
@@ -178,7 +192,7 @@ def get_current_user_optional(
         return None
 
     user = db.query(User).filter(User.id == user_id).first()
-    if not user or not user.is_active:
+    if not user or user.is_active is False:  # type: ignore
         return None
 
     return user
@@ -220,13 +234,18 @@ async def register_user(
     """Register new user"""
     try:
         # Check if user already exists
-        existing_user = db.query(User).filter(
-            or_(
-                User.email == user_data.email if user_data.email else False,
-                User.phone == user_data.phone if user_data.phone else False,
-                User.username == user_data.username if user_data.username else False
-            )
-        ).first()
+        conditions = []
+        if user_data.email:
+            conditions.append(User.email == user_data.email)
+        if user_data.phone:
+            conditions.append(User.phone == user_data.phone)
+        if user_data.username:
+            conditions.append(User.username == user_data.username)
+
+        if conditions:
+            existing_user = db.query(User).filter(or_(*conditions)).first()
+        else:
+            existing_user = None
 
         if existing_user:
             raise HTTPException(status_code=400, detail="User already exists")
@@ -250,7 +269,7 @@ async def register_user(
         db.refresh(user)
 
         # Log successful registration
-        log_auth_event(db, user.id, "register", request, True)
+        log_auth_event(db, user.id if isinstance(user.id, int) else None, "register", request, True)
 
         return UserProfile.from_orm(user)
 
@@ -290,15 +309,15 @@ async def login_user(
             )
         ).first()
 
-        if not user or not verify_password(login_data.password, user.password_hash):
-            log_auth_event(db, user.id if user else None, "failed_login", request, False)
+        if not user or not verify_password(login_data.password, user.password_hash):  # type: ignore
+            log_auth_event(db, int(user.id) if user and isinstance(user.id, int) else None, "failed_login", request, False)
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        if not user.is_active:
+        if user.is_active is False:  # type: ignore
             raise HTTPException(status_code=401, detail="Account is disabled")
 
         # Update last login
-        user.last_login_at = datetime.now(timezone.utc)
+        user.last_login_at = datetime.now(timezone.utc)  # type: ignore
         db.commit()
 
         # Create tokens
@@ -340,7 +359,7 @@ async def login_user(
         )
 
         # Log successful login
-        log_auth_event(db, user.id, "login", request, True)
+        log_auth_event(db, user.id if isinstance(user.id, int) else None, "login", request, True)
 
         return LoginResponse(
             user=UserProfile.from_orm(user),
@@ -389,7 +408,7 @@ async def refresh_access_token(
 
         # Get user
         user = db.query(User).filter(User.id == db_token.user_id).first()
-        if not user or not user.is_active:
+        if not user or user.is_active is False:  # type: ignore
             raise HTTPException(status_code=401, detail="User not found or inactive")
 
         # Create new tokens
@@ -397,9 +416,9 @@ async def refresh_access_token(
         new_refresh_token = create_refresh_token()
 
         # Revoke old refresh token
-        db_token.is_revoked = True
-        db_token.revoked_at = datetime.now(timezone.utc)
-        db_token.revoked_reason = "token_rotation"
+        db_token.is_revoked = True  # type: ignore
+        db_token.revoked_at = datetime.now(timezone.utc)  # type: ignore
+        db_token.revoked_reason = "token_rotation"  # type: ignore
 
         # Store new refresh token
         new_token_hash = hash_refresh_token(new_refresh_token)
@@ -426,7 +445,7 @@ async def refresh_access_token(
         )
 
         # Log refresh
-        log_auth_event(db, user.id, "refresh", request, True)
+        log_auth_event(db, user.id if isinstance(user.id, int) else None, "refresh", request, True)
 
         return TokenResponse(
             access_token=new_access_token,
@@ -472,7 +491,7 @@ async def logout_user(
         response.delete_cookie(key="device_id")
 
         # Log logout
-        log_auth_event(db, current_user.id, "logout", request, True)
+        log_auth_event(db, current_user.id if isinstance(current_user.id, int) else None, "logout", request, True)
 
         return {"message": "Successfully logged out"}
 
@@ -490,12 +509,12 @@ async def change_password(
     """Change user password"""
     try:
         # Verify current password
-        if not verify_password(password_data.current_password, current_user.password_hash):
+        if not verify_password(password_data.current_password, current_user.password_hash):  # type: ignore
             raise HTTPException(status_code=400, detail="Current password is incorrect")
 
         # Hash new password
-        current_user.password_hash = hash_password(password_data.new_password)
-        current_user.updated_at = datetime.now(timezone.utc)
+        current_user.password_hash = hash_password(password_data.new_password)  # type: ignore
+        current_user.updated_at = datetime.now(timezone.utc)  # type: ignore
 
         # Revoke all refresh tokens for security (token rotation)
         db.query(RefreshToken).filter(
@@ -537,7 +556,7 @@ async def revoke_all_sessions(
         db.commit()
 
         # Log the event
-        log_auth_event(db, current_user.id, "revoke_all_sessions", Request(scope={}), True, {"revoked_count": revoked_count})
+        log_auth_event(db, current_user.id if isinstance(current_user.id, int) else None, "revoke_all_sessions", Request(scope={}), True, {"revoked_count": revoked_count})
 
         return {"message": f"All sessions revoked successfully. {revoked_count} sessions logged out."}
 
