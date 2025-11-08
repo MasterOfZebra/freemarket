@@ -7,6 +7,7 @@ import json
 import logging
 import asyncio
 from typing import Optional, Dict, Any
+from contextlib import asynccontextmanager
 
 from .config import REDIS_URL
 from .moderation_service import get_moderation_service
@@ -279,10 +280,11 @@ async def stop_report_processor():
 
 
 # Lifespan context manager for FastAPI
+@asynccontextmanager
 async def report_processor_lifespan():
-    """Context manager for report processor lifespan"""
+    """Async context manager for report processor lifespan"""
     await start_report_processor()
-
-    yield
-
-    await stop_report_processor()
+    try:
+        yield
+    finally:
+        await stop_report_processor()

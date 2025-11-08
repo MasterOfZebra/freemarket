@@ -7,6 +7,7 @@ import json
 import logging
 import asyncio
 from typing import Optional, Dict, Any
+from contextlib import asynccontextmanager
 
 from .config import REDIS_URL
 from .database import get_db
@@ -220,10 +221,11 @@ async def stop_exchange_sync():
 
 
 # Lifespan context manager for FastAPI
+@asynccontextmanager
 async def exchange_sync_lifespan():
-    """Context manager for exchange sync service lifespan"""
+    """Async context manager for exchange sync service lifespan"""
     await start_exchange_sync()
-
-    yield
-
-    await stop_exchange_sync()
+    try:
+        yield
+    finally:
+        await stop_exchange_sync()

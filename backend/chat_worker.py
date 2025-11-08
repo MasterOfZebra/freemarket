@@ -7,6 +7,7 @@ import json
 import logging
 import asyncio
 from typing import Optional, Dict, Any
+from contextlib import asynccontextmanager
 
 from .config import REDIS_URL
 from .api.endpoints.chat import manager  # Import connection manager
@@ -180,10 +181,11 @@ async def stop_chat_worker():
 
 
 # Lifespan context manager for FastAPI
+@asynccontextmanager
 async def chat_lifespan():
-    """Context manager for chat worker lifespan"""
+    """Async context manager for chat worker lifespan"""
     await start_chat_worker()
-
-    yield
-
-    await stop_chat_worker()
+    try:
+        yield
+    finally:
+        await stop_chat_worker()

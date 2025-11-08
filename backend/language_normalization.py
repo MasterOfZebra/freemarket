@@ -140,30 +140,9 @@ class LanguageNormalizer:
         # Initialize sentence transformer model for semantic similarity
         self.semantic_model = None
 
-        # Try to import sentence transformers only when needed
-        global SENTENCE_TRANSFORMERS_AVAILABLE
-        if not SENTENCE_TRANSFORMERS_AVAILABLE:
-            try:
-                from sentence_transformers import SentenceTransformer
-                SENTENCE_TRANSFORMERS_AVAILABLE = True
-                logger.info("Sentence transformers successfully imported")
-            except ImportError as e:
-                SENTENCE_TRANSFORMERS_AVAILABLE = False
-                logger.warning(f"Sentence transformers not available: {e}")
-            except Exception as e:
-                SENTENCE_TRANSFORMERS_AVAILABLE = False
-                logger.warning(f"Failed to import sentence transformers: {e}")
-
-        if SENTENCE_TRANSFORMERS_AVAILABLE and TORCH_AVAILABLE:
-            try:
-                # Use a smaller model to reduce memory usage
-                self.semantic_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-                logger.info("Loaded sentence transformer model for semantic similarity")
-            except Exception as e:
-                logger.warning(f"Failed to load sentence transformer model: {e}")
-                self.semantic_model = None
-        else:
-            logger.info("Semantic similarity disabled - using fallback methods")
+        # Sentence transformers disabled due to PyTorch compatibility issues
+        # They will be re-enabled when PyTorch/transformers versions are compatible
+        logger.info("Sentence transformers disabled - using fallback string matching methods")
 
         # Load synonyms and stopwords from file
         if not self.__class__.SYNONYM_MAP:
