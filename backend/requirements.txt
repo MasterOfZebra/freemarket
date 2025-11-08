@@ -25,6 +25,8 @@ pytest-asyncio==0.21.1
 httpx==0.25.2
 
 # AI/ML dependencies (for enhanced matching)
+torch==2.0.1                  # PyTorch with CUDA support
+transformers==4.21.3          # Compatible with torch 2.0.1
 sentence-transformers==3.0.1  # Vector semantic similarity
 rapidfuzz==3.9.0               # Fuzzy string matching
 nltk==3.9.1                    # Natural language processing
