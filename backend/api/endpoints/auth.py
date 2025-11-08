@@ -263,9 +263,9 @@ async def register_user(
 
 @router.post("/login", response_model=LoginResponse)
 async def login_user(
+    password: str,
     email: str = None,
     identifier: str = None,
-    password: str,
     response: Response,
     request: Request,
     db: Session = Depends(get_db)
