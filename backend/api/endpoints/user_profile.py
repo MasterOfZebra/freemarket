@@ -173,6 +173,17 @@ async def get_active_exchanges(
     return []
 
 
+@router.get("/profile", response_model=UserProfile)
+async def get_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get current user profile information
+    """
+    return UserProfile.from_orm(current_user)
+
+
 @router.put("/profile", response_model=UserProfile)
 async def update_profile(
     profile_data: dict,  # Will be replaced with proper schema

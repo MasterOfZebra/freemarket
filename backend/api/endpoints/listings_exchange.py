@@ -570,6 +570,18 @@ def create_listing(
 # RETRIEVE LISTING ENDPOINTS
 # ============================================================
 
+@router.get("/my", response_model=Dict)
+def get_my_listings(
+    exchange_type: Optional[str] = Query(None, description="Filter by exchange type (permanent/temporary)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get current user's listings
+    """
+    return get_user_listings(current_user.id, exchange_type, db)
+
+
 @router.get("/user/{user_id}", response_model=Dict)
 def get_user_listings(
     user_id: int,

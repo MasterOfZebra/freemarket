@@ -456,8 +456,15 @@ class UserRegister(BaseModel):
 
 class UserLogin(BaseModel):
     """User login schema"""
-    identifier: str  # email, phone, or username
+    identifier: Optional[str] = None  # email, phone, or username
+    email: Optional[str] = None       # alternative to identifier
     password: str
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # If email provided but identifier not, use email as identifier
+        if self.email and not self.identifier:
+            self.identifier = self.email
 
 
 class UserProfile(BaseModel):
