@@ -10,7 +10,7 @@ from typing import List, Optional, Dict
 from backend.database import get_db
 from backend.models import User, Listing, ListingItem, ExchangeType
 from backend.schemas import UserProfile
-from backend.api.endpoints.auth import get_current_user
+from backend.api.endpoints.auth import get_current_user, get_current_user_optional
 
 
 router = APIRouter()
