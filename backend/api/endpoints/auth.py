@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 import time
 from collections import defaultdict
+from functools import wraps
 
 import jwt  # type: ignore
 from fastapi import APIRouter, Depends, HTTPException, Response, Request, status, Form, Body
@@ -73,6 +74,7 @@ def check_rate_limit(client_ip: str, endpoint: str) -> bool:
 def rate_limited_endpoint(endpoint_name: str):
     """Decorator for rate limiting auth endpoints"""
     def decorator(func):
+        @wraps(func)  # Preserve function signature and annotations for FastAPI OpenAPI generation
         async def wrapper(*args, **kwargs):
             request = kwargs.get('request')
             if request and hasattr(request, 'client') and request.client:
