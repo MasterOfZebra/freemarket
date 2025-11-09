@@ -9,10 +9,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 import time
 from collections import defaultdict
-from functools import wraps
 
 import jwt  # type: ignore
 from fastapi import APIRouter, Depends, HTTPException, Response, Request, status, Form, Body
+from fastapi.routing import APIRoute
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
@@ -24,6 +24,50 @@ from backend.schemas import (
     RefreshTokenRequest, ChangePasswordRequest
 )
 from pydantic import BaseModel
+
+# Rate limiting storage (in-memory for simplicity, use Redis in production)
+rate_limit_store = defaultdict(list)
+
+# Rate limiting configuration
+RATE_LIMIT_REQUESTS = 5  # requests
+RATE_LIMIT_WINDOW = 60   # seconds
+
+
+class RateLimitedRoute(APIRoute):
+    """Custom APIRoute with rate limiting for auth endpoints"""
+
+    def get_route_handler(self):
+        original_route_handler = super().get_route_handler()
+
+        async def rate_limited_route_handler(request: Request):
+            # Rate limiting logic
+            client_ip = request.client.host if request.client else "unknown"
+            current_time = time.time()
+
+            # Clean old requests
+            rate_limit_store[client_ip] = [
+                req_time for req_time in rate_limit_store[client_ip]
+                if current_time - req_time < RATE_LIMIT_WINDOW
+            ]
+
+            # Check rate limit
+            if len(rate_limit_store[client_ip]) >= RATE_LIMIT_REQUESTS:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Too many requests. Please try again later."
+                )
+
+            # Add current request
+            rate_limit_store[client_ip].append(current_time)
+
+            # Call original handler
+            return await original_route_handler(request)
+
+        return rate_limited_route_handler
+
+
+# Create rate-limited router for auth endpoints
+auth_router = APIRouter(route_class=RateLimitedRoute)
 
 # Security configuration
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
@@ -71,22 +115,6 @@ def check_rate_limit(client_ip: str, endpoint: str) -> bool:
     return True
 
 
-def rate_limited_endpoint(endpoint_name: str):
-    """Decorator for rate limiting auth endpoints"""
-    def decorator(func):
-        @wraps(func)  # Preserve function signature and annotations for FastAPI OpenAPI generation
-        async def wrapper(*args, **kwargs):
-            request = kwargs.get('request')
-            if request and hasattr(request, 'client') and request.client:
-                client_ip = request.client.host
-                if not check_rate_limit(client_ip, endpoint_name):
-                    raise HTTPException(
-                        status_code=429,
-                        detail="Too many requests. Please try again later."
-                    )
-            return await func(*args, **kwargs)
-        return wrapper
-    return decorator
 
 
 def hash_password(password: str) -> str:
@@ -226,8 +254,7 @@ def log_auth_event(
         db.rollback()
 
 
-@rate_limited_endpoint("register")
-@router.post("/register", response_model=UserProfile)
+@auth_router.post("/register", response_model=UserProfile)
 async def register_user(
     *,
     request: Request,
@@ -284,7 +311,7 @@ async def register_user(
         raise HTTPException(status_code=500, detail="Registration failed")
 
 
-@router.post("/login", response_model=LoginResponse)
+@auth_router.post("/login", response_model=LoginResponse)
 async def login_user(
     password: str = Form(...),
     email: Optional[str] = Form(None),
@@ -373,8 +400,7 @@ async def login_user(
         raise HTTPException(status_code=500, detail="Login failed")
 
 
-@rate_limited_endpoint("refresh")
-@router.post("/refresh", response_model=TokenResponse)
+@auth_router.post("/refresh", response_model=TokenResponse)
 async def refresh_access_token(
     request: Request,
     response: Response,
@@ -458,7 +484,7 @@ async def refresh_access_token(
         raise HTTPException(status_code=500, detail="Token refresh failed")
 
 
-@router.post("/logout")
+@auth_router.post("/logout")
 async def logout_user(
     request: Request,
     response: Response,
@@ -498,7 +524,7 @@ async def logout_user(
         raise HTTPException(status_code=500, detail="Logout failed")
 
 
-@router.post("/change-password")
+@auth_router.post("/change-password")
 async def change_password(
     password_data: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
@@ -535,7 +561,7 @@ async def change_password(
         raise HTTPException(status_code=500, detail="Password change failed")
 
 
-@router.post("/revoke-sessions")
+@auth_router.post("/revoke-sessions")
 async def revoke_all_sessions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -563,7 +589,7 @@ async def revoke_all_sessions(
         raise HTTPException(status_code=500, detail="Failed to revoke sessions")
 
 
-@router.get("/me", response_model=UserProfile)
+@auth_router.get("/me", response_model=UserProfile)
 async def get_current_user_profile(
     current_user: User = Depends(get_current_user)
 ):

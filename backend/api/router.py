@@ -9,8 +9,8 @@ router = APIRouter()
 router.include_router(health.router)
 router.include_router(users.router)
 
-# Authentication API
-router.include_router(auth.router, prefix="/auth", tags=["authentication"])
+# Authentication API (rate-limited)
+router.include_router(auth.auth_router, prefix="/auth", tags=["authentication"])
 
 # User profile and cabinet API
 router.include_router(user_profile.router, prefix="/user", tags=["user"])
