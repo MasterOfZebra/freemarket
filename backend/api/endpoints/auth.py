@@ -226,8 +226,8 @@ def log_auth_event(
         db.rollback()
 
 
-@router.post("/register", response_model=UserProfile)
 @rate_limited_endpoint("register")
+@router.post("/register", response_model=UserProfile)
 async def register_user(
     *,
     request: Request,
@@ -373,8 +373,8 @@ async def login_user(
         raise HTTPException(status_code=500, detail="Login failed")
 
 
-@router.post("/refresh", response_model=TokenResponse)
 @rate_limited_endpoint("refresh")
+@router.post("/refresh", response_model=TokenResponse)
 async def refresh_access_token(
     request: Request,
     response: Response,
