@@ -313,12 +313,12 @@ async def register_user(
 
 @auth_router.post("/login", response_model=LoginResponse)
 async def login_user(
+    response: Response,
+    request: Request,
     password: str = Form(...),
     email: Optional[str] = Form(None),
     identifier: Optional[str] = Form(None),
-    response: Response = None,
-    request: Request = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Login user and return JWT tokens"""
     try:
