@@ -60,8 +60,9 @@ COPY --from=builder /opt/venv /opt/venv
 # Set work directory
 WORKDIR /app
 
-# Copy application code
+# Copy application code (invalidate cache with timestamp)
 COPY backend /app/backend
+RUN echo "Build timestamp: $(date)" > /app/build_timestamp.txt
 
 # Copy alembic configuration and migrations
 COPY alembic.ini /app/
