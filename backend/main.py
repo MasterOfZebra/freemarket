@@ -103,6 +103,11 @@ def startup_event():
         print(f"⚠️  Warning: Could not create DB tables on startup: {e}")
         print("   This is OK for development. Tables should exist in production.")
 
+    # Clear OpenAPI cache to ensure requestBody schemas are generated correctly
+    # This is needed for gunicorn workers that fork after app creation
+    print("[DEBUG] Clearing OpenAPI cache for proper schema generation")
+    app.openapi_schema = None
+
 
 if __name__ == "__main__":
     uvicorn.run(
