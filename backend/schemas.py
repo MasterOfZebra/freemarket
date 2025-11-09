@@ -438,7 +438,7 @@ class ListingItemsByCategoryResponse(BaseModel):
 
 class UserRegister(BaseModel):
     """User registration schema"""
-    email: Optional[str] = None
+    email: str  # Required field - enables FastAPI to detect JSON body
     phone: Optional[str] = None
     username: Optional[str] = None
     password: str = Field(..., min_length=8, max_length=128)
