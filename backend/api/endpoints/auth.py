@@ -227,6 +227,7 @@ def log_auth_event(
 @router.post("/register", response_model=UserProfile)
 @rate_limited_endpoint("register")
 async def register_user(
+    *,
     request: Request,
     user_data: UserRegister = Body(...),
     db: Session = Depends(get_db)
