@@ -1,6 +1,8 @@
 """
 FreeMarket Backend - Main FastAPI Application
 """
+print("[DEBUG] FreeMarket main.py starting...")
+
 import sys
 import os
 import json
@@ -55,6 +57,7 @@ async def lifespan(app: FastAPI):
 
 
 # Initialize FastAPI app
+print(f"[DEBUG] Creating FastAPI app with title: {API_TITLE}, version: {API_VERSION}")
 app = FastAPI(
     title=API_TITLE,
     version=API_VERSION,
@@ -62,6 +65,7 @@ app = FastAPI(
     default_response_class=UTF8JSONResponse,
     lifespan=lifespan,
 )
+print("[DEBUG] FastAPI app created successfully")
 
 # Add rate limiting middleware
 app.add_middleware(RateLimitMiddleware)
@@ -84,7 +88,9 @@ async def add_api_version_header(request, call_next):
     return response
 
 # Include all API routers
+print("[DEBUG] Including API router...")
 app.include_router(api_router)
+print("[DEBUG] API router included successfully")
 
 
 # Create database tables on startup (not on import)
