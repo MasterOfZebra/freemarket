@@ -92,6 +92,11 @@ print("[DEBUG] Including API router...")
 app.include_router(api_router)
 print("[DEBUG] API router included successfully")
 
+# Reset OpenAPI cache BEFORE gunicorn forking to ensure requestBody schemas are generated
+# This must happen in parent process before workers fork
+print("[DEBUG] Resetting OpenAPI cache BEFORE gunicorn forking")
+app.openapi_schema = None
+
 
 # Create database tables on startup (not on import)
 @app.on_event("startup")
@@ -103,10 +108,6 @@ def startup_event():
         print(f"⚠️  Warning: Could not create DB tables on startup: {e}")
         print("   This is OK for development. Tables should exist in production.")
 
-    # Clear OpenAPI cache to ensure requestBody schemas are generated correctly
-    # This is needed for gunicorn workers that fork after app creation
-    print("[DEBUG] Clearing OpenAPI cache for proper schema generation")
-    app.openapi_schema = None
 
 
 if __name__ == "__main__":
