@@ -11,7 +11,7 @@ import time
 from collections import defaultdict
 
 import jwt  # type: ignore
-from fastapi import APIRouter, Depends, HTTPException, Response, Request, status, Form
+from fastapi import APIRouter, Depends, HTTPException, Response, Request, status, Form, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
@@ -227,7 +227,7 @@ def log_auth_event(
 @router.post("/register", response_model=UserProfile)
 @rate_limited_endpoint("register")
 async def register_user(
-    user_data: UserRegister,
+    user_data: UserRegister = Body(...),
     request: Request,
     db: Session = Depends(get_db)
 ):
