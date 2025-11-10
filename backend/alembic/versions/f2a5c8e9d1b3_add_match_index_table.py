@@ -47,7 +47,7 @@ def upgrade() -> None:
     op.create_index('ix_match_index_category_user', 'match_index', ['category', 'user_id'], unique=False)
 
     # GIN index for tags array (PostgreSQL specific)
-    op.execute('CREATE INDEX ix_match_index_tags_gin ON match_index USING GIN (tags)')
+    op.execute('CREATE INDEX ix_match_index_tags_gin ON match_index USING GIN (tags jsonb_ops)')
 
     # Unique constraint to prevent duplicates
     op.create_unique_constraint('uq_match_index_user_category_type', 'match_index',
