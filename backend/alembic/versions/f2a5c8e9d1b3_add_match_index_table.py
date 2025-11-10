@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -29,7 +30,7 @@ def upgrade() -> None:
         sa.Column('item_type', sa.String(length=10), nullable=False),  # 'want' | 'offer'
         sa.Column('exchange_type', sa.String(length=20), nullable=False),  # 'PERMANENT' | 'TEMPORARY'
         sa.Column('category', sa.String(length=50), nullable=False),
-        sa.Column('tags', sa.JSON(), nullable=True),  # Array of tags for advanced filtering
+        sa.Column('tags', postgresql.JSONB(), nullable=True),  # Array of tags for advanced filtering
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
