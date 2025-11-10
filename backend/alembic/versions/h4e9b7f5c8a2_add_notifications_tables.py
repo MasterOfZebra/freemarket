@@ -86,8 +86,7 @@ def upgrade() -> None:
     op.create_index('ix_exchange_history_event_type', 'exchange_history', ['event_type'], unique=False)
     op.create_index('ix_exchange_history_created_at', 'exchange_history', ['created_at'], unique=False)
 
-    # Add rating cache columns to users table
-    op.add_column('users', sa.Column('rating_avg', sa.Float(), nullable=True, default=0.0))
+    # Add rating cache columns to users table (rating_avg already exists from initial migration)
     op.add_column('users', sa.Column('rating_count', sa.Integer(), nullable=False, default=0))
     op.add_column('users', sa.Column('last_rating_update', sa.DateTime(timezone=True), nullable=True))
 
@@ -95,10 +94,9 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop notifications and reviews tables."""
 
-    # Remove rating cache columns
+    # Remove rating cache columns (rating_avg stays as it was created in initial migration)
     op.drop_column('users', 'last_rating_update')
     op.drop_column('users', 'rating_count')
-    op.drop_column('users', 'rating_avg')
 
     # Drop indexes
     op.drop_index('ix_exchange_history_created_at', table_name='exchange_history')
