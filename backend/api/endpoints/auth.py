@@ -65,10 +65,7 @@ class RateLimitedRoute(APIRoute):
 
         return rate_limited_route_handler
 
-    def get_route_init_args(self, **kwargs):
-        """Ensure proper route initialization for OpenAPI generation"""
-        return super().get_route_init_args(**kwargs)
-
+    # Removed get_route_init_args, as the base class does not implement it and it's unnecessary
 
 # Create rate-limited router for auth endpoints
 auth_router = APIRouter(route_class=RateLimitedRoute)
