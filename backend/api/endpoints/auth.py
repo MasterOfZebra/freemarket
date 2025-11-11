@@ -286,7 +286,12 @@ async def login_user(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Login failed")
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"[ERROR] Login failed: {str(e)}")
+        print(f"[ERROR] Traceback: {error_details}")
+        log_auth_event(db, None, "login", request, False, {"error": str(e), "traceback": error_details})
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
 
 
 @auth_router.post("/refresh", response_model=TokenResponse)
