@@ -96,7 +96,6 @@ RATE_LIMIT_WINDOW = 300  # 5 minutes in seconds
 rate_limit_store = defaultdict(list)  # In production, use Redis
 
 router = APIRouter()
-security = HTTPBearer(auto_error=False)
 
 
 def check_rate_limit(client_ip: str, endpoint: str) -> bool:
@@ -178,55 +177,6 @@ def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: Session = Depends(get_db)
-) -> User:
-    """Get current authenticated user from JWT token"""
-    if not credentials:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    payload = verify_token(credentials.credentials)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found or inactive")
-
-    # Check if user is active (loaded value should be boolean)
-    is_active = getattr(user, "is_active", True)
-    if not is_active:  # type: ignore
-        raise HTTPException(status_code=401, detail="User not found or inactive")
-
-    return user
-
-
-def get_current_user_optional(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: Session = Depends(get_db)
-) -> Optional[User]:
-    """Get current authenticated user from JWT token, or None if not authenticated"""
-    if not credentials:
-        return None
-
-    payload = verify_token(credentials.credentials)
-    if not payload:
-        return None
-
-    user_id = payload.get("sub")
-    if not user_id:
-        return None
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or user.is_active is False:  # type: ignore
-        return None
-
-    return user
 
 
 def log_auth_event(
