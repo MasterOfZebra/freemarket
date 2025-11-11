@@ -151,5 +151,6 @@ def get_current_user_optional(
 __all__ = [
     "hash_password", "verify_password", "verify_token",
     "create_access_token", "create_refresh_token", "hash_refresh_token",
-    "get_current_user", "get_current_user_optional"
+    "get_current_user", "get_current_user_optional",
+    "ACCESS_TOKEN_EXPIRE_MINUTES"
 ]
