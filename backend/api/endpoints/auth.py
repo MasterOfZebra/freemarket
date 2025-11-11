@@ -23,7 +23,7 @@ from backend.schemas import (
     UserRegister, UserLogin, UserProfile, LoginResponse, TokenResponse,
     RefreshTokenRequest, ChangePasswordRequest
 )
-from backend.auth import hash_password, verify_password, create_access_token, create_refresh_token, hash_refresh_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from backend.auth import hash_password, verify_password, create_access_token, create_refresh_token, hash_refresh_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
 from pydantic import BaseModel
 
 # Rate limiting storage (in-memory for simplicity, use Redis in production)
