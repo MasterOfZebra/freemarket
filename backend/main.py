@@ -98,16 +98,17 @@ print("[DEBUG] Resetting OpenAPI cache BEFORE gunicorn forking")
 app.openapi_schema = None
 
 
-# Create database tables on startup (not on import)
-@app.on_event("startup")
-def startup_event():
-    """Create database tables on app startup"""
-    try:
-        ModelBase.metadata.create_all(bind=engine)
-    except Exception as e:
-        print(f"⚠️  Warning: Could not create DB tables on startup: {e}")
-        print("   This is OK for development. Tables should exist in production.")
-
+# Only auto-create tables in development environment to avoid conflicts with Alembic
+if ENV == "development":
+    @app.on_event("startup")
+    def startup_event() -> None:
+        """Create database tables automatically in dev mode."""
+        try:
+            ModelBase.metadata.create_all(bind=engine)
+            print("[DEBUG] Model metadata.create_all executed (development mode)")
+        except Exception as e:
+            print(f"⚠️  Warning: Could not create DB tables on startup: {e}")
+            print("   Continuing - in dev mode this is acceptable.")
 
 
 if __name__ == "__main__":
