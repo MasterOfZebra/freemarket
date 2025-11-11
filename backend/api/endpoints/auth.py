@@ -373,8 +373,7 @@ async def refresh_access_token(
 async def logout_user(
     request: Request,
     response: Response,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user)
 ):
     """Logout user by revoking refresh tokens"""
     try:
