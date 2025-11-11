@@ -23,6 +23,7 @@ from backend.schemas import (
     UserRegister, UserLogin, UserProfile, LoginResponse, TokenResponse,
     RefreshTokenRequest, ChangePasswordRequest
 )
+from backend.auth import hash_password, verify_password, create_access_token, create_refresh_token, hash_refresh_token
 from pydantic import BaseModel
 
 # Rate limiting storage (in-memory for simplicity, use Redis in production)
@@ -71,24 +72,7 @@ class RateLimitedRoute(APIRoute):
 auth_router = APIRouter(route_class=RateLimitedRoute)
 
 # Security configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15  # Short-lived access tokens
 REFRESH_TOKEN_EXPIRE_DAYS = 30    # Long-lived refresh tokens
-
-# Password hashing with Argon2id (more secure than bcrypt)
-try:
-    from passlib.hash import argon2
-    HAS_ARGON2 = True
-    HAS_BCRYPT = False
-except ImportError:
-    # Fallback to bcrypt if argon2 is not available
-    HAS_ARGON2 = False
-    try:
-        import bcrypt  # type: ignore
-        HAS_BCRYPT = True
-    except ImportError:
-        HAS_BCRYPT = False
 
 # Rate limiting configuration
 RATE_LIMIT_REQUESTS = 5  # requests per window
@@ -117,64 +101,14 @@ def check_rate_limit(client_ip: str, endpoint: str) -> bool:
 
 
 
-def hash_password(password: str) -> str:
-    """Hash password with Argon2id or bcrypt as fallback"""
-    if HAS_ARGON2:
-        return argon2.hash(password)
-    elif HAS_BCRYPT:
-        # Fallback to bcrypt
-        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    else:
-        # No password hashing available - this should not happen in production
-        raise RuntimeError("No password hashing library available. Install passlib[argon2] or bcrypt.")
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against hash"""
-    if HAS_ARGON2:
-        return argon2.verify(plain_password, hashed_password)
-    elif HAS_BCRYPT:
-        # Fallback to bcrypt
-        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
-    else:
-        # No password hashing available - this should not happen in production
-        raise RuntimeError("No password hashing library available. Install passlib[argon2] or bcrypt.")
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Create JWT access token"""
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-
-    to_encode.update({"exp": expire, "type": "access"})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
 
 
-def create_refresh_token() -> str:
-    """Create cryptographically secure refresh token"""
-    return secrets.token_urlsafe(32)
 
 
-def hash_refresh_token(token: str) -> str:
-    """Hash refresh token for storage"""
-    return hashlib.sha256(token.encode()).hexdigest()
-
-
-def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
-    """Verify JWT token"""
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        if payload.get("type") != token_type:
-            return None
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
 
 
 
