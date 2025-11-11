@@ -192,8 +192,12 @@ async def register_user(
         raise
     except Exception as e:
         db.rollback()
-        log_auth_event(db, None, "register", request, False, {"error": str(e)})
-        raise HTTPException(status_code=500, detail="Registration failed")
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"[ERROR] Registration failed: {str(e)}")
+        print(f"[ERROR] Traceback: {error_details}")
+        log_auth_event(db, None, "register", request, False, {"error": str(e), "traceback": error_details})
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 
 @auth_router.post("/login", response_model=LoginResponse)
