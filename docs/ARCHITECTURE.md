@@ -862,16 +862,68 @@ See [API_REFERENCE.md](./API_REFERENCE.md) for full list and examples.
 
 ## 🗄️ **Database Schema**
 
+**Total Tables:** 30+ (all migrations applied successfully)
+
+### **Core Tables**
+
 ```sql
--- Users with Telegram integration
+-- Users with JWT authentication and Telegram integration
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
-  username VARCHAR UNIQUE NOT NULL,
-  contact VARCHAR,
+  username VARCHAR(50) UNIQUE,
+  email VARCHAR(100) UNIQUE,
+  phone VARCHAR(20) UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(100),
+  telegram_contact VARCHAR(100),
+  city VARCHAR(50) DEFAULT 'Алматы' NOT NULL,
+  bio TEXT,
+  trust_score FLOAT DEFAULT 0.0,
+  exchange_count INTEGER DEFAULT 0,
+  rating_avg FLOAT DEFAULT 0.0,
+  rating_count INTEGER DEFAULT 0,
+  last_rating_update TIMESTAMP WITH TIME ZONE,
+  is_active BOOLEAN DEFAULT true,
+  is_verified BOOLEAN DEFAULT false,
+  email_verified BOOLEAN DEFAULT false,
+  phone_verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE,
+  last_login_at TIMESTAMP WITH TIME ZONE,
+  last_active_at TIMESTAMP WITH TIME ZONE,
+  contact JSON,
+  locations VARCHAR[] DEFAULT '{"Алматы"}',
   telegram_id INTEGER UNIQUE,
-  telegram_username VARCHAR,
-  locations ARRAY VARCHAR,
-  created_at TIMESTAMP DEFAULT NOW()
+  telegram_username VARCHAR(50),
+  telegram_first_name VARCHAR(50)
+);
+
+-- Refresh tokens for JWT authentication
+CREATE TABLE refresh_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  token_hash VARCHAR(128) UNIQUE NOT NULL,
+  device_id VARCHAR(64) NOT NULL,
+  user_agent VARCHAR(255),
+  issued_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  is_revoked BOOLEAN DEFAULT false,
+  ip_address VARCHAR(45),
+  revoked_at TIMESTAMP WITH TIME ZONE,
+  revoked_reason VARCHAR(100)
+);
+
+-- Authentication events for logging
+CREATE TABLE auth_events (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  event_type VARCHAR(50) NOT NULL,
+  ip_address VARCHAR(45),
+  user_agent VARCHAR(255),
+  device_id VARCHAR(64),
+  success BOOLEAN DEFAULT true,
+  details JSON,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 -- Listings by category
@@ -910,6 +962,25 @@ CREATE TABLE matches (
   status VARCHAR DEFAULT 'proposed'
 );
 ```
+
+### **Additional Tables (Phase 2.2+)**
+
+- `exchange_messages` - WebSocket chat messages with delivery tracking
+- `user_events` - Notification events system
+- `user_reviews` - Trust rating system
+- `exchange_history` - Complete exchange timelines
+- `reports` - Moderation complaint system
+- `user_trust_index` - Trust score analytics
+- `user_action_log` - Audit trail
+- `match_index` - Incremental matching optimization
+- `categories_v6` - Versioned category system
+- `category_versions` - Category versioning metadata
+- `category_mappings` - Category migration mappings
+- `notifications` - User notifications
+- `exchange_chains` - Multi-party exchange chains
+- `mutual_matches` - Bilateral match records
+
+**All tables include proper indexes, foreign keys, and constraints for optimal performance.**
 
 ---
 
@@ -973,7 +1044,8 @@ STEP 6: CONNECT
 ---
 
 **For detailed information, see:**
-- [API_REFERENCE.md](./API_REFERENCE.md) - All 22 endpoints
-- [TESTING.md](./TESTING.md) - 7 test scenarios
+- [API_REFERENCE.md](./API_REFERENCE.md) - All 44 endpoints
+- [TESTING.md](./TESTING.md) - 15+ test scenarios
 - [DEPLOYMENT.md](./DEPLOYMENT.md) - Production setup
+- [MIGRATIONS.md](./MIGRATIONS.md) - Database migration guide
 

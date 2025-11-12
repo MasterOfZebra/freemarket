@@ -1,9 +1,80 @@
 # 🧪 FreeMarket Testing Guide
 
-**Version:** 2.2 (Real-Time & Moderation) | **Last Updated:** Ноябрь 2025
+**Version:** 2.2.1 (Production Ready & Fully Tested) | **Last Updated:** Ноябрь 2025
 
 ---
-### Test Scenario 8: Категории v6 миграции
+
+### Test Scenario 8: Authentication Fixes (v2.2.1)
+
+**Что тестируем:** Исправления циклических импортов, добавление недостающих полей БД, создание таблиц refresh_tokens и auth_events, улучшенное логирование ошибок.
+
+**Данные:** Новый пользователь для регистрации и логина.
+
+**Шаги:**
+- **Проверка миграций:**
+  ```bash
+  # Проверить наличие всех таблиц
+  docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "\dt" | grep -E "(users|refresh_tokens|auth_events)"
+  
+  # Проверить наличие полей в users
+  docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "\d users" | grep -E "(telegram_username|telegram_first_name|rating_count|last_rating_update)"
+  ```
+
+- **Регистрация пользователя:**
+  ```bash
+  curl -X POST https://assistance-kz.ru/auth/register \
+    -H "Content-Type: application/json" \
+    -d '{
+      "email": "testuser@example.com",
+      "password": "testpass123",
+      "full_name": "Test User",
+      "phone": "+77770009999"
+    }'
+  ```
+  **Ожидаемый результат:** Успешная регистрация (HTTP 200), пользователь создан в БД, все поля заполнены.
+
+- **Логин пользователя:**
+  ```bash
+  curl -X POST https://assistance-kz.ru/auth/login \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "email=testuser@example.com&password=testpass123" \
+    -c /tmp/cookies.txt -b /tmp/cookies.txt
+  ```
+  **Ожидаемый результат:** Успешный логин (HTTP 200), получен access_token, refresh_token сохранен в cookie и в таблице refresh_tokens, событие записано в auth_events.
+
+- **Проверка refresh_tokens:**
+  ```bash
+  docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "
+    SELECT user_id, device_id, issued_at, expires_at, is_revoked 
+    FROM refresh_tokens 
+    ORDER BY issued_at DESC 
+    LIMIT 1;
+  "
+  ```
+  **Ожидаемый результат:** Запись в таблице refresh_tokens с корректными данными.
+
+- **Проверка auth_events:**
+  ```bash
+  docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "
+    SELECT event_type, success, created_at 
+    FROM auth_events 
+    ORDER BY created_at DESC 
+    LIMIT 5;
+  "
+  ```
+  **Ожидаемый результат:** События login и register записаны в таблицу auth_events.
+
+- **Проверка логов на ошибки:**
+  ```bash
+  docker compose -f docker-compose.prod.yml logs backend | grep -i "error\|exception" | tail -10
+  ```
+  **Ожидаемый результат:** Нет ошибок в логах, или ошибки содержат подробный traceback для отладки.
+
+**Ожидаемый результат:** Все исправления работают корректно, регистрация и логин функционируют без ошибок, все таблицы и поля созданы, логирование работает.
+
+---
+
+### Test Scenario 9: Категории v6 миграции
 
 **Что тестируем:** миграции версии v6 и корректность инициализации данных категорий. Убеждаемся, что таблица `categories_v6` и `category_mappings` заполнены верно, а также, что API возвращает ожидаемые 35 permanent и 25 temporary категорий.
 
@@ -22,7 +93,7 @@
 **Ожидаемый результат:** миграции проходят без ошибок; таблицы категорий заполнены; API `/v1/categories` и его под-эндпоинты возвращают корректные данные.
 
 ---
-### Test Scenario 9: Auth rotation & LK access
+### Test Scenario 10: Auth rotation & LK access (JWT Security)
 
 **Что тестируем:** безопасность JWT-потоков: rotation refresh-токенов, хранение refresh-токенов в HttpOnly, Secure cookie, ревокация в Redis, выход и внешние сессии, а также доступ к endpoint'ам личного кабинета.
 
@@ -41,7 +112,7 @@
 
 ---
 
-### Test Scenario 10: AI Semantic Matching Validation
+### Test Scenario 11: AI Semantic Matching Validation
 
 **Что тестируем:** корректность работы AI компонентов мэтчинга: SentenceTransformers векторная близость, RapidFuzz fuzzy matching, композитный скоринг и адаптивную толерантность.
 
@@ -58,7 +129,7 @@
 
 ---
 
-### Test Scenario 11: WebSocket Chat Functionality
+### Test Scenario 12: WebSocket Chat Functionality
 
 **Что тестируем:** реальное время чата, гарантия доставки сообщений, read receipts, Redis Pub/Sub broadcasting.
 
@@ -76,7 +147,7 @@
 
 ---
 
-### Test Scenario 12: Server-Sent Events (SSE) Stream
+### Test Scenario 13: Server-Sent Events (SSE) Stream
 
 **Что тестируем:** реальное время уведомлений, event broadcasting, Redis Streams journaling.
 
@@ -93,7 +164,7 @@
 
 ---
 
-### Test Scenario 13: Review & Trust System
+### Test Scenario 14: Review & Trust System
 
 **Что тестируем:** создание отзывов, расчет trust score, анти-спам защита, кеширование рейтингов.
 
@@ -110,7 +181,7 @@
 
 ---
 
-### Test Scenario 14: Moderation & Complaint System
+### Test Scenario 15: Moderation & Complaint System
 
 **Что тестируем:** создание жалоб, авто-модерация, эскалация, админские действия.
 
@@ -127,7 +198,7 @@
 
 ---
 
-### Test Scenario 15: Exchange History & Export
+### Test Scenario 16: Exchange History & Export
 
 **Что тестируем:** история обменов, timeline событий, экспорт данных, фильтры.
 

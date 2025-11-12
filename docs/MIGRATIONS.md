@@ -27,9 +27,35 @@ base (revision: None)
 ├── ecee305c0829_create_base_listing_items_table.py
 │   └─ Creates: listing_items table (FK to listings)
 ├── 001_add_exchange_types.py
-│   └─ Empty (columns already in base table)
-└── cbfc66708806_merge_multiple_heads.py
-    └─ Merge all branches
+│   └─ Adds exchange types support
+├── f2a5c8e9d1b3_add_match_index_table.py
+│   └─ Creates: match_index table for incremental matching
+├── g3c9f2e8a4d7_add_exchange_messages_table.py
+│   └─ Creates: exchange_messages table for chat
+├── h4e9b7f5c8a2_add_notifications_tables.py
+│   └─ Creates: user_events, user_reviews tables
+├── i5f8g9h2j7k4_add_message_delivery_tracking.py
+│   └─ Adds delivery tracking fields
+├── j8k9l0m1n2o3_add_audit_and_trust_tables.py
+│   └─ Creates: user_action_log, user_trust_index, exchange_history
+├── k9l2m8n4o6p_add_reports_table.py
+│   └─ Creates: reports table for moderation
+├── cbfc66708806_merge_multiple_heads.py
+│   └─ Merge multiple heads
+├── b1552baa1856_add_category_versions_table.py
+│   └─ Creates: category_versions table
+├── c5e53d52125f_add_category_mappings_table.py
+│   └─ Creates: category_mappings table
+├── 758745e40a96_add_categories_v6_table.py
+│   └─ Creates: categories_v6 table
+├── 668bc94471e9_fix_unique_constraint_for_category_mappings.py
+│   └─ Fixes unique constraint
+├── l9m3n5o7p9q1_merge_category_and_reports_heads.py
+│   └─ Merge category and reports heads
+├── m1n2o3p4q5r6_add_missing_user_fields.py
+│   └─ Adds: telegram_username, telegram_first_name, rating_count, last_rating_update
+└── n2o3p4q5r6s7_add_refresh_tokens_and_auth_events.py
+    └─ Creates: refresh_tokens, auth_events tables
 ```
 
 ### Key Tables Created
@@ -39,7 +65,17 @@ base (revision: None)
 | `cf5a32f4e1d5` | `users` | None |
 | `50c3593832b4` | `categories`, `listings` | `users` |
 | `ecee305c0829` | `listing_items` | `listings`, `users` |
-| `cbfc66708806` | (merge only) | All above |
+| `f2a5c8e9d1b3` | `match_index` | `users` |
+| `g3c9f2e8a4d7` | `exchange_messages` | `users` |
+| `h4e9b7f5c8a2` | `user_events`, `user_reviews` | `users` |
+| `j8k9l0m1n2o3` | `user_action_log`, `user_trust_index`, `exchange_history` | `users` |
+| `k9l2m8n4o6p` | `reports` | `users` |
+| `b1552baa1856` | `category_versions` | None |
+| `c5e53d52125f` | `category_mappings` | `category_versions` |
+| `758745e40a96` | `categories_v6` | `category_versions` |
+| `m1n2o3p4q5r6` | (adds columns to `users`) | `users` |
+| `n2o3p4q5r6s7` | `refresh_tokens`, `auth_events` | `users` |
+| `l9m3n5o7p9q1` | (merge only) | All above |
 
 ---
 
@@ -109,6 +145,37 @@ alembic upgrade head
 ---
 
 ## 🛠️ Troubleshooting Migration Issues
+
+### Problem: "UndefinedColumn: column users.telegram_username does not exist"
+
+**Cause:** Model defines fields that don't exist in database (missing migration).
+
+**Solution:** (Fixed in v2.2.1)
+```bash
+# Apply missing migration
+alembic upgrade m1n2o3p4q5r6
+
+# Or add columns manually if migration not available
+docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "
+ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_username VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_first_name VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS rating_count INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_rating_update TIMESTAMP WITH TIME ZONE;
+"
+```
+
+### Problem: "UndefinedTable: relation 'refresh_tokens' does not exist"
+
+**Cause:** Missing migration for authentication tables.
+
+**Solution:** (Fixed in v2.2.1)
+```bash
+# Apply missing migration
+alembic upgrade n2o3p4q5r6s7
+
+# Verify tables created
+docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "\dt" | grep -E "(refresh_tokens|auth_events)"
+```
 
 ### Problem: "relation 'listings' does not exist"
 

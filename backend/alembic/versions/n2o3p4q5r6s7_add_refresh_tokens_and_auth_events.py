@@ -73,7 +73,7 @@ def downgrade() -> None:
     op.drop_index('ix_auth_events_user_id', table_name='auth_events')
     op.drop_index('ix_auth_events_id', table_name='auth_events')
     op.drop_table('auth_events')
-    
+
     op.drop_index('ix_refresh_expires', table_name='refresh_tokens')
     op.drop_index('ix_refresh_user_device', table_name='refresh_tokens')
     op.drop_index('ix_refresh_tokens_is_revoked', table_name='refresh_tokens')

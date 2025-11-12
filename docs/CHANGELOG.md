@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2025-11-XX
 
+### Fixed
+- **Authentication Module Refactoring** (2025-11-11)
+  - Resolved circular import issues between `backend/auth.py` and `backend/api/endpoints/auth.py`
+  - Moved all auth utilities (`get_current_user`, `get_current_user_optional`, `hash_password`, `verify_password`, `verify_token`, `create_access_token`, `create_refresh_token`, `hash_refresh_token`) to centralized `backend/auth.py` module
+  - Updated all imports across codebase to use centralized auth module
+  - Fixed `NameError` and `ImportError` issues during application startup
+
+- **Database Schema Fixes** (2025-11-11)
+  - Added missing `telegram_username` and `telegram_first_name` columns to `users` table
+  - Added missing `rating_count` and `last_rating_update` columns to `users` table
+  - Created `refresh_tokens` table for JWT refresh token storage with proper indexes
+  - Created `auth_events` table for authentication event logging
+  - Fixed `UndefinedColumn` and `UndefinedTable` errors during registration and login
+
+- **Error Logging Improvements** (2025-11-11)
+  - Added detailed error logging with traceback for registration failures
+  - Added detailed error logging with traceback for login failures
+  - Improved error messages in HTTPException responses for better debugging
+
 ### Added
 - **Phase 2.5 Production Hardening**
   - Separate WebSocket gateway container (`freemarket-ws`)
@@ -17,10 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Message delivery guarantees (TTL cache, re-delivery)
   - Auto-moderation escalation rules
 
+- **Database Migrations** (2025-11-11)
+  - Migration `m1n2o3p4q5r6`: Add missing telegram and rating fields to users table
+  - Migration `n2o3p4q5r6s7`: Create refresh_tokens and auth_events tables
+
 ### Changed
 - **Documentation**: Comprehensive updates across all docs for Phase 2.2 features
 - **API endpoints**: Updated to 44 total endpoints
 - **Testing scenarios**: Expanded to 15 comprehensive test cases
+- **Database Schema**: Now includes 30+ tables with proper relationships and indexes
 
 ---
 

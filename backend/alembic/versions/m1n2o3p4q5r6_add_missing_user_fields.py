@@ -23,7 +23,7 @@ def upgrade() -> None:
     # Add rating fields
     op.add_column('users', sa.Column('rating_count', sa.Integer(), server_default='0', nullable=True))
     op.add_column('users', sa.Column('last_rating_update', sa.DateTime(timezone=True), nullable=True))
-    
+
     # Add telegram fields
     op.add_column('users', sa.Column('telegram_username', sa.String(length=50), nullable=True))
     op.add_column('users', sa.Column('telegram_first_name', sa.String(length=50), nullable=True))

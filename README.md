@@ -1,6 +1,6 @@
 # 🎁 FreeMarket - AI-Powered Marketplace for Mutual Aid & Exchange
 
-**Version:** 2.2 (Personal Cabinet, Real-Time Communications & Moderation)
+**Version:** 2.2.1 (Production Ready & Fully Tested)
 **Status:** ✅ Production Ready with Full User Experience
 
 ---
@@ -200,7 +200,8 @@ FreeMarket/
 │   ├── equivalence_engine.py  ⚖️ Value Matching
 │   ├── rate_limiting.py       🛡️ Security middleware
 │   ├── error_tracking.py      📊 Sentry integration
-│   ├── models.py              (SQLAlchemy DB models - 12 tables)
+│   ├── models.py              (SQLAlchemy DB models - 30+ tables)
+│   ├── auth.py                (Centralized auth utilities)
 │   ├── main.py                (FastAPI application)
 │   └── ...
 │
@@ -317,7 +318,7 @@ See [docs/INDEX.md](./docs/INDEX.md) for complete navigation.
 ## ✅ Current Status (Phase 2.5)
 
 ```
-✅ Code:           Production Hardened
+✅ Code:           Production Hardened & Fully Tested
 ✅ Architecture:   Event-Driven & Real-Time
 ✅ Matching:       7-Phase Pipeline + Incremental
 ✅ Communications: WebSocket Chat + SSE Notifications
@@ -328,13 +329,16 @@ See [docs/INDEX.md](./docs/INDEX.md) for complete navigation.
 ✅ Testing:        15+ AI Scenarios
 ✅ Deployment:     Docker Compose + Monitoring
 ✅ Security:       JWT + Rate Limiting + Sentry
-✅ Migrations:     12 Tables + Event Streams
+✅ Migrations:     30+ Tables + Event Streams
+✅ Authentication: Fully Functional (Register/Login/Refresh)
+✅ Database:       All Tables Created & Tested
 ```
 
 ---
 
 ## 📊 Version History
 
+- **v2.2.1** (Ноябрь 2025) - Bug Fixes: Исправлены циклические импорты, добавлены недостающие таблицы БД, улучшено логирование ошибок
 - **v2.2** (Ноябрь 2025) - Phase 2.5: Личный кабинет, чат, отзывы, модерация, production hardening
 - **v2.1** (Ноябрь 2025) - Phase 2: AI мэтчинг, инкрементальные обновления, автосинхронизация
 - **v2.0** (Ноябрь 2025) - Phase 1: Категории v6, JWT-аутентификация, Nginx
