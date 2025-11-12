@@ -14,7 +14,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 # API Configuration
 API_TITLE = os.getenv("API_TITLE", "FreeMarket API")
-API_VERSION = os.getenv("API_VERSION", "2.2.0")
+API_VERSION = os.getenv("API_VERSION", "2.2.1")
 API_DESCRIPTION = os.getenv("API_DESCRIPTION", "AI-Powered Marketplace for Mutual Aid & Exchange")
 CORS_ORIGINS = json.loads(os.getenv("CORS_ORIGINS", '["http://localhost:3000", "http://127.0.0.1:3000", "https://assistance-kz.ru"]'))
 ENV = os.getenv("ENV", "development")
