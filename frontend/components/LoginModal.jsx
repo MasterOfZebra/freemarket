@@ -30,27 +30,46 @@ export default function LoginModal({ onClose, onLogin }) {
 
         try {
             const endpoint = isRegister ? '/auth/register' : '/auth/login';
-            const payload = isRegister ? {
-                email: formData.email || null,
-                phone: formData.phone || null,
-                username: formData.username || null,
-                password: formData.password,
-                full_name: formData.full_name,
-                telegram_contact: formData.telegram_contact || null,
-                city: formData.city
-            } : {
-                identifier: formData.identifier,
-                password: formData.password
-            };
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify(payload)
-            });
+            
+            let response;
+            if (isRegister) {
+                // Registration uses JSON
+                const payload = {
+                    email: formData.email || null,
+                    phone: formData.phone || null,
+                    username: formData.username || null,
+                    password: formData.password,
+                    full_name: formData.full_name,
+                    telegram_contact: formData.telegram_contact || null,
+                    city: formData.city
+                };
+                response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                // Login uses form-urlencoded
+                const formDataObj = new URLSearchParams();
+                if (formData.identifier.includes('@')) {
+                    formDataObj.append('email', formData.identifier);
+                } else {
+                    formDataObj.append('identifier', formData.identifier);
+                }
+                formDataObj.append('password', formData.password);
+                
+                response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    credentials: 'include',
+                    body: formDataObj.toString()
+                });
+            }
 
             const data = await response.json();
 
@@ -72,8 +91,11 @@ export default function LoginModal({ onClose, onLogin }) {
                     telegram_contact: ''
                 }));
             } else {
-                // Login successful
-                onLogin(data.user);
+                // Login successful - save access token and user data
+                if (data.access_token) {
+                    localStorage.setItem('access_token', data.access_token);
+                }
+                onLogin({ ...data.user, access_token: data.access_token });
             }
 
         } catch (err) {

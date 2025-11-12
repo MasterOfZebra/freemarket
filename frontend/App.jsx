@@ -20,16 +20,56 @@ function App() {
 
     const checkAuthStatus = async () => {
         try {
+            const accessToken = localStorage.getItem('access_token');
+            if (!accessToken) {
+                return; // No token, user not logged in
+            }
+            
             const response = await fetch('/auth/me', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                },
                 credentials: 'include'
             });
+            
             if (response.ok) {
                 const userData = await response.json();
-                setUser(userData);
+                setUser({ ...userData, access_token: accessToken });
                 setIsLoggedIn(true);
+            } else if (response.status === 401) {
+                // Token expired or invalid, try to refresh
+                try {
+                    const refreshResponse = await fetch('/auth/refresh', {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                    if (refreshResponse.ok) {
+                        const refreshData = await refreshResponse.json();
+                        localStorage.setItem('access_token', refreshData.access_token);
+                        // Retry /auth/me with new token
+                        const retryResponse = await fetch('/auth/me', {
+                            headers: {
+                                'Authorization': `Bearer ${refreshData.access_token}`
+                            },
+                            credentials: 'include'
+                        });
+                        if (retryResponse.ok) {
+                            const userData = await retryResponse.json();
+                            setUser({ ...userData, access_token: refreshData.access_token });
+                            setIsLoggedIn(true);
+                        }
+                    } else {
+                        // Refresh failed, clear token
+                        localStorage.removeItem('access_token');
+                    }
+                } catch (refreshError) {
+                    localStorage.removeItem('access_token');
+                }
             }
         } catch (error) {
             // User not logged in
+            console.error('Auth check error:', error);
         }
     };
 
@@ -41,13 +81,18 @@ function App() {
 
     const handleLogout = async () => {
         try {
+            const accessToken = localStorage.getItem('access_token');
             await fetch('/auth/logout', {
                 method: 'POST',
+                headers: accessToken ? {
+                    'Authorization': `Bearer ${accessToken}`
+                } : {},
                 credentials: 'include'
             });
         } catch (error) {
             console.error('Logout error:', error);
         }
+        localStorage.removeItem('access_token');
         setUser(null);
         setIsLoggedIn(false);
         setShowCabinet(false);
