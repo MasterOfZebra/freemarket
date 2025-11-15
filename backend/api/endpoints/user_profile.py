@@ -143,21 +143,27 @@ async def get_my_listings(
             exchange_types = set()
 
             for item in listing.items:
+                # Skip archived items
+                if item.is_archived:
+                    continue
+                    
                 if item.item_type.value == "want":
                     wants_count += 1
                 elif item.item_type.value == "offer":
                     offers_count += 1
                 exchange_types.add(item.exchange_type.value)
 
-            result.append(ListingSummary(
-                id=listing.id,
-                title=listing.title,
-                description=listing.description,
-                created_at=listing.created_at,
-                total_wants=wants_count,
-                total_offers=offers_count,
-                exchange_types=list(exchange_types)
-            ))
+            # Only include listings that have at least one non-archived item
+            if wants_count > 0 or offers_count > 0:
+                result.append(ListingSummary(
+                    id=listing.id,
+                    title=listing.title,
+                    description=listing.description,
+                    created_at=listing.created_at,
+                    total_wants=wants_count,
+                    total_offers=offers_count,
+                    exchange_types=list(exchange_types)
+                ))
 
         return result
 
