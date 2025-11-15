@@ -293,6 +293,9 @@ def create_listing_by_categories(
         wants_summary = {}
         offers_summary = {}
 
+        # Log what we received
+        logger.info(f"Creating listing for user {user_id}: wants={listing.wants}, offers={listing.offers}")
+
         # Process WANTS
         for category, items in listing.wants.items():
             wants_summary[category] = []
@@ -317,6 +320,7 @@ def create_listing_by_categories(
 
                 db.add(db_item)
                 items_created += 1
+                logger.debug(f"Added WANT item: {item.item_name} (category: {category}, listing_id: {db_listing.id})")
                 wants_summary[category].append({
                     "item_name": item.item_name,
                     "value_tenge": item.value_tenge,
@@ -348,6 +352,7 @@ def create_listing_by_categories(
 
                 db.add(db_item)
                 items_created += 1
+                logger.debug(f"Added OFFER item: {item.item_name} (category: {category}, listing_id: {db_listing.id})")
                 offers_summary[category].append({
                     "item_name": item.item_name,
                     "value_tenge": item.value_tenge,
@@ -359,8 +364,15 @@ def create_listing_by_categories(
         if listing.locations:
             setattr(user, 'locations', listing.locations)  # type: ignore[assignment]
 
+        logger.info(f"About to commit: {items_created} items for listing {db_listing.id}")
         db.commit()
         db.refresh(db_listing)
+        
+        # Verify items were saved
+        saved_items_count = db.query(ListingItem).filter(ListingItem.listing_id == db_listing.id).count()
+        logger.info(f"After commit: {saved_items_count} items found in database for listing {db_listing.id}")
+        if saved_items_count != items_created:
+            logger.error(f"MISMATCH: Expected {items_created} items, but found {saved_items_count} in database!")
 
         logger.info(f"Created listing {db_listing.id} for user {user_id} with {items_created} items")
         logger.info(f"Listing details: title='{db_listing.title}', user_id={db_listing.user_id}, items_count={items_created}")
