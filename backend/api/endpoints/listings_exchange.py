@@ -1072,13 +1072,15 @@ def _find_matches_internal(
 
     except ValueError as ve:
         # Re-raise ValueError as HTTPException for HTTP endpoint
-        logger.error(f"Error finding matches: {ve}")
+        logger.error(f"Error finding matches (ValueError) for user {user_id}: {ve}", exc_info=True)
         raise HTTPException(status_code=404 if "not found" in str(ve).lower() else 500, detail=str(ve))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error finding matches: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error finding matches (Exception) for user {user_id}: {e}", exc_info=True)
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Error finding matches: {str(e)}")
     finally:
         # Close session if it was created inside this function
         if should_close and db is not None:
@@ -1556,4 +1558,11 @@ def find_matches_for_user(
     HTTP endpoint wrapper for matching functionality.
     Delegates to _find_matches_internal for the actual work.
     """
-    return _find_matches_internal(user_id, exchange_type, db)
+    try:
+        logger.info(f"Finding matches for user {user_id}, exchange_type={exchange_type}")
+        result = _find_matches_internal(user_id, exchange_type, db)
+        logger.info(f"Matches found for user {user_id}: {result.get('matches_found', 0)}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in find_matches_for_user endpoint for user {user_id}: {e}", exc_info=True)
+        raise
