@@ -257,8 +257,12 @@ def create_listing_by_categories(
                     setattr(user, 'telegram_username', telegram)  # type: ignore[assignment]
             db.flush()
 
-        # Create listing
-        db_listing = Listing(user_id=user_id)
+        # Create listing with default title and description
+        db_listing = Listing(
+            user_id=user_id,
+            title=f"Listing for user {user_id}",
+            description="Created via create-by-categories endpoint"
+        )
         db.add(db_listing)
         db.flush()  # Get listing ID before creating items
 
@@ -476,8 +480,12 @@ def create_listing(
             setattr(user, 'locations', listing.locations)  # type: ignore[assignment]
             db.flush()
 
-        # Create listing
-        db_listing = Listing(user_id=user_id)
+        # Create listing with default title and description
+        db_listing = Listing(
+            user_id=user_id,
+            title=f"Listing for user {user_id}",
+            description="Created via create endpoint"
+        )
         db.add(db_listing)
         db.flush()
 
