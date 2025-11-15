@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey, ARRAY, Numeric, Interval, text as sa_text, Enum as SQLEnum, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, BigInteger, String, Float, Boolean, DateTime, Text, JSON, ForeignKey, ARRAY, Numeric, Interval, text as sa_text, Enum as SQLEnum, UniqueConstraint, Index
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -78,7 +78,7 @@ class User(Base):
     locations = Column(ARRAY(String), default=["Алматы"], nullable=True)  # Legacy multiple cities
 
     # Telegram integration fields
-    telegram_id = Column(Integer, unique=True, nullable=True)             # chat_id for Bot API
+    telegram_id = Column(BigInteger, unique=True, nullable=True)             # chat_id for Bot API (can be very large)
     telegram_username = Column(String(50), nullable=True)                 # username (without @)
     telegram_first_name = Column(String(50), nullable=True)               # first_name from Telegram
 
