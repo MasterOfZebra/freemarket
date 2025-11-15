@@ -1,6 +1,6 @@
 # 🎁 FreeMarket - AI-Powered Marketplace for Mutual Aid & Exchange
 
-**Version:** 2.2.1 (Production Ready & Fully Tested)
+**Version:** 2.2.2 (Production Ready & Fully Tested)
 **Status:** ✅ Production Ready with Full User Experience
 
 ---
@@ -44,6 +44,11 @@ POST /auth/register
 - full_name
 - city
 - telegram_contact
+
+Returns: {user, access_token, token_type, expires_in}
+- User is automatically logged in after registration
+- Refresh token set as HttpOnly cookie
+- Store access_token in localStorage
 ```
 
 ### 2. Market Listings (v6 Categories)
@@ -330,7 +335,7 @@ See [docs/INDEX.md](./docs/INDEX.md) for complete navigation.
 ✅ Deployment:     Docker Compose + Monitoring
 ✅ Security:       JWT + Rate Limiting + Sentry
 ✅ Migrations:     30+ Tables + Event Streams
-✅ Authentication: Fully Functional (Register/Login/Refresh)
+✅ Authentication: Fully Functional (Register/Login/Refresh) - Auto-login after registration
 ✅ Database:       All Tables Created & Tested
 ```
 
@@ -338,6 +343,7 @@ See [docs/INDEX.md](./docs/INDEX.md) for complete navigation.
 
 ## 📊 Version History
 
+- **v2.2.2** (Ноябрь 2025) - Authentication UX: Автоматический вход после регистрации, исправлена ошибка 401 в консоли для /auth/me, улучшен формат ответов API
 - **v2.2.1** (Ноябрь 2025) - Bug Fixes: Исправлены циклические импорты, добавлены недостающие таблицы БД, улучшено логирование ошибок
 - **v2.2** (Ноябрь 2025) - Phase 2.5: Личный кабинет, чат, отзывы, модерация, production hardening
 - **v2.1** (Ноябрь 2025) - Phase 2: AI мэтчинг, инкрементальные обновления, автосинхронизация

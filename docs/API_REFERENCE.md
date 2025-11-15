@@ -211,7 +211,7 @@ curl -X PUT https://assistance-kz.ru/api/users/1/locations \
 ## 🔑 Authentication Endpoints
 
 ### POST `/auth/register`
-Register a new user with email, password, and optional profile details.
+Register a new user with email, password, and optional profile details. Returns JWT tokens for automatic login after registration.
 
 **Request Body:**
 ```json
@@ -225,22 +225,32 @@ Register a new user with email, password, and optional profile details.
 }
 ```
 
-**Response (201 Created):**
+**Response (200 OK):**
 ```json
 {
-  "id": 2,
-  "username": "newuser_freemarket",
-  "email": "newuser@example.com",
-  "full_name": "New User",
-  "telegram_contact": "@newuser_telegram",
-  "city": "Астана",
-  "is_active": true,
-  "is_verified": false,
-  "email_verified": false,
-  "phone_verified": false,
-  "created_at": "2025-11-05T10:30:00Z"
+  "user": {
+    "id": 2,
+    "username": "newuser_freemarket",
+    "email": "newuser@example.com",
+    "full_name": "New User",
+    "telegram_contact": "@newuser_telegram",
+    "city": "Астана",
+    "is_active": true,
+    "is_verified": false,
+    "email_verified": false,
+    "phone_verified": false,
+    "created_at": "2025-11-05T10:30:00Z"
+  },
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 900
 }
 ```
+
+**Note:** 
+- The refresh token is automatically set as an HttpOnly cookie
+- User is automatically logged in after registration
+- Store the `access_token` in localStorage for subsequent requests
 
 ---
 
@@ -357,36 +367,49 @@ Revoke all active refresh tokens for the authenticated user, forcing re-login on
 ---
 
 ### GET `/auth/me`
-Get the profile of the currently authenticated user.
+Get the profile of the currently authenticated user. Always returns 200 status code to avoid console errors.
 
-**Headers:** `Authorization: Bearer <access_token>`
+**Headers:** `Authorization: Bearer <access_token>` (optional - if not provided, returns authenticated: false)
 
-**Response (200 OK):**
+**Response (200 OK) - Authenticated:**
 ```json
 {
-  "id": 1,
-  "username": "test_user",
-  "email": "test@example.com",
-  "full_name": "Test User",
-  "telegram_contact": "@test_user_tg",
-  "city": "Алматы",
-  "bio": "Test bio",
-  "trust_score": 0.0,
-  "exchange_count": 0,
-  "rating_avg": 0.0,
-  "is_active": true,
-  "is_verified": false,
-  "email_verified": false,
-  "phone_verified": false,
-  "created_at": "2025-11-05T10:00:00Z",
-  "updated_at": "2025-11-05T10:00:00Z",
-  "last_login_at": "2025-11-05T10:35:00Z",
-  "last_active_at": "2025-11-05T10:35:00Z",
-  "telegram_id": null,
-  "telegram_username": null,
-  "telegram_first_name": null
+  "user": {
+    "id": 1,
+    "username": "test_user",
+    "email": "test@example.com",
+    "full_name": "Test User",
+    "telegram_contact": "@test_user_tg",
+    "city": "Алматы",
+    "bio": "Test bio",
+    "trust_score": 0.0,
+    "exchange_count": 0,
+    "rating_avg": 0.0,
+    "is_active": true,
+    "is_verified": false,
+    "email_verified": false,
+    "phone_verified": false,
+    "created_at": "2025-11-05T10:00:00Z",
+    "updated_at": "2025-11-05T10:00:00Z",
+    "last_login_at": "2025-11-05T10:35:00Z",
+    "last_active_at": "2025-11-05T10:35:00Z",
+    "telegram_id": null,
+    "telegram_username": null,
+    "telegram_first_name": null
+  },
+  "authenticated": true
 }
 ```
+
+**Response (200 OK) - Not Authenticated:**
+```json
+{
+  "user": null,
+  "authenticated": false
+}
+```
+
+**Note:** This endpoint always returns 200 status code to prevent console errors. Check the `authenticated` field to determine authentication status.
 
 ---
 

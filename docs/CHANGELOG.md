@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2025-11-XX
 
 ### Fixed
+- **Authentication & User Experience Improvements** (2025-11-XX)
+  - Fixed 401 error when accessing `/user/cabinet` after registration
+  - `/auth/register` now returns JWT tokens for automatic login after registration
+  - Users are automatically authenticated after successful registration
+  - Fixed `/auth/me` endpoint to always return 200 status code (prevents console errors)
+  - Updated `/auth/me` response format: `{user: UserProfile | null, authenticated: boolean}`
+  - Fixed `UserCabinet.jsx` to properly send Authorization header with access token
+  - Updated `get_current_user_optional` to handle token exceptions gracefully
+
 - **Authentication Module Refactoring** (2025-11-11)
   - Resolved circular import issues between `backend/auth.py` and `backend/api/endpoints/auth.py`
   - Moved all auth utilities (`get_current_user`, `get_current_user_optional`, `hash_password`, `verify_password`, `verify_token`, `create_access_token`, `create_refresh_token`, `hash_refresh_token`) to centralized `backend/auth.py` module
