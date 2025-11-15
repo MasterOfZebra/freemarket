@@ -340,6 +340,15 @@ def create_listing_by_categories(
         db.refresh(db_listing)
 
         logger.info(f"Created listing {db_listing.id} for user {user_id} with {items_created} items")
+        logger.info(f"Listing details: title='{db_listing.title}', user_id={db_listing.user_id}, items_count={items_created}")
+        
+        # Verify listing was saved correctly
+        verify_listing = db.query(Listing).filter(Listing.id == db_listing.id).first()
+        if verify_listing:
+            verify_items = db.query(ListingItem).filter(ListingItem.listing_id == db_listing.id).count()
+            logger.info(f"Verification: listing {db_listing.id} exists with {verify_items} items")
+        else:
+            logger.error(f"ERROR: Listing {db_listing.id} was not found after commit!")
 
         # Update match index for new listing
         try:
