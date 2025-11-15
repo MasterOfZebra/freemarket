@@ -169,7 +169,7 @@ curl -s -I https://assistance-kz.ru/docs | head -3
 echo ""
 echo "=== Database Statistics ==="
 docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "
-SELECT 
+SELECT
     'users' as table_name, COUNT(*) as count FROM users
 UNION ALL
 SELECT 'refresh_tokens', COUNT(*) FROM refresh_tokens
@@ -243,6 +243,6 @@ docker compose -f docker-compose.prod.yml ps
 
 ---
 
-**Версия:** 2.2.1 (Production Ready & Fully Tested)  
+**Версия:** 2.2.1 (Production Ready & Fully Tested)
 **Дата:** Ноябрь 2025
 

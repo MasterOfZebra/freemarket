@@ -49,10 +49,13 @@ class ApiService {
    */
   async createListing(data) {
     try {
-      const response = await fetch(`${this.baseURL}/listings/create-by-categories`, {
+      // Extract user_id from data and send it as query parameter
+      const { user_id, ...bodyData } = data;
+
+      const response = await fetch(`${this.baseURL}/listings/create-by-categories?user_id=${user_id}`, {
         method: 'POST',
         headers: this.defaultHeaders,
-        body: JSON.stringify(data),
+        body: JSON.stringify(bodyData),
       });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

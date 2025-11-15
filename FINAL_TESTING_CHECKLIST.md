@@ -224,7 +224,7 @@ echo ""
 
 echo "6. Статистика БД:"
 docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "
-SELECT 
+SELECT
     'users' as table_name, COUNT(*) as count FROM users
 UNION ALL
 SELECT 'refresh_tokens', COUNT(*) FROM refresh_tokens
