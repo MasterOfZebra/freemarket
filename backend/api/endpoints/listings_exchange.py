@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Any, cast
 import logging
 
 from backend.database import SessionLocal
-from backend.models import User, Listing, ListingItem, ListingItemType, ExchangeType
+from backend.models import User, Listing, ListingItem, ListingItemType, ExchangeType, ExchangeEventType
 from backend.schemas import (
     ListingItemsByCategoryCreate,
     ListingItemsByCategoryResponse,
