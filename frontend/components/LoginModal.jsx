@@ -148,6 +148,7 @@ export default function LoginModal({ onClose, onLogin }) {
                                     value={formData.full_name}
                                     onChange={(e) => handleInputChange('full_name', e.target.value)}
                                     placeholder="Ваше полное имя"
+                                    autoComplete="name"
                                     required
                                     style={{
                                         width: '100%',
@@ -178,6 +179,7 @@ export default function LoginModal({ onClose, onLogin }) {
                                         }
                                     }}
                                     placeholder="email@example.com или +7..."
+                                    autoComplete={formData.email ? "email" : "tel"}
                                     required
                                     style={{
                                         width: '100%',
@@ -198,6 +200,7 @@ export default function LoginModal({ onClose, onLogin }) {
                                     value={formData.username}
                                     onChange={(e) => handleInputChange('username', e.target.value)}
                                     placeholder="username"
+                                    autoComplete="username"
                                     style={{
                                         width: '100%',
                                         padding: '8px',
@@ -238,6 +241,7 @@ export default function LoginModal({ onClose, onLogin }) {
                                 value={formData.identifier}
                                 onChange={(e) => handleInputChange('identifier', e.target.value)}
                                 placeholder="email@example.com, +7... или username"
+                                autoComplete="username"
                                 required
                                 style={{
                                     width: '100%',
@@ -259,6 +263,7 @@ export default function LoginModal({ onClose, onLogin }) {
                             value={formData.password}
                             onChange={(e) => handleInputChange('password', e.target.value)}
                             placeholder="Минимум 8 символов"
+                            autoComplete={isRegister ? "new-password" : "current-password"}
                             required
                             minLength={8}
                             style={{
