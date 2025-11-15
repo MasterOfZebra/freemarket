@@ -97,16 +97,15 @@ async def get_user_cabinet(
             
             # Only include listings that have at least one non-archived item
             if wants_count > 0 or offers_count > 0:
-
-            listing_summaries.append(ListingSummary(
-                id=listing.id,
-                title=listing.title,
-                description=listing.description,
-                created_at=listing.created_at,
-                total_wants=wants_count,
-                total_offers=offers_count,
-                exchange_types=list(exchange_types)
-            ))
+                listing_summaries.append(ListingSummary(
+                    id=listing.id,
+                    title=listing.title,
+                    description=listing.description,
+                    created_at=listing.created_at,
+                    total_wants=wants_count,
+                    total_offers=offers_count,
+                    exchange_types=list(exchange_types)
+                ))
 
         # For now, return empty active exchanges
         # TODO: Implement when exchanges/matches are fully implemented
