@@ -33,10 +33,13 @@ WORKDIR /app
 COPY backend/requirements.txt .
 
 # Install dependencies in stages to reduce peak memory usage
-# Stage 1: Core dependencies first
+# Stage 1: Core dependencies first (uvicorn with all dependencies)
+RUN /opt/venv/bin/pip install --quiet \
+    uvicorn[standard]==0.24.0
+
+# Stage 1b: Other core dependencies
 RUN /opt/venv/bin/pip install --quiet --no-deps \
     fastapi==0.104.1 \
-    uvicorn==0.24.0 \
     python-multipart==0.0.6 \
     sqlalchemy==2.0.23 \
     psycopg2-binary==2.9.9 \
@@ -126,4 +129,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run application
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--workers", "4", "--bind", "0.0.0.0:8000", "backend.main:app"]
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
