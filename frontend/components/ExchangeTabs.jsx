@@ -246,7 +246,7 @@ const transformFormDataToApiFormat = (
   return result;
 };
 
-export default function ExchangeTabs({ userId, onMatchesFound }) {
+export default function ExchangeTabs({ userId, onMatchesFound, onListingCreated }) {
   const [activeTab, setActiveTab] = useState('permanent');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -335,6 +335,11 @@ export default function ExchangeTabs({ userId, onMatchesFound }) {
       setSuccess(true);
       if (onMatchesFound) {
         onMatchesFound(matchesCount);
+      }
+      
+      // Notify parent component that listing was created (to refresh cabinet)
+      if (onListingCreated) {
+        onListingCreated();
       }
 
       // Clear success message after 5 seconds

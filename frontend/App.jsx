@@ -111,6 +111,15 @@ function App() {
         setMatchesFound(count);
     };
 
+    const handleListingCreated = () => {
+        // Trigger cabinet data refresh if cabinet is open
+        if (showCabinet) {
+            // Force re-render by toggling showCabinet
+            setShowCabinet(false);
+            setTimeout(() => setShowCabinet(true), 100);
+        }
+    };
+
     if (showRegistration) {
         return (
             <div className="App">
@@ -191,6 +200,7 @@ function App() {
                 <ExchangeTabs
                     userId={user?.id}
                     onMatchesFound={handleMatchesFound}
+                    onListingCreated={handleListingCreated}
                 />
                 </header>
             </div>
