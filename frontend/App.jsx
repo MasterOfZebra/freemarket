@@ -189,7 +189,7 @@ function App() {
                         )}
                     </div>
                 <ExchangeTabs
-                    userId={1}
+                    userId={user?.id}
                     onMatchesFound={handleMatchesFound}
                 />
                 </header>

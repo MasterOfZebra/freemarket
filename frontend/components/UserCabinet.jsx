@@ -8,7 +8,7 @@ export default function UserCabinet({ user, onClose, onLogout }) {
 
     useEffect(() => {
         loadCabinetData();
-    }, []);
+    }, [user]); // Reload when user changes
 
     const loadCabinetData = async () => {
         try {
