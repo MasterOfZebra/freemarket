@@ -10,13 +10,6 @@ export default function UserCabinet({ user, onClose, onLogout, onListingCreated 
         loadCabinetData();
     }, [user]); // Reload when user changes
 
-    // Expose reload function via ref if provided
-    useEffect(() => {
-        if (onListingCreated && typeof onListingCreated === 'function') {
-            // Callback will be called after listing creation
-        }
-    }, [onListingCreated]);
-
     const loadCabinetData = async () => {
         try {
             setLoading(true);

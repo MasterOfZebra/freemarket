@@ -69,7 +69,7 @@ async def get_user_cabinet(
     - Active exchanges (placeholder for now)
     """
     try:
-        # Get user's listings with items
+        # Get user's listings with items (only non-archived items)
         listings = db.query(Listing).options(
             joinedload(Listing.items)
         ).filter(
@@ -79,17 +79,24 @@ async def get_user_cabinet(
         # Build listing summaries
         listing_summaries = []
         for listing in listings:
-            # Count items by type and exchange type
+            # Count items by type and exchange type (only non-archived items)
             wants_count = 0
             offers_count = 0
             exchange_types = set()
 
             for item in listing.items:
+                # Skip archived items
+                if item.is_archived:
+                    continue
+                    
                 if item.item_type.value == "want":
                     wants_count += 1
                 elif item.item_type.value == "offer":
                     offers_count += 1
                 exchange_types.add(item.exchange_type.value)
+            
+            # Only include listings that have at least one non-archived item
+            if wants_count > 0 or offers_count > 0:
 
             listing_summaries.append(ListingSummary(
                 id=listing.id,
