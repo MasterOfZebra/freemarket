@@ -283,6 +283,11 @@ export default function ExchangeTabs({ userId, onMatchesFound, onListingCreated 
     setSuccess(false);
 
     try {
+      // Check if user is authorized
+      if (!userId) {
+        throw new Error('Требуется авторизация. Пожалуйста, войдите в систему перед созданием объявления.');
+      }
+
       // Validate user data
       if (!userData.name.trim()) {
         throw new Error('Заполните ФИО');
@@ -336,7 +341,7 @@ export default function ExchangeTabs({ userId, onMatchesFound, onListingCreated 
       if (onMatchesFound) {
         onMatchesFound(matchesCount);
       }
-      
+
       // Notify parent component that listing was created (to refresh cabinet)
       if (onListingCreated) {
         onListingCreated();

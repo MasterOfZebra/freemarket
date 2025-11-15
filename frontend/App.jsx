@@ -197,11 +197,40 @@ function App() {
                             </button>
                         )}
                     </div>
-                <ExchangeTabs
-                    userId={user?.id}
-                    onMatchesFound={handleMatchesFound}
-                    onListingCreated={handleListingCreated}
-                />
+                {isLoggedIn && user?.id ? (
+                    <ExchangeTabs
+                        userId={user.id}
+                        onMatchesFound={handleMatchesFound}
+                        onListingCreated={handleListingCreated}
+                    />
+                ) : (
+                    <div style={{
+                        padding: '40px',
+                        textAlign: 'center',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        marginTop: '20px'
+                    }}>
+                        <p style={{ color: 'white', fontSize: '18px', marginBottom: '20px' }}>
+                            Для создания объявления необходимо войти в систему
+                        </p>
+                        <button
+                            onClick={() => setShowLogin(true)}
+                            style={{
+                                padding: '12px 30px',
+                                backgroundColor: '#2196F3',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            Войти
+                        </button>
+                    </div>
+                )}
                 </header>
             </div>
         );

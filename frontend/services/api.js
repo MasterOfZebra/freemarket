@@ -52,13 +52,31 @@ class ApiService {
       // Extract user_id from data and send it as query parameter
       const { user_id, ...bodyData } = data;
 
+      // Validate user_id
+      if (!user_id) {
+        throw new Error('User ID is required. Please log in first.');
+      }
+
+      // Get access token for authorization
+      const accessToken = localStorage.getItem('access_token');
+      const headers = {
+        ...this.defaultHeaders,
+      };
+      
+      // Add authorization header if token exists
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch(`${this.baseURL}/listings/create-by-categories?user_id=${user_id}`, {
         method: 'POST',
-        headers: this.defaultHeaders,
+        headers: headers,
+        credentials: 'include',
         body: JSON.stringify(bodyData),
       });
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
       }
       return await response.json();
     } catch (error) {
