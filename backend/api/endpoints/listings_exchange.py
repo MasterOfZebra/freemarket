@@ -261,8 +261,20 @@ def create_listing_by_categories(
                     setattr(user, 'telegram_username', telegram)  # type: ignore[assignment]
                 elif telegram.isdigit() or (telegram.startswith('+') and telegram[1:].isdigit()):
                     try:
-                        setattr(user, 'telegram_id', int(telegram.replace('+', '')))  # type: ignore[assignment]
-                    except:
+                        telegram_id_value = int(telegram.replace('+', ''))
+                        # Check if telegram_id is already taken by another user
+                        existing_user = db.query(User).filter(
+                            User.telegram_id == telegram_id_value,
+                            User.id != user_id
+                        ).first()
+                        if not existing_user:
+                            # Telegram ID is available, update it
+                            setattr(user, 'telegram_id', telegram_id_value)  # type: ignore[assignment]
+                        else:
+                            # Telegram ID is taken, log warning but don't fail
+                            logger.warning(f"Telegram ID '{telegram_id_value}' is already taken by user {existing_user.id}, skipping update for user {user_id}")
+                    except (ValueError, AttributeError):
+                        # Invalid telegram ID format, skip
                         pass
                 else:
                     setattr(user, 'telegram_username', telegram)  # type: ignore[assignment]
@@ -508,8 +520,20 @@ def create_listing(
                     setattr(user, 'telegram_username', telegram)  # type: ignore[assignment]
                 elif telegram.isdigit() or (telegram.startswith('+') and telegram[1:].isdigit()):
                     try:
-                        setattr(user, 'telegram_id', int(telegram.replace('+', '')))  # type: ignore[assignment]
-                    except:
+                        telegram_id_value = int(telegram.replace('+', ''))
+                        # Check if telegram_id is already taken by another user
+                        existing_user = db.query(User).filter(
+                            User.telegram_id == telegram_id_value,
+                            User.id != user_id
+                        ).first()
+                        if not existing_user:
+                            # Telegram ID is available, update it
+                            setattr(user, 'telegram_id', telegram_id_value)  # type: ignore[assignment]
+                        else:
+                            # Telegram ID is taken, log warning but don't fail
+                            logger.warning(f"Telegram ID '{telegram_id_value}' is already taken by user {existing_user.id}, skipping update for user {user_id}")
+                    except (ValueError, AttributeError):
+                        # Invalid telegram ID format, skip
                         pass
                 else:
                     setattr(user, 'telegram_username', telegram)  # type: ignore[assignment]
