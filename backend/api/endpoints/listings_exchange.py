@@ -490,7 +490,18 @@ def create_listing(
         if listing.user_data:
             user_data = listing.user_data
             if user_data.get('name'):
-                setattr(user, 'username', user_data['name'])  # type: ignore[assignment]
+                new_username = user_data['name'].strip()
+                # Check if username is already taken by another user
+                existing_user = db.query(User).filter(
+                    User.username == new_username,
+                    User.id != user_id
+                ).first()
+                if not existing_user:
+                    # Username is available, update it
+                    setattr(user, 'username', new_username)  # type: ignore[assignment]
+                else:
+                    # Username is taken, log warning but don't fail
+                    logger.warning(f"Username '{new_username}' is already taken by user {existing_user.id}, skipping update for user {user_id}")
             if user_data.get('telegram'):
                 telegram = user_data['telegram'].strip()
                 if telegram.startswith('@'):
