@@ -4,6 +4,8 @@ Revision ID: o3p4q5r6s7t8
 Revises: m1n2o3p4q5r6
 Create Date: 2025-11-15 12:00:00.000000
 
+Note: This migration should be applied before merge migration p4q5r6s7t8u9
+
 """
 from typing import Sequence, Union
 
