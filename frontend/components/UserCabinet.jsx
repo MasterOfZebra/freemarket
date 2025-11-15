@@ -13,7 +13,14 @@ export default function UserCabinet({ user, onClose, onLogout }) {
     const loadCabinetData = async () => {
         try {
             setLoading(true);
+            const accessToken = localStorage.getItem('access_token');
+            if (!accessToken) {
+                throw new Error('Требуется авторизация');
+            }
             const response = await fetch('/user/cabinet', {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                },
                 credentials: 'include'
             });
 

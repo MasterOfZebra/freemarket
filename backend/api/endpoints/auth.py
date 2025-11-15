@@ -139,14 +139,15 @@ def log_auth_event(
         db.rollback()
 
 
-@auth_router.post("/register", response_model=UserProfile)
+@auth_router.post("/register", response_model=LoginResponse)
 async def register_user(
     *,
+    response: Response,
     request: Request,
     user_data: UserRegister = Body(...),
     db: Session = Depends(get_db)
 ):
-    """Register new user"""
+    """Register new user and return JWT tokens"""
     try:
         # Check if user already exists
         conditions = []
@@ -183,10 +184,54 @@ async def register_user(
         db.commit()
         db.refresh(user)
 
+        # Create tokens (same as login)
+        access_token = create_access_token(data={"sub": str(user.id)})
+        refresh_token = create_refresh_token()
+
+        # Store refresh token
+        token_hash = hash_refresh_token(refresh_token)
+        device_id = request.cookies.get("device_id") or secrets.token_hex(16)
+
+        db_refresh_token = RefreshToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            device_id=device_id,
+            user_agent=request.headers.get("user-agent"),
+            ip_address=request.client.host if request.client else None,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        )
+        db.add(db_refresh_token)
+        db.commit()
+
+        # Set refresh token in HttpOnly cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=True,  # HTTPS only in production
+            samesite="lax",
+            max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+        )
+
+        # Set device ID cookie
+        response.set_cookie(
+            key="device_id",
+            value=device_id,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=365 * 24 * 60 * 60  # 1 year
+        )
+
         # Log successful registration
         log_auth_event(db, user.id if isinstance(user.id, int) else None, "register", request, True)
 
-        return UserProfile.from_orm(user)
+        return LoginResponse(
+            user=UserProfile.from_orm(user),
+            access_token=access_token,
+            token_type="bearer",
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        )
 
     except HTTPException:
         raise

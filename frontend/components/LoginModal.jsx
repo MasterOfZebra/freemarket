@@ -30,7 +30,7 @@ export default function LoginModal({ onClose, onLogin }) {
 
         try {
             const endpoint = isRegister ? '/auth/register' : '/auth/login';
-            
+
             let response;
             if (isRegister) {
                 // Registration uses JSON
@@ -60,7 +60,7 @@ export default function LoginModal({ onClose, onLogin }) {
                     formDataObj.append('identifier', formData.identifier);
                 }
                 formDataObj.append('password', formData.password);
-                
+
                 response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
@@ -77,24 +77,16 @@ export default function LoginModal({ onClose, onLogin }) {
                 throw new Error(data.detail || 'Ошибка авторизации');
             }
 
+            // Both registration and login now return LoginResponse with access_token
+            if (data.access_token) {
+                localStorage.setItem('access_token', data.access_token);
+            }
+
             if (isRegister) {
-                // After registration, switch to login
-                setIsRegister(false);
-                setError('Регистрация успешна! Теперь войдите в систему.');
-                // Clear register form
-                setFormData(prev => ({
-                    ...prev,
-                    email: '',
-                    phone: '',
-                    username: '',
-                    full_name: '',
-                    telegram_contact: ''
-                }));
+                // After registration, automatically log in the user
+                onLogin({ ...data.user, access_token: data.access_token });
             } else {
                 // Login successful - save access token and user data
-                if (data.access_token) {
-                    localStorage.setItem('access_token', data.access_token);
-                }
                 onLogin({ ...data.user, access_token: data.access_token });
             }
 
