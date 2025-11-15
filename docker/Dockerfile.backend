@@ -33,13 +33,13 @@ WORKDIR /app
 COPY backend/requirements.txt .
 
 # Install dependencies in stages to reduce peak memory usage
-# Stage 1: Core dependencies first (uvicorn with all dependencies)
+# Stage 1: Core dependencies first (uvicorn and fastapi with all dependencies)
 RUN /opt/venv/bin/pip install --quiet \
-    uvicorn[standard]==0.24.0
+    uvicorn[standard]==0.24.0 \
+    fastapi==0.104.1
 
-# Stage 1b: Other core dependencies
+# Stage 1b: Other core dependencies (without deps to avoid conflicts)
 RUN /opt/venv/bin/pip install --quiet --no-deps \
-    fastapi==0.104.1 \
     python-multipart==0.0.6 \
     sqlalchemy==2.0.23 \
     psycopg2-binary==2.9.9 \
