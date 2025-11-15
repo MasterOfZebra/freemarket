@@ -133,19 +133,23 @@ def get_current_user_optional(
     if not credentials:
         return None
 
-    payload = verify_token(credentials.credentials)
-    if not payload:
-        return None
+    try:
+        payload = verify_token(credentials.credentials)
+        if not payload:
+            return None
 
-    user_id = payload.get("sub")
-    if not user_id:
-        return None
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user or user.is_active is False:  # type: ignore
-        return None
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or user.is_active is False:  # type: ignore
+            return None
 
-    return user
+        return user
+    except HTTPException:
+        # Token expired or invalid - return None instead of raising
+        return None
 
 
 __all__ = [

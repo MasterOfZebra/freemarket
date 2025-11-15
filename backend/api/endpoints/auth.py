@@ -528,9 +528,13 @@ async def revoke_all_sessions(
         raise HTTPException(status_code=500, detail="Failed to revoke sessions")
 
 
-@auth_router.get("/me", response_model=UserProfile)
+@auth_router.get("/me")
 async def get_current_user_profile(
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
-    """Get current user profile"""
-    return UserProfile.from_orm(current_user)
+    """Get current user profile (returns null if not authenticated)"""
+    if not current_user:
+        # Return 200 with null instead of 401 to avoid console errors
+        # Frontend will check if user is null to determine auth status
+        return {"user": None, "authenticated": False}
+    return {"user": UserProfile.from_orm(current_user), "authenticated": True}

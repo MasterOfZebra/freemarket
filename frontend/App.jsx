@@ -24,7 +24,7 @@ function App() {
             if (!accessToken) {
                 return; // No token, user not logged in
             }
-            
+
             const response = await fetch('/auth/me', {
                 method: 'GET',
                 headers: {
@@ -32,39 +32,48 @@ function App() {
                 },
                 credentials: 'include'
             });
-            
+
             if (response.ok) {
-                const userData = await response.json();
-                setUser({ ...userData, access_token: accessToken });
-                setIsLoggedIn(true);
-            } else if (response.status === 401) {
-                // Token expired or invalid, try to refresh
-                try {
-                    const refreshResponse = await fetch('/auth/refresh', {
-                        method: 'POST',
-                        credentials: 'include'
-                    });
-                    if (refreshResponse.ok) {
-                        const refreshData = await refreshResponse.json();
-                        localStorage.setItem('access_token', refreshData.access_token);
-                        // Retry /auth/me with new token
-                        const retryResponse = await fetch('/auth/me', {
-                            headers: {
-                                'Authorization': `Bearer ${refreshData.access_token}`
-                            },
+                const data = await response.json();
+                // New format: {user: UserProfile | null, authenticated: boolean}
+                if (data.authenticated && data.user) {
+                    setUser({ ...data.user, access_token: accessToken });
+                    setIsLoggedIn(true);
+                } else {
+                    // Not authenticated, try to refresh token
+                    try {
+                        const refreshResponse = await fetch('/auth/refresh', {
+                            method: 'POST',
                             credentials: 'include'
                         });
-                        if (retryResponse.ok) {
-                            const userData = await retryResponse.json();
-                            setUser({ ...userData, access_token: refreshData.access_token });
-                            setIsLoggedIn(true);
+                        if (refreshResponse.ok) {
+                            const refreshData = await refreshResponse.json();
+                            localStorage.setItem('access_token', refreshData.access_token);
+                            // Retry /auth/me with new token
+                            const retryResponse = await fetch('/auth/me', {
+                                headers: {
+                                    'Authorization': `Bearer ${refreshData.access_token}`
+                                },
+                                credentials: 'include'
+                            });
+                            if (retryResponse.ok) {
+                                const retryData = await retryResponse.json();
+                                if (retryData.authenticated && retryData.user) {
+                                    setUser({ ...retryData.user, access_token: refreshData.access_token });
+                                    setIsLoggedIn(true);
+                                } else {
+                                    localStorage.removeItem('access_token');
+                                }
+                            } else {
+                                localStorage.removeItem('access_token');
+                            }
+                        } else {
+                            // Refresh failed, clear token
+                            localStorage.removeItem('access_token');
                         }
-                    } else {
-                        // Refresh failed, clear token
+                    } catch (refreshError) {
                         localStorage.removeItem('access_token');
                     }
-                } catch (refreshError) {
-                    localStorage.removeItem('access_token');
                 }
             }
         } catch (error) {
