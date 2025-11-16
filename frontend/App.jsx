@@ -148,6 +148,7 @@ function App() {
                                     Привет, {user?.full_name || user?.username || 'Пользователь'}!
                                 </span>
                                 <button
+                                    type="button"
                                     onClick={() => setShowCabinet(true)}
                                     style={{
                                         padding: '8px 16px',
@@ -250,6 +251,7 @@ function App() {
                                 Привет, {user?.full_name || user?.username || 'Пользователь'}!
                             </span>
                             <button
+                                type="button"
                                 onClick={() => setShowCabinet(true)}
                                 style={{
                                     padding: '8px 16px',
