@@ -69,10 +69,41 @@ def upgrade() -> None:
     op.add_column('users', sa.Column('role_id', sa.Integer(), nullable=True))
     op.create_foreign_key('fk_users_role_id', 'users', 'roles', ['role_id'], ['id'])
 
-    # Enhance admin_audit_log
-    op.add_column('admin_audit_log', sa.Column('request_id', sa.String(), nullable=True))
-    op.add_column('admin_audit_log', sa.Column('user_agent', sa.Text(), nullable=True))
-    op.add_column('admin_audit_log', sa.Column('diff', sa.JSON(), nullable=True))
+    # Create admin_audit_log table (if it doesn't exist)
+    # Check if table exists first
+    from sqlalchemy import inspect
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    tables = inspector.get_table_names()
+    
+    if 'admin_audit_log' not in tables:
+        # Create the table from scratch
+        op.create_table('admin_audit_log',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('admin_user_id', sa.Integer(), nullable=True),
+            sa.Column('action', sa.String(100), nullable=False),
+            sa.Column('target_type', sa.String(50), nullable=True),
+            sa.Column('target_id', sa.Integer(), nullable=True),
+            sa.Column('request_id', sa.String(), nullable=True),
+            sa.Column('user_agent', sa.Text(), nullable=True),
+            sa.Column('diff', sa.JSON(), nullable=True),
+            sa.Column('details', sa.JSON(), nullable=True),
+            sa.Column('ip_address', sa.String(), nullable=True),
+            sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+            sa.ForeignKeyConstraint(['admin_user_id'], ['users.id'], ),
+            sa.PrimaryKeyConstraint('id')
+        )
+    else:
+        # Table exists, just add new columns if they don't exist
+        # Check which columns exist
+        columns = [col['name'] for col in inspector.get_columns('admin_audit_log')]
+        
+        if 'request_id' not in columns:
+            op.add_column('admin_audit_log', sa.Column('request_id', sa.String(), nullable=True))
+        if 'user_agent' not in columns:
+            op.add_column('admin_audit_log', sa.Column('user_agent', sa.Text(), nullable=True))
+        if 'diff' not in columns:
+            op.add_column('admin_audit_log', sa.Column('diff', sa.JSON(), nullable=True))
 
     # Insert default roles
     op.execute("INSERT INTO roles (name) VALUES ('user'), ('moderator'), ('admin')")
@@ -139,10 +170,30 @@ def downgrade() -> None:
     op.drop_constraint('fk_users_role_id', 'users', type_='foreignkey')
     op.drop_column('users', 'role_id')
 
-    # Remove audit log enhancements
-    op.drop_column('admin_audit_log', 'request_id')
-    op.drop_column('admin_audit_log', 'user_agent')
-    op.drop_column('admin_audit_log', 'diff')
+    # Remove audit log enhancements (check if columns exist first)
+    from sqlalchemy import inspect
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    
+    # Check if admin_audit_log table exists
+    tables = inspector.get_table_names()
+    if 'admin_audit_log' in tables:
+        columns = [col['name'] for col in inspector.get_columns('admin_audit_log')]
+        
+        # Only drop columns if they exist
+        if 'request_id' in columns:
+            op.drop_column('admin_audit_log', 'request_id')
+        if 'user_agent' in columns:
+            op.drop_column('admin_audit_log', 'user_agent')
+        if 'diff' in columns:
+            op.drop_column('admin_audit_log', 'diff')
+        
+        # If table was created by this migration (has all new columns), drop it
+        # Otherwise leave it (it was created by another migration)
+        if 'request_id' in columns and 'user_agent' in columns and 'diff' in columns:
+            # Check if table has only the columns we added
+            if len(columns) <= 10:  # Approximate check
+                op.drop_table('admin_audit_log')
 
     # Remove roles
     op.drop_table('roles')
