@@ -48,21 +48,11 @@ def backfill_user_roles(batch_size: int = 1000, dry_run: bool = False) -> None:
         try:
             print("🔍 Analyzing existing user roles...")
 
-            # Check what roles exist in users.role
-            existing_roles_query = text("""
-                SELECT role, COUNT(*) as count
-                FROM users
-                WHERE role IS NOT NULL AND role != ''
-                GROUP BY role
-                ORDER BY count DESC
-            """)
-
-            result = session.execute(existing_roles_query)
-            existing_roles = result.fetchall()
-
-            print(f"📊 Found {len(existing_roles)} different role values:")
-            for role_name, count in existing_roles:
-                print(f"  - '{role_name}': {count} users")
+            # Check if old 'role' column exists (for backward compatibility)
+            from sqlalchemy import inspect as sql_inspect
+            inspector = sql_inspect(session.bind)
+            columns = [col['name'] for col in inspector.get_columns('users')]
+            has_old_role_column = 'role' in columns
 
             # Check role mapping in roles table
             roles_mapping_query = text("""
@@ -74,30 +64,52 @@ def backfill_user_roles(batch_size: int = 1000, dry_run: bool = False) -> None:
 
             print(f"🎯 Available roles in system: {role_mappings}")
 
-            # Find users that need migration (have old VARCHAR role but no role_id)
-            users_to_migrate_query = text("""
-                SELECT COUNT(*) FROM users
-                WHERE role_id IS NULL
-                  AND role IS NOT NULL
-                  AND role != ''
-            """)
+            # Find users that need migration
+            if has_old_role_column:
+                # Check what roles exist in old users.role column
+                existing_roles_query = text("""
+                    SELECT role, COUNT(*) as count
+                    FROM users
+                    WHERE role IS NOT NULL AND role != ''
+                    GROUP BY role
+                    ORDER BY count DESC
+                """)
 
-            result = session.execute(users_to_migrate_query)
-            users_count = result.scalar()
+                try:
+                    result = session.execute(existing_roles_query)
+                    existing_roles = result.fetchall()
+                    print(f"📊 Found {len(existing_roles)} different role values in old 'role' column:")
+                    for role_name, count in existing_roles:
+                        print(f"  - '{role_name}': {count} users")
+                except Exception as e:
+                    print(f"⚠️  Could not read old 'role' column: {e}")
+                    has_old_role_column = False
 
-            print(f"📝 Users with old VARCHAR roles needing migration: {users_count}")
+                # Find users with old VARCHAR role but no role_id
+                users_to_migrate_query = text("""
+                    SELECT COUNT(*) FROM users
+                    WHERE role_id IS NULL
+                      AND role IS NOT NULL
+                      AND role != ''
+                """)
 
-            # Find users with no role at all (should get default 'user' role)
+                result = session.execute(users_to_migrate_query)
+                users_count = result.scalar()
+                print(f"📝 Users with old VARCHAR roles needing migration: {users_count}")
+            else:
+                users_count = 0
+                print("ℹ️  Old 'role' column does not exist - skipping old role migration")
+
+            # Find users with no role_id at all (should get default 'user' role)
             users_no_role_query = text("""
                 SELECT COUNT(*) FROM users
                 WHERE role_id IS NULL
-                  AND (role IS NULL OR role = '')
             """)
 
             result = session.execute(users_no_role_query)
             users_no_role_count = result.scalar()
 
-            print(f"👤 Users with no role (will get default 'user'): {users_no_role_count}")
+            print(f"👤 Users with no role_id (will get default 'user'): {users_no_role_count}")
 
             total_to_process = users_count + users_no_role_count
             print(f"📊 Total users to process: {total_to_process}")
@@ -106,27 +118,41 @@ def backfill_user_roles(batch_size: int = 1000, dry_run: bool = False) -> None:
                 print("🔍 DRY RUN - showing what would be migrated:")
 
                 # Show sample of users that will be processed
-                sample_query = text("""
-                    SELECT id, username, role,
-                           CASE WHEN role IS NULL OR role = '' THEN true ELSE false END as needs_default
-                    FROM users
-                    WHERE role_id IS NULL
-                    ORDER BY id
-                    LIMIT 20
-                """)
+                if has_old_role_column:
+                    sample_query = text("""
+                        SELECT id, username, role,
+                               CASE WHEN role IS NULL OR role = '' THEN true ELSE false END as needs_default
+                        FROM users
+                        WHERE role_id IS NULL
+                        ORDER BY id
+                        LIMIT 20
+                    """)
+                else:
+                    sample_query = text("""
+                        SELECT id, username, NULL as role, true as needs_default
+                        FROM users
+                        WHERE role_id IS NULL
+                        ORDER BY id
+                        LIMIT 20
+                    """)
 
                 result = session.execute(sample_query)
                 sample_users = result.fetchall()
 
-                for user_id, username, role, needs_default in sample_users:
-                    if needs_default:
-                        print(f"  User {username} (ID: {user_id}): no role -> default user role_id {role_mappings.get('user', 'N/A')}")
-                    else:
-                        target_role_id = role_mappings.get(role)
-                        if target_role_id:
-                            print(f"  User {username} (ID: {user_id}): '{role}' -> role_id {target_role_id}")
+                for row in sample_users:
+                    user_id, username = row[0], row[1]
+                    if has_old_role_column and len(row) > 3:
+                        role, needs_default = row[2], row[3]
+                        if needs_default:
+                            print(f"  User {username} (ID: {user_id}): no role -> default user role_id {role_mappings.get('user', 'N/A')}")
                         else:
-                            print(f"  User {username} (ID: {user_id}): '{role}' -> NO MAPPING, will get default user")
+                            target_role_id = role_mappings.get(role)
+                            if target_role_id:
+                                print(f"  User {username} (ID: {user_id}): '{role}' -> role_id {target_role_id}")
+                            else:
+                                print(f"  User {username} (ID: {user_id}): '{role}' -> NO MAPPING, will get default user")
+                    else:
+                        print(f"  User {username} (ID: {user_id}): no role_id -> default user role_id {role_mappings.get('user', 'N/A')}")
 
                 return
 
@@ -151,15 +177,25 @@ def backfill_user_roles(batch_size: int = 1000, dry_run: bool = False) -> None:
             while True:
                 batch_num += 1
 
-                # Get next batch of users to migrate (both with old roles and without roles)
-                batch_query = text("""
-                    SELECT id, username, role, CASE WHEN role IS NULL OR role = '' THEN true ELSE false END as needs_default
-                    FROM users
-                    WHERE role_id IS NULL
-                    ORDER BY id
-                    LIMIT :batch_size
-                    FOR UPDATE SKIP LOCKED
-                """)
+                # Get next batch of users to migrate
+                if has_old_role_column:
+                    batch_query = text("""
+                        SELECT id, username, role, CASE WHEN role IS NULL OR role = '' THEN true ELSE false END as needs_default
+                        FROM users
+                        WHERE role_id IS NULL
+                        ORDER BY id
+                        LIMIT :batch_size
+                        FOR UPDATE SKIP LOCKED
+                    """)
+                else:
+                    batch_query = text("""
+                        SELECT id, username, NULL as role, true as needs_default
+                        FROM users
+                        WHERE role_id IS NULL
+                        ORDER BY id
+                        LIMIT :batch_size
+                        FOR UPDATE SKIP LOCKED
+                    """)
 
                 result = session.execute(batch_query, {"batch_size": batch_size})
                 batch_users = result.fetchall()
@@ -169,20 +205,27 @@ def backfill_user_roles(batch_size: int = 1000, dry_run: bool = False) -> None:
 
                 print(f"📦 Batch {batch_num}: processing {len(batch_users)} users...")
 
-                for user_id, username, role, needs_default in batch_users:
-                    if needs_default:
-                        # User has no role, assign default 'user'
-                        target_role_id = default_user_role_id
-                        print(f"  🆕 {username}: no role -> default user role_id {target_role_id}")
-                    else:
-                        # User has old VARCHAR role, try to map it
-                        target_role_id = role_mappings.get(role)
-                        if target_role_id:
-                            print(f"  ✅ {username}: '{role}' -> role_id {target_role_id}")
-                        else:
-                            # Role not found, assign default
+                for row in batch_users:
+                    user_id, username = row[0], row[1]
+                    if has_old_role_column and len(row) > 3:
+                        role, needs_default = row[2], row[3]
+                        if needs_default:
+                            # User has no role, assign default 'user'
                             target_role_id = default_user_role_id
-                            print(f"  ⚠️  {username}: '{role}' not found -> default user role_id {target_role_id}")
+                            print(f"  🆕 {username}: no role -> default user role_id {target_role_id}")
+                        else:
+                            # User has old VARCHAR role, try to map it
+                            target_role_id = role_mappings.get(role)
+                            if target_role_id:
+                                print(f"  ✅ {username}: '{role}' -> role_id {target_role_id}")
+                            else:
+                                # Role not found, assign default
+                                target_role_id = default_user_role_id
+                                print(f"  ⚠️  {username}: '{role}' not found -> default user role_id {target_role_id}")
+                    else:
+                        # No old role column - just assign default
+                        target_role_id = default_user_role_id
+                        print(f"  🆕 {username}: no role_id -> default user role_id {target_role_id}")
 
                     # Update user with role_id
                     update_query = text("""
@@ -209,12 +252,18 @@ def backfill_user_roles(batch_size: int = 1000, dry_run: bool = False) -> None:
             print(f"📈 Total users processed: {total_processed}")
 
             # Final verification
-            final_check_query = text("""
-                SELECT COUNT(*) FROM users
-                WHERE role_id IS NULL
-                  AND role IS NOT NULL
-                  AND role != ''
-            """)
+            if has_old_role_column:
+                final_check_query = text("""
+                    SELECT COUNT(*) FROM users
+                    WHERE role_id IS NULL
+                      AND role IS NOT NULL
+                      AND role != ''
+                """)
+            else:
+                final_check_query = text("""
+                    SELECT COUNT(*) FROM users
+                    WHERE role_id IS NULL
+                """)
 
             result = session.execute(final_check_query)
             remaining = result.scalar()
