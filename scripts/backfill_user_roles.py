@@ -205,7 +205,8 @@ def backfill_user_roles(batch_size: int = 1000, dry_run: bool = False) -> None:
                 # Small delay between batches to reduce load
                 time.sleep(0.1)
 
-            print("🎉 Migration completed successfully!"            print(f"📈 Total users processed: {total_processed}")
+            print("🎉 Migration completed successfully!")
+            print(f"📈 Total users processed: {total_processed}")
 
             # Final verification
             final_check_query = text("""
