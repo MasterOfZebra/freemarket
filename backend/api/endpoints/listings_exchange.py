@@ -1333,10 +1333,10 @@ def update_listing_partial(
                 try:
                     loop = asyncio.get_event_loop()
                     if loop.is_running():
-                asyncio.create_task(emit_profile_change(user_id, added=added_items, removed=removed_items))
+                        asyncio.create_task(emit_profile_change(user_id, added=added_items, removed=removed_items))
                     else:
                         asyncio.run(emit_profile_change(user_id, added=added_items, removed=removed_items))
-                logger.info(f"Emitted profile change event for user {user_id} after partial update")
+                    logger.info(f"Emitted profile change event for user {user_id} after partial update")
                 except RuntimeError:
                     logger.debug(f"Skipping profile change event for user {user_id} (no event loop)")
 
