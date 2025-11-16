@@ -198,6 +198,8 @@ function App() {
                             </button>
                         )}
                     </div>
+                </header>
+
                 {isLoggedIn && user?.id ? (
                     <ExchangeTabs
                         userId={user.id}
@@ -232,7 +234,6 @@ function App() {
                         </button>
                     </div>
                 )}
-                </header>
             </div>
         );
     }

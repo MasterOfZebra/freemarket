@@ -8,7 +8,7 @@ export default function UserCabinet({ user, onClose, onLogout, onListingCreated 
 
     useEffect(() => {
         loadCabinetData();
-    }, [user]); // Reload when user changes
+    }, [user, onListingCreated]); // Reload when user changes or new listing is created
 
     const loadCabinetData = async () => {
         try {
@@ -35,6 +35,11 @@ export default function UserCabinet({ user, onClose, onLogout, onListingCreated 
         } finally {
             setLoading(false);
         }
+    };
+
+    // Force reload cabinet data when new listing is created
+    const reloadCabinetData = () => {
+        loadCabinetData();
     };
 
     if (loading) {
