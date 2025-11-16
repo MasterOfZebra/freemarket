@@ -24,6 +24,7 @@ from backend.api import router as api_router
 from backend.chat_worker import chat_lifespan
 from backend.report_processor import report_processor_lifespan
 from backend.exchange_sync import exchange_sync_lifespan
+from backend.events import get_event_bus
 from backend.rate_limiting import RateLimitMiddleware
 from backend.error_tracking import init_sentry
 
@@ -48,10 +49,13 @@ class UTF8JSONResponse(JSONResponse):
 async def lifespan(app: FastAPI):
     """Application lifespan context manager"""
     # Startup
-    async with chat_lifespan():
-        async with report_processor_lifespan():
-            async with exchange_sync_lifespan():
-                yield
+    # Initialize event bus
+    event_bus = get_event_bus()
+    async with event_bus.lifecycle():
+        async with chat_lifespan():
+            async with report_processor_lifespan():
+                async with exchange_sync_lifespan():
+                    yield
 
     # Shutdown - handled by individual lifespans
 

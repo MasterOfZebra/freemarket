@@ -430,9 +430,6 @@ def create_listing_by_categories(
                 if loop.is_running():
                     # If loop is running, create task
                     asyncio.create_task(emit_profile_change(user_id, added=added_items))
-                else:
-                    # If no loop is running, run in new event loop
-                    asyncio.run(emit_profile_change(user_id, added=added_items))
             except RuntimeError:
                 # No event loop available, skip event emission (non-critical)
                 logger.debug(f"Skipping profile change event for user {user_id} (no event loop)")
@@ -1323,7 +1320,6 @@ def update_listing_partial(
         # Emit profile change event
         try:
             import asyncio
-            from backend.events import emit_profile_change
 
             # Only emit if there are actual changes
             has_changes = (added_items["wants"] or added_items["offers"] or
@@ -1334,8 +1330,6 @@ def update_listing_partial(
                     loop = asyncio.get_event_loop()
                     if loop.is_running():
                         asyncio.create_task(emit_profile_change(user_id, added=added_items, removed=removed_items))
-                    else:
-                        asyncio.run(emit_profile_change(user_id, added=added_items, removed=removed_items))
                     logger.info(f"Emitted profile change event for user {user_id} after partial update")
                 except RuntimeError:
                     logger.debug(f"Skipping profile change event for user {user_id} (no event loop)")
@@ -1471,7 +1465,6 @@ def confirm_exchange(
         # Emit profile change events for both users (removed items)
         try:
             import asyncio
-            from backend.events import emit_profile_change
 
             # For user A (removed their offered item, gained wanted item)
             removed_a = {
@@ -1485,8 +1478,6 @@ def confirm_exchange(
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     asyncio.create_task(emit_profile_change(user_a_id, removed=removed_a))
-                else:
-                    asyncio.run(emit_profile_change(user_a_id, removed=removed_a))
             except RuntimeError:
                 logger.debug(f"Skipping profile change event for user {user_a_id} (no event loop)")
 
@@ -1502,8 +1493,6 @@ def confirm_exchange(
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     asyncio.create_task(emit_profile_change(user_b_id, removed=removed_b))
-                else:
-                    asyncio.run(emit_profile_change(user_b_id, removed=removed_b))
             except RuntimeError:
                 logger.debug(f"Skipping profile change event for user {user_b_id} (no event loop)")
 
