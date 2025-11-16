@@ -113,6 +113,9 @@ RUN echo "Build timestamp: $(date)" > /app/build_timestamp.txt
 COPY alembic.ini /app/
 COPY backend/alembic /app/alembic
 
+# Copy scripts directory
+COPY scripts /app/scripts
+
 # Ensure package root is in PYTHONPATH
 ENV PYTHONPATH=/app
 
