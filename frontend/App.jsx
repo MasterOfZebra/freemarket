@@ -123,7 +123,7 @@ function App() {
     if (showRegistration) {
         return (
             <div className="App">
-                <header className="App-header">
+                <header className="App-header" style={{ position: 'relative', zIndex: 10 }}>
                     <h1>🌍 FreeMarket - Платформа обмена ресурсами</h1>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <button
@@ -240,7 +240,7 @@ function App() {
 
     return (
         <div className="App">
-            <header className="App-header">
+            <header className="App-header" style={{ position: 'relative', zIndex: 10 }}>
                 <h1>🌍 FreeMarket - Платформа обмена ресурсами</h1>
                 <p>Город Алматы - обменивайтесь всем, что нужно!</p>
 
