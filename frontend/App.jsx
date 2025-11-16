@@ -148,22 +148,6 @@ function App() {
                                     Привет, {user?.full_name || user?.username || 'Пользователь'}!
                                 </span>
                                 <button
-                                    type="button"
-                                    onClick={() => setShowCabinet(true)}
-                                    style={{
-                                        padding: '8px 16px',
-                                        marginTop: '15px',
-                                        backgroundColor: '#4CAF50',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        fontSize: '14px'
-                                    }}
-                                >
-                                    Личный кабинет
-                                </button>
-                                <button
                                     onClick={handleLogout}
                                     style={{
                                         padding: '8px 16px',
