@@ -425,11 +425,11 @@ def create_listing_by_categories(
             # Emit event asynchronously (don't block response)
             # Note: This is a fire-and-forget operation, errors are logged but don't affect response
             try:
-            import asyncio
+                import asyncio
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     # If loop is running, create task
-            asyncio.create_task(emit_profile_change(user_id, added=added_items))
+                    asyncio.create_task(emit_profile_change(user_id, added=added_items))
                 else:
                     # If no loop is running, run in new event loop
                     asyncio.run(emit_profile_change(user_id, added=added_items))
