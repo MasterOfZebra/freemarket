@@ -38,10 +38,13 @@ RUN /opt/venv/bin/pip install --quiet \
     uvicorn[standard]==0.24.0 \
     fastapi==0.104.1
 
-# Stage 1b: Other core dependencies (without deps to avoid conflicts)
+# Stage 1b: SQLAlchemy with all dependencies (needed for mapped_column)
+RUN /opt/venv/bin/pip install --quiet \
+    sqlalchemy==2.0.23
+
+# Stage 1c: Other core dependencies (without deps to avoid conflicts)
 RUN /opt/venv/bin/pip install --quiet --no-deps \
     python-multipart==0.0.6 \
-    sqlalchemy==2.0.23 \
     psycopg2-binary==2.9.9 \
     pydantic==2.5.2
 
