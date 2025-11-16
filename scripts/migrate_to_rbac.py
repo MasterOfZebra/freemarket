@@ -20,13 +20,19 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 
-def run_command(cmd: list, description: str) -> bool:
+def run_command(cmd: list, description: str, timeout: int = 300) -> bool:
     """Run a command and return success status"""
     print(f"\n🔧 {description}")
     print(f"Command: {' '.join(cmd)}")
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(__file__))
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(__file__),
+            timeout=timeout
+        )
 
         if result.returncode == 0:
             print("✅ Success")
@@ -41,6 +47,9 @@ def run_command(cmd: list, description: str) -> bool:
                 print("STDOUT:", result.stdout)
             return False
 
+    except subprocess.TimeoutExpired:
+        print(f"❌ Command timed out after {timeout} seconds")
+        return False
     except Exception as e:
         print(f"❌ Exception: {e}")
         return False
@@ -88,7 +97,8 @@ def main():
     if not args.skip_backfill:
         print("\n2️⃣ Running user roles backfill...")
 
-        backfill_cmd = [sys.executable, "backfill_user_roles.py"]
+        # Use absolute path to script in container
+        backfill_cmd = [sys.executable, "/app/scripts/backfill_user_roles.py"]
         if args.dry_run:
             backfill_cmd.append("--dry-run")
 

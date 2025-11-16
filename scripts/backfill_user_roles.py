@@ -254,10 +254,17 @@ def main():
     else:
         print("⚠️  PRODUCTION MODE - Changes will be applied to database")
 
-    confirm = input("Continue? (y/N): ").lower().strip()
-    if confirm not in ['y', 'yes']:
-        print("Aborted.")
-        return
+    # Skip confirmation prompt in non-interactive mode (e.g., when called from migrate_to_rbac.py)
+    # Check if stdin is a TTY (interactive terminal)
+    import sys
+    if sys.stdin.isatty():
+        confirm = input("Continue? (y/N): ").lower().strip()
+        if confirm not in ['y', 'yes']:
+            print("Aborted.")
+            return
+    else:
+        # Non-interactive mode - proceed automatically
+        print("Non-interactive mode detected - proceeding automatically...")
 
     backfill_user_roles(batch_size=args.batch_size, dry_run=args.dry_run)
 
