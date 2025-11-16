@@ -110,10 +110,8 @@ def main():
     print("\n3️⃣ Running verification...")
 
     verify_cmd = [sys.executable, "-c", """
-import os, sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
-from sqlalchemy import create_engine, text
+import os
+from sqlalchemy import create_engine, text, inspect
 
 db_url = os.getenv('DATABASE_URL', 'postgresql://assistadmin_pg:assistMurzAdmin@postgres:5432/assistance_kz')
 engine = create_engine(db_url)
@@ -129,8 +127,16 @@ with engine.connect() as conn:
     perms_count = result.scalar()
     print(f"Permissions defined: {perms_count}")
 
+    # Check if old 'role' column exists
+    inspector = inspect(engine)
+    columns = [col['name'] for col in inspector.get_columns('users')]
+    has_old_role = 'role' in columns
+
     # Check users migration
-    result = conn.execute(text("SELECT COUNT(*) FROM users WHERE role_id IS NULL AND (role IS NOT NULL AND role != '')"))
+    if has_old_role:
+        result = conn.execute(text("SELECT COUNT(*) FROM users WHERE role_id IS NULL AND (role IS NOT NULL AND role != '')"))
+    else:
+        result = conn.execute(text("SELECT COUNT(*) FROM users WHERE role_id IS NULL"))
     unmigrated = result.scalar()
     print(f"Users needing migration: {unmigrated}")
 
