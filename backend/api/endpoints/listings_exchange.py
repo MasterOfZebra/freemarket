@@ -194,8 +194,9 @@ def get_offers_items(
 
 @router.post("/create-by-categories", response_model=Dict)
 def create_listing_by_categories(
-    user_id: int = Query(..., description="User ID"),
+    user_id: Optional[int] = Query(None, description="User ID (optional; must match token if provided)"),
     listing: Optional[ListingItemsByCategoryCreate] = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -227,6 +228,11 @@ def create_listing_by_categories(
     """
 
     try:
+        # Enforce ownership by token; optional user_id must match if provided
+        effective_user_id = current_user.id
+        if user_id is not None and user_id != effective_user_id:
+            raise HTTPException(status_code=403, detail="User ID does not match authenticated user")
+        user_id = effective_user_id
         # Verify user exists
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -367,7 +373,7 @@ def create_listing_by_categories(
         logger.info(f"About to commit: {items_created} items for listing {db_listing.id}")
         db.commit()
         db.refresh(db_listing)
-        
+
         # Verify items were saved
         saved_items_count = db.query(ListingItem).filter(ListingItem.listing_id == db_listing.id).count()
         logger.info(f"After commit: {saved_items_count} items found in database for listing {db_listing.id}")
@@ -419,11 +425,11 @@ def create_listing_by_categories(
             # Emit event asynchronously (don't block response)
             # Note: This is a fire-and-forget operation, errors are logged but don't affect response
             try:
-                import asyncio
+            import asyncio
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     # If loop is running, create task
-                    asyncio.create_task(emit_profile_change(user_id, added=added_items))
+            asyncio.create_task(emit_profile_change(user_id, added=added_items))
                 else:
                     # If no loop is running, run in new event loop
                     asyncio.run(emit_profile_change(user_id, added=added_items))
@@ -468,8 +474,9 @@ def create_listing_by_categories(
 
 @router.post("/create", response_model=Dict)
 def create_listing(
-    user_id: int = Query(..., description="User ID"),
+    user_id: Optional[int] = Query(None, description="User ID (optional; must match token if provided)"),
     listing: Optional[ListingItemsByCategoryCreate] = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -498,6 +505,11 @@ def create_listing(
     """
 
     try:
+        # Enforce ownership by token; optional user_id must match if provided
+        effective_user_id = current_user.id
+        if user_id is not None and user_id != effective_user_id:
+            raise HTTPException(status_code=403, detail="User ID does not match authenticated user")
+        user_id = effective_user_id
         # Verify user exists
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -1321,10 +1333,10 @@ def update_listing_partial(
                 try:
                     loop = asyncio.get_event_loop()
                     if loop.is_running():
-                        asyncio.create_task(emit_profile_change(user_id, added=added_items, removed=removed_items))
+                asyncio.create_task(emit_profile_change(user_id, added=added_items, removed=removed_items))
                     else:
                         asyncio.run(emit_profile_change(user_id, added=added_items, removed=removed_items))
-                    logger.info(f"Emitted profile change event for user {user_id} after partial update")
+                logger.info(f"Emitted profile change event for user {user_id} after partial update")
                 except RuntimeError:
                     logger.debug(f"Skipping profile change event for user {user_id} (no event loop)")
 
@@ -1472,7 +1484,7 @@ def confirm_exchange(
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-                    asyncio.create_task(emit_profile_change(user_a_id, removed=removed_a))
+            asyncio.create_task(emit_profile_change(user_a_id, removed=removed_a))
                 else:
                     asyncio.run(emit_profile_change(user_a_id, removed=removed_a))
             except RuntimeError:
@@ -1489,7 +1501,7 @@ def confirm_exchange(
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-                    asyncio.create_task(emit_profile_change(user_b_id, removed=removed_b))
+            asyncio.create_task(emit_profile_change(user_b_id, removed=removed_b))
                 else:
                     asyncio.run(emit_profile_change(user_b_id, removed=removed_b))
             except RuntimeError:
