@@ -246,7 +246,7 @@ const transformFormDataToApiFormat = (
   return result;
 };
 
-export default function ExchangeTabs({ userId, onMatchesFound, onListingCreated }) {
+export default function ExchangeTabs({ userId, onMatchesFound, onListingCreated, onOpenCabinet }) {
   const [activeTab, setActiveTab] = useState('permanent');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -361,9 +361,21 @@ export default function ExchangeTabs({ userId, onMatchesFound, onListingCreated 
   return (
     <div className="w-full max-w-6xl mx-auto p-6">
       <div className="border-0 shadow-lg bg-white rounded-lg p-6">
-        <div className="pb-3">
-          <h1 className="text-3xl font-bold">🎁 FreeMarket Exchange</h1>
-          <p className="text-gray-600 mt-2">Выберите тип обмена и добавьте ваши предметы</p>
+        <div className="pb-3 flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold">🎁 FreeMarket Exchange</h1>
+            <p className="text-gray-600 mt-2">Выберите тип обмена и добавьте ваши предметы</p>
+          </div>
+          <div className="shrink-0">
+            <button
+              type="button"
+              onClick={() => onOpenCabinet && onOpenCabinet()}
+              className="px-4 py-2 rounded-md text-white"
+              style={{ backgroundColor: '#4CAF50' }}
+            >
+              Личный кабинет
+            </button>
+          </div>
         </div>
 
         {/* User Data Form */}

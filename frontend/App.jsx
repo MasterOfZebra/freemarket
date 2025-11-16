@@ -205,6 +205,7 @@ function App() {
                         userId={user.id}
                         onMatchesFound={handleMatchesFound}
                         onListingCreated={handleListingCreated}
+                        onOpenCabinet={() => setShowCabinet(true)}
                     />
                 ) : (
                     <div style={{
