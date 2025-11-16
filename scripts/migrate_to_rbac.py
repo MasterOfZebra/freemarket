@@ -70,9 +70,8 @@ def main():
 
         # Try different alembic command approaches
         migration_commands = [
-            ["alembic", "upgrade", "head"],
-            ["python", "-m", "alembic", "upgrade", "head"],
-            ["cd", "..", "&&", "alembic", "-c", "alembic.ini", "upgrade", "head"]
+            ["alembic", "-c", "/app/alembic.ini", "upgrade", "head"],
+            ["python", "-m", "alembic", "-c", "/app/alembic.ini", "upgrade", "head"],
         ]
 
         migration_success = False
