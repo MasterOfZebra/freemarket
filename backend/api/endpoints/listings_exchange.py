@@ -1484,7 +1484,7 @@ def confirm_exchange(
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-            asyncio.create_task(emit_profile_change(user_a_id, removed=removed_a))
+                    asyncio.create_task(emit_profile_change(user_a_id, removed=removed_a))
                 else:
                     asyncio.run(emit_profile_change(user_a_id, removed=removed_a))
             except RuntimeError:
@@ -1501,7 +1501,7 @@ def confirm_exchange(
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-            asyncio.create_task(emit_profile_change(user_b_id, removed=removed_b))
+                    asyncio.create_task(emit_profile_change(user_b_id, removed=removed_b))
                 else:
                     asyncio.run(emit_profile_change(user_b_id, removed=removed_b))
             except RuntimeError:
