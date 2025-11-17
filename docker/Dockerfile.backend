@@ -82,9 +82,9 @@ RUN /opt/venv/bin/pip install --quiet \
 
 # Stage 6: Admin panel dependencies (using SQLAdmin instead of FastAPI-Admin for Python 3.11 compatibility)
 RUN /opt/venv/bin/pip install --quiet \
-    sqladmin==0.1.10 \
-    wtforms==3.1.2 \
-    aiofiles==23.2.1
+    "sqladmin>=0.17.0" \
+    wtforms>=3.1.2 \
+    aiofiles>=23.2.1
 
 # Stage 7: Force SQLAlchemy 2.0.23 (install last to override any downgrades)
 RUN /opt/venv/bin/pip install --quiet --force-reinstall --no-cache-dir \
