@@ -91,7 +91,7 @@ class User(Base):
     # Relationships
     profiles = relationship("Profile", back_populates="user")
     items = relationship("Item", back_populates="user")
-    listings = relationship("Listing", back_populates="user")
+    listings = relationship("Listing", back_populates="user", foreign_keys="[Listing.user_id]")
     match_indexes = relationship("MatchIndex", back_populates="user")
     sent_messages = relationship("ExchangeMessage", back_populates="sender")
     events = relationship("UserEvent", back_populates="user")
@@ -488,7 +488,7 @@ class Listing(Base):
     deleted_by = Column(Integer, ForeignKey('users.id'), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="listings")
+    user = relationship("User", back_populates="listings", foreign_keys=[user_id])
     items = relationship("ListingItem", back_populates="listing", cascade="all, delete-orphan")
     offers = relationship("ListingOffer", back_populates="listing", cascade="all, delete-orphan")
     wants = relationship("ListingWant", back_populates="listing", cascade="all, delete-orphan")
@@ -1071,14 +1071,14 @@ class Report(Base):
 class Role(Base):
     """Role model for RBAC system"""
     __tablename__ = "roles"
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
-    
+
     # Relationships
     users = relationship("User", back_populates="role")
     permissions = relationship("Permission", secondary="role_permissions", back_populates="roles")
-    
+
     def __repr__(self):
         return f"<Role(id={self.id}, name='{self.name}')>"
 
@@ -1086,13 +1086,13 @@ class Role(Base):
 class Permission(Base):
     """Permission model for RBAC system"""
     __tablename__ = "permissions"
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
-    
+
     # Relationships
     roles = relationship("Role", secondary="role_permissions", back_populates="permissions")
-    
+
     def __repr__(self):
         return f"<Permission(id={self.id}, name='{self.name}')>"
 
@@ -1100,7 +1100,7 @@ class Permission(Base):
 class RolePermission(Base):
     """Junction table for role-permission many-to-many relationship"""
     __tablename__ = "role_permissions"
-    
+
     role_id = Column(Integer, ForeignKey('roles.id', ondelete="CASCADE"), primary_key=True)
     permission_id = Column(Integer, ForeignKey('permissions.id', ondelete="CASCADE"), primary_key=True)
 
@@ -1108,7 +1108,7 @@ class RolePermission(Base):
 class Complaint(Base):
     """Complaint model for moderation system"""
     __tablename__ = "complaints"
-    
+
     id = Column(Integer, primary_key=True)
     complainant_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     reported_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
@@ -1119,7 +1119,7 @@ class Complaint(Base):
     moderator_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     resolved_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=sa_text('now()'), nullable=True)
-    
+
     def __repr__(self):
         return f"<Complaint(id={self.id}, type='{self.complaint_type}', status='{self.status}')>"
 
@@ -1127,7 +1127,7 @@ class Complaint(Base):
 class AdminAuditLog(Base):
     """Admin audit log for tracking admin actions"""
     __tablename__ = "admin_audit_log"
-    
+
     id = Column(Integer, primary_key=True)
     request_id = Column(String, nullable=True)
     admin_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
@@ -1139,6 +1139,6 @@ class AdminAuditLog(Base):
     ip_address = Column(String, nullable=True)
     user_agent = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=sa_text('now()'), nullable=True)
-    
+
     def __repr__(self):
         return f"<AdminAuditLog(id={self.id}, action='{self.action}', admin={self.admin_user_id})>"
