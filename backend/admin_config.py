@@ -1,10 +1,8 @@
 """
-Configuration for FastAPI-Admin panel
+Configuration for SQLAdmin panel
 """
 
 import os
-from fastapi_admin.app import app as admin_app
-from fastapi_admin.providers.login import UsernamePasswordProvider
 
 
 # Admin panel configuration
