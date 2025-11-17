@@ -81,6 +81,11 @@ RUN /opt/venv/bin/pip install --quiet \
     jsonschema==4.23.0
 
 # Stage 6: Admin panel dependencies
+# Install aioredis 2.x first (compatible with Python 3.11)
+RUN /opt/venv/bin/pip install --quiet \
+    aioredis>=2.0.0
+
+# Stage 6b: Install admin panel packages
 RUN /opt/venv/bin/pip install --quiet \
     fastapi-admin==1.0.4 \
     sqladmin==0.1.10 \
