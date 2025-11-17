@@ -80,18 +80,11 @@ RUN /opt/venv/bin/pip install --quiet \
     tqdm==4.67.1 \
     jsonschema==4.23.0
 
-# Stage 6: Admin panel dependencies
-# Install admin panel packages first
+# Stage 6: Admin panel dependencies (using SQLAdmin instead of FastAPI-Admin for Python 3.11 compatibility)
 RUN /opt/venv/bin/pip install --quiet \
-    fastapi-admin==1.0.4 \
     sqladmin==0.1.10 \
     wtforms==3.1.2 \
     aiofiles==23.2.1
-
-# Stage 6b: Force install aioredis 2.x (compatible with Python 3.11)
-# Must be after fastapi-admin to override old version
-RUN /opt/venv/bin/pip install --quiet --force-reinstall --no-cache-dir \
-    "aioredis>=2.0.0"
 
 # Stage 7: Force SQLAlchemy 2.0.23 (install last to override any downgrades)
 RUN /opt/venv/bin/pip install --quiet --force-reinstall --no-cache-dir \
