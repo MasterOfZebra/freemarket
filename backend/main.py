@@ -25,6 +25,7 @@ from backend.chat_worker import chat_lifespan
 from backend.report_processor import report_processor_lifespan
 from backend.exchange_sync import exchange_sync_lifespan
 from backend.events import get_event_bus
+from backend.admin_panel import setup_admin_panel, setup_admin_api
 from backend.rate_limiting import RateLimitMiddleware
 from backend.error_tracking import init_sentry
 
@@ -95,6 +96,24 @@ async def add_api_version_header(request, call_next):
 print("[DEBUG] Including API router...")
 app.include_router(api_router)
 print("[DEBUG] API router included successfully")
+
+# Setup admin panel
+print("[DEBUG] Setting up admin panel...")
+try:
+    setup_admin_panel(app)
+    print("[DEBUG] Admin panel setup completed successfully")
+except Exception as e:
+    print(f"[ERROR] Failed to setup admin panel: {e}")
+    import traceback
+    traceback.print_exc()
+
+try:
+    setup_admin_api(app)
+    print("[DEBUG] Admin API setup completed successfully")
+except Exception as e:
+    print(f"[ERROR] Failed to setup admin API: {e}")
+    import traceback
+    traceback.print_exc()
 
 # Reset OpenAPI cache BEFORE gunicorn forking to ensure requestBody schemas are generated
 # This must happen in parent process before workers fork
