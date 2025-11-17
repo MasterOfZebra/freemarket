@@ -82,6 +82,12 @@ class User(Base):
     telegram_username = Column(String(50), nullable=True)                 # username (without @)
     telegram_first_name = Column(String(50), nullable=True)               # first_name from Telegram
 
+    # RBAC fields
+    role_id = Column(Integer, ForeignKey('roles.id'), nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
+    deleted_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+
     # Relationships
     profiles = relationship("Profile", back_populates="user")
     items = relationship("Item", back_populates="user")
@@ -115,6 +121,7 @@ class User(Base):
         foreign_keys="[Rating.to_user]",
         back_populates="to_user_rel"
     )
+    role = relationship("Role", back_populates="users")
 
     __table_args__ = (
         Index("ix_user_auth", "email", "phone", "username"),  # For auth lookups
@@ -475,8 +482,14 @@ class Listing(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Soft delete fields
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
+    deleted_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+
     # Relationships
     user = relationship("User", back_populates="listings")
+    items = relationship("ListingItem", back_populates="listing", cascade="all, delete-orphan")
     offers = relationship("ListingOffer", back_populates="listing", cascade="all, delete-orphan")
     wants = relationship("ListingWant", back_populates="listing", cascade="all, delete-orphan")
 
@@ -1049,3 +1062,83 @@ class Report(Base):
     def _isoformat_datetime(self, attr_name: str) -> Optional[str]:
         value = getattr(self, attr_name, None)
         return value.isoformat() if isinstance(value, datetime) else None
+
+
+# ==============================================
+# RBAC MODELS (Roles, Permissions, Complaints, Audit Log)
+# ==============================================
+
+class Role(Base):
+    """Role model for RBAC system"""
+    __tablename__ = "roles"
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+    
+    # Relationships
+    users = relationship("User", back_populates="role")
+    permissions = relationship("Permission", secondary="role_permissions", back_populates="roles")
+    
+    def __repr__(self):
+        return f"<Role(id={self.id}, name='{self.name}')>"
+
+
+class Permission(Base):
+    """Permission model for RBAC system"""
+    __tablename__ = "permissions"
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+    
+    # Relationships
+    roles = relationship("Role", secondary="role_permissions", back_populates="permissions")
+    
+    def __repr__(self):
+        return f"<Permission(id={self.id}, name='{self.name}')>"
+
+
+class RolePermission(Base):
+    """Junction table for role-permission many-to-many relationship"""
+    __tablename__ = "role_permissions"
+    
+    role_id = Column(Integer, ForeignKey('roles.id', ondelete="CASCADE"), primary_key=True)
+    permission_id = Column(Integer, ForeignKey('permissions.id', ondelete="CASCADE"), primary_key=True)
+
+
+class Complaint(Base):
+    """Complaint model for moderation system"""
+    __tablename__ = "complaints"
+    
+    id = Column(Integer, primary_key=True)
+    complainant_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    reported_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    reported_listing_id = Column(Integer, ForeignKey('listings.id'), nullable=True)
+    complaint_type = Column(String(50), nullable=True)
+    description = Column(Text, nullable=True)
+    status = Column(String(20), default='pending', nullable=True)
+    moderator_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=sa_text('now()'), nullable=True)
+    
+    def __repr__(self):
+        return f"<Complaint(id={self.id}, type='{self.complaint_type}', status='{self.status}')>"
+
+
+class AdminAuditLog(Base):
+    """Admin audit log for tracking admin actions"""
+    __tablename__ = "admin_audit_log"
+    
+    id = Column(Integer, primary_key=True)
+    request_id = Column(String, nullable=True)
+    admin_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    action = Column(String(100), nullable=False)
+    target_type = Column(String(50), nullable=True)
+    target_id = Column(Integer, nullable=True)
+    diff = Column(JSON, nullable=True)
+    details = Column(JSON, nullable=True)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=sa_text('now()'), nullable=True)
+    
+    def __repr__(self):
+        return f"<AdminAuditLog(id={self.id}, action='{self.action}', admin={self.admin_user_id})>"

@@ -32,28 +32,10 @@ class UserAdmin(ModelView, model=User):
     can_delete = False  # Use soft delete instead
     can_view_details = True
 
-    def is_accessible(self, request) -> bool:
+    async def is_accessible(self, request) -> bool:
         """Check if user has admin/moderator access"""
         # This will be checked by the authentication dependency
         return True
-
-    async def get_queryset(self, request):
-        """Filter users based on admin role"""
-        db = next(get_db())
-        try:
-            # Get current user from request (set by authentication middleware)
-            current_user = getattr(request.state, 'user', None)
-            if current_user and hasattr(current_user, 'role_id'):
-                # Get role name
-                role = db.query(Role).filter(Role.id == current_user.role_id).first()
-                if role and role.name == 'moderator':
-                    # Moderators can only see non-admin users
-                    admin_role = db.query(Role).filter(Role.name == 'admin').first()
-                    if admin_role:
-                        return db.query(User).filter(User.role_id != admin_role.id)
-            return db.query(User)
-        finally:
-            db.close()
 
 
 class ListingAdmin(ModelView, model=Listing):
@@ -102,7 +84,7 @@ def check_admin_access(user: User = Depends(get_current_user)) -> User:
 
 def setup_admin_panel(app: FastAPI):
     """Setup SQLAdmin panel with RBAC"""
-    
+
     # Create admin instance
     admin = Admin(
         app,
@@ -110,44 +92,43 @@ def setup_admin_panel(app: FastAPI):
         title=ADMIN_CONFIG["title"],
         base_url=ADMIN_CONFIG["admin_path"],
     )
-    
-    # Add authentication dependency
-    def authentication_backend(request):
-        """Custom authentication for admin panel"""
-        # Get authorization header
-        auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
-            # Try to get user from session/cookie (for web UI)
-            # For now, we'll use JWT token from header
-            return None
-        
-        token = auth_header.replace("Bearer ", "")
-        try:
-            from backend.auth import verify_token
-            payload = verify_token(token)
-            if payload:
-                user_id = payload.get("sub")
-                if user_id:
-                    db = next(get_db())
-                    try:
-                        user = db.query(User).filter(User.id == int(user_id)).first()
-                        if user and user.role_id:
-                            role = db.query(Role).filter(Role.id == user.role_id).first()
-                            if role and role.name in ['admin', 'moderator']:
-                                request.state.user = user
-                                return True
-                    finally:
-                        db.close()
-        except Exception:
-            pass
-        
-        return None
-    
+
     # Register views
     admin.add_view(UserAdmin)
     admin.add_view(ListingAdmin)
     admin.add_view(ComplaintAdmin)
-    
+
+    # Add authentication middleware
+    @app.middleware("http")
+    async def admin_auth_middleware(request, call_next):
+        """Custom authentication middleware for admin panel"""
+        if request.url.path.startswith(ADMIN_CONFIG["admin_path"]):
+            # Get authorization header
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.replace("Bearer ", "")
+                try:
+                    from backend.auth import verify_token
+                    payload = verify_token(token)
+                    if payload:
+                        user_id = payload.get("sub")
+                        if user_id:
+                            db = next(get_db())
+                            try:
+                                user = db.query(User).filter(User.id == int(user_id)).first()
+                                if user and user.role_id:
+                                    role = db.query(Role).filter(Role.id == user.role_id).first()
+                                    if role and role.name in ['admin', 'moderator']:
+                                        request.state.user = user
+                                        request.state.admin_user = user
+                            finally:
+                                db.close()
+                except Exception:
+                    pass
+
+        response = await call_next(request)
+        return response
+
     print(f"🔧 Admin panel configured at {ADMIN_CONFIG['admin_path']}")
 
 
