@@ -84,8 +84,8 @@ RUN /opt/venv/bin/pip install --quiet \
     tqdm==4.67.1 \
     jsonschema==4.23.0
 
-# Stage 6: Admin panel dependencies (using SQLAdmin - requires SQLAlchemy 2.0 already installed)
-RUN /opt/venv/bin/pip install --quiet --no-deps \
+# Stage 6: Admin panel dependencies (using SQLAdmin - SQLAlchemy 2.0.23 already installed)
+RUN /opt/venv/bin/pip install --quiet \
     "sqladmin>=0.17.0" \
     wtforms>=3.1.2 \
     aiofiles>=23.2.1
