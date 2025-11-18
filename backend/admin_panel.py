@@ -6,7 +6,7 @@ Uses SQLAdmin instead of FastAPI-Admin for Python 3.11 compatibility.
 """
 
 import os
-from typing import Optional
+from typing import Optional, cast
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqladmin import Admin, ModelView
 from sqlalchemy.orm import Session
@@ -17,16 +17,17 @@ from backend.auth import get_current_user, verify_password
 from backend.admin_config import ADMIN_CONFIG, ADMIN_SECURITY
 
 
-class UserAdmin(ModelView, model=User):
+class UserAdmin(ModelView):
     """Admin view for User model"""
+    model = User
     name = "User"
     name_plural = "Users"
     icon = "fa-solid fa-user"
-    column_list = [User.id, User.username, User.email, User.full_name, User.role_id, User.is_active, User.is_deleted, User.created_at]
-    column_searchable_list = [User.username, User.email, User.full_name]
-    column_sortable_list = [User.id, User.username, User.created_at]
-    column_details_list = [User.id, User.username, User.email, User.full_name, User.phone, User.telegram_contact, User.role_id, User.is_active, User.is_deleted, User.created_at]
-    form_columns = [User.username, User.email, User.full_name, User.phone, User.telegram_contact, User.role_id, User.is_active, User.is_deleted]
+    column_list = ["id", "username", "email", "full_name", "role_id", "is_active", "is_deleted", "created_at"]
+    column_searchable_list = ["username", "email", "full_name"]
+    column_sortable_list = ["id", "username", "created_at"]
+    column_details_list = ["id", "username", "email", "full_name", "phone", "telegram_contact", "role_id", "is_active", "is_deleted", "created_at"]
+    form_columns = ["username", "email", "full_name", "phone", "telegram_contact", "role_id", "is_active", "is_deleted"]
     can_create = True
     can_edit = True
     can_delete = False  # Use soft delete instead
@@ -38,29 +39,31 @@ class UserAdmin(ModelView, model=User):
         return True
 
 
-class ListingAdmin(ModelView, model=Listing):
+class ListingAdmin(ModelView):
     """Admin view for Listing model"""
+    model = Listing
     name = "Listing"
     name_plural = "Listings"
     icon = "fa-solid fa-list"
-    column_list = [Listing.id, Listing.user_id, Listing.title, Listing.is_deleted, Listing.created_at]
-    column_searchable_list = [Listing.title, Listing.description]
-    column_sortable_list = [Listing.id, Listing.created_at]
-    column_details_list = [Listing.id, Listing.user_id, Listing.title, Listing.description, Listing.is_deleted, Listing.created_at]
-    form_columns = [Listing.user_id, Listing.title, Listing.description, Listing.is_deleted]
+    column_list = ["id", "user_id", "title", "is_deleted", "created_at"]
+    column_searchable_list = ["title", "description"]
+    column_sortable_list = ["id", "created_at"]
+    column_details_list = ["id", "user_id", "title", "description", "is_deleted", "created_at"]
+    form_columns = ["user_id", "title", "description", "is_deleted"]
     can_create = True
     can_edit = True
     can_delete = False  # Use soft delete instead
     can_view_details = True
 
 
-class ComplaintAdmin(ModelView, model=Complaint):
+class ComplaintAdmin(ModelView):
     """Admin view for Complaint model"""
+    model = Complaint
     name = "Complaint"
     name_plural = "Complaints"
     icon = "fa-solid fa-flag"
-    column_list = [Complaint.id, Complaint.complainant_user_id, Complaint.reported_user_id, Complaint.status, Complaint.created_at]
-    column_sortable_list = [Complaint.id, Complaint.created_at, Complaint.status]
+    column_list = ["id", "complainant_user_id", "reported_user_id", "status", "created_at"]
+    column_sortable_list = ["id", "created_at", "status"]
     can_create = False
     can_edit = True
     can_delete = False
@@ -69,12 +72,13 @@ class ComplaintAdmin(ModelView, model=Complaint):
 
 def check_admin_access(user: User = Depends(get_current_user)) -> User:
     """Dependency to check if user has admin/moderator access"""
-    if not user.role_id:
+    role_id: Optional[int] = cast(Optional[int], getattr(user, 'role_id', None))
+    if role_id is None:  # type: ignore[comparison-overlap]
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     db = next(get_db())
     try:
-        role = db.query(Role).filter(Role.id == user.role_id).first()
+        role = db.query(Role).filter(Role.id == role_id).first()
         if not role or role.name not in ['admin', 'moderator']:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     finally:
@@ -86,10 +90,10 @@ def setup_admin_panel(app: FastAPI):
     """Setup SQLAdmin panel with RBAC"""
     import logging
     logger = logging.getLogger(__name__)
-    
+
     try:
         logger.info(f"Initializing SQLAdmin with base_url={ADMIN_CONFIG['admin_path']}")
-        
+
         # Create admin instance
         admin = Admin(
             app,
@@ -124,11 +128,13 @@ def setup_admin_panel(app: FastAPI):
                                 db = next(get_db())
                                 try:
                                     user = db.query(User).filter(User.id == int(user_id)).first()
-                                    if user and user.role_id:
-                                        role = db.query(Role).filter(Role.id == user.role_id).first()
-                                        if role and role.name in ['admin', 'moderator']:
-                                            request.state.user = user
-                                            request.state.admin_user = user
+                                    if user:
+                                        role_id = cast(Optional[int], getattr(user, 'role_id', None))
+                                        if role_id is not None:
+                                            role = db.query(Role).filter(Role.id == role_id).first()
+                                            if role and role.name in ['admin', 'moderator']:
+                                                request.state.user = user
+                                                request.state.admin_user = user
                                 finally:
                                     db.close()
                     except Exception:
@@ -139,7 +145,7 @@ def setup_admin_panel(app: FastAPI):
 
         logger.info(f"🔧 Admin panel configured at {ADMIN_CONFIG['admin_path']}")
         print(f"🔧 Admin panel configured at {ADMIN_CONFIG['admin_path']}")
-        
+
     except Exception as e:
         logger.error(f"Failed to setup admin panel: {e}", exc_info=True)
         print(f"[ERROR] Failed to setup admin panel: {e}")
@@ -177,9 +183,11 @@ def setup_admin_api(app: FastAPI):
             "token_id": str(uuid.uuid4())
         }
 
+        hours_value: int = ttl_hours if ttl_hours is not None else 24
+        expires = timedelta(hours=float(hours_value))
         token = create_access_token(
             token_data,
-            expires_delta=timedelta(hours=ttl_hours)
+            expires_delta=expires
         )
 
         # Log token generation (simplified)
