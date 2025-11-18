@@ -596,7 +596,7 @@ class ListingItem(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
-    listing = relationship("Listing", backref="items")
+    listing = relationship("Listing", back_populates="items")
     reports = relationship("Report", back_populates="target_listing")
 
     def __repr__(self):
