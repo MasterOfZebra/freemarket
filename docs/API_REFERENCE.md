@@ -247,7 +247,7 @@ Register a new user with email, password, and optional profile details. Returns 
 }
 ```
 
-**Note:** 
+**Note:**
 - The refresh token is automatically set as an HttpOnly cookie
 - User is automatically logged in after registration
 - Store the `access_token` in localStorage for subsequent requests
@@ -1764,5 +1764,32 @@ mutual_1_2_10_15,Jane Smith,COMPLETED,2025-11-05T10:00:00Z,5,"iPad Pro, MacBook 
 | Timeout | 30s |
 
 ---
+
+## Admin API (RBAC Protected)
+
+### Base URL
+`/admin` - SQLAdmin web interface
+- **Access**: Admin/Moderator roles only
+- **Login**: username=admin, password=admin123
+
+### Generate Scoped Token
+```
+POST /admin/api/generate-token
+Headers: Authorization: Bearer <admin_token>
+Body:
+{
+  "user_id": 123,
+  "scope": "read",  // read, write, full
+  "ttl_hours": 24
+}
+Response:
+{
+  "token": "eyJ...",
+  "user_id": 123,
+  "scope": "read",
+  "expires_in_hours": 24,
+  "generated_by": "admin"
+}
+```
 
 **For more details, see [docs/ARCHITECTURE.md](./ARCHITECTURE.MD) or [docs/TESTING.md](./TESTING.MD)**

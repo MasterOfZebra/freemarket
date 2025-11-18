@@ -57,6 +57,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.3] - 2025-11-18 - Admin Panel & RBAC Complete
+
+### Added
+- 🔐 **Role-Based Access Control (RBAC)**:
+  - Role, Permission, RolePermission models
+  - Users assigned default 'user' role during backfill
+  - Admin/Moderator permissions for moderation tasks
+
+- 🖥️ **SQLAdmin Panel** (/admin):
+  - User management with role assignment
+  - Listing moderation and soft delete
+  - Complaint handling system
+  - Audit logging for admin actions
+  - JWT authentication with role-based access
+
+- 📊 **Admin Features**:
+  - Generate scoped JWT tokens for users
+  - View and resolve user complaints
+  - Soft delete for users and listings
+  - Admin audit trail
+
+### Fixed
+- Authentication UX: Auto-login after registration, fixed 401 errors
+- JWT handling: Proper token validation and optional user fetching
+- Database migrations: RBAC schema, soft delete fields, BigInteger for telegram_id
+- Docker builds: Fixed dependency conflicts (SQLAlchemy 2.0.23 + sqladmin>=0.17.0)
+- Frontend: Fixed cabinet button clickability, listing visibility after creation
+- Backend: Unique constraint violations for username/telegram_id, asyncio task handling
+
+### Technical
+- SQLAdmin 0.21.0 (replaces FastAPI-Admin for Python 3.11 compatibility)
+- SQLAlchemy 2.0.23 with Alembic 1.13.1
+- Multi-stage Dockerfile optimization for production
+- Enhanced logging and error handling throughout
+
+---
+
 ## [2.2.0] - 2025-11-XX
 
 ### Added

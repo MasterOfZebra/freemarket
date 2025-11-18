@@ -1,7 +1,7 @@
 # 🎁 FreeMarket - AI-Powered Marketplace for Mutual Aid & Exchange
 
-**Version:** 2.2.2 (Production Ready & Fully Tested)
-**Status:** ✅ Production Ready with Full User Experience
+**Version:** 2.2.3 (Admin Panel + RBAC Complete)
+**Status:** ✅ Production Ready with Admin Panel
 
 ---
 
@@ -30,6 +30,7 @@ FreeMarket is a **complete peer-to-peer marketplace platform** for mutual aid an
 | **👨‍💻 Developers** | [Architecture](./docs/ARCHITECTURE.md) • [API Reference](./docs/API_REFERENCE.md) • [Setup](./docs/DEVELOPMENT.md) |
 | **🚀 DevOps** | [Deployment](./docs/DEPLOYMENT.md) • [Configuration](./docs/CONFIGURATION.md) |
 | **🧪 QA/Testing** | [Test Guide](./docs/TESTING.md) • [Integration Tests](./docs/INTEGRATION_TESTS.md) |
+| **🔐 Admins** | [Admin Guide](./docs/ADMIN_GUIDE.md) • [RBAC Setup](./docs/RBAC_SETUP.md) |
 
 ---
 
@@ -142,6 +143,17 @@ POST /api/matching/run-pipeline
 - 📊 **Adaptive Scoring** - Dynamic thresholds for better accuracy
 - 🔄 **Incremental Updates** - Event-driven matching recalculations
 - ⚡ **Real-Time Sync** - Auto-cleanup and profile updates
+
+### 5. Admin Panel (RBAC)
+```
+🔐 Role-Based Access Control (RBAC)
+- Admin/Moderator roles with permissions
+- SQLAdmin interface at /admin
+- User management, listing moderation, complaints
+- Audit logging for admin actions
+
+Login: username=admin, password=admin123
+```
 
 ---
 ### 🚀 Version 2.2 User Experience Enhancements

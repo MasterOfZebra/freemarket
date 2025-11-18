@@ -30,11 +30,11 @@
   # С токеном
   curl -X GET https://assistance-kz.ru/auth/me \
     -H "Authorization: Bearer <access_token>"
-  
+
   # Без токена (не должно быть ошибки 401 в консоли)
   curl -X GET https://assistance-kz.ru/auth/me
   ```
-  **Ожидаемый результат:** 
+  **Ожидаемый результат:**
   - С токеном: HTTP 200, `{user: {...}, authenticated: true}`
   - Без токена: HTTP 200, `{user: null, authenticated: false}` (не 401!)
 
@@ -61,7 +61,7 @@
   ```bash
   # Проверить наличие всех таблиц
   docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "\dt" | grep -E "(users|refresh_tokens|auth_events)"
-  
+
   # Проверить наличие полей в users
   docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "\d users" | grep -E "(telegram_username|telegram_first_name|rating_count|last_rating_update)"
   ```
@@ -92,9 +92,9 @@
 - **Проверка refresh_tokens:**
   ```bash
   docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "
-    SELECT user_id, device_id, issued_at, expires_at, is_revoked 
-    FROM refresh_tokens 
-    ORDER BY issued_at DESC 
+    SELECT user_id, device_id, issued_at, expires_at, is_revoked
+    FROM refresh_tokens
+    ORDER BY issued_at DESC
     LIMIT 1;
   "
   ```
@@ -103,9 +103,9 @@
 - **Проверка auth_events:**
   ```bash
   docker compose -f docker-compose.prod.yml exec postgres psql -U assistadmin_pg -d assistance_kz -c "
-    SELECT event_type, success, created_at 
-    FROM auth_events 
-    ORDER BY created_at DESC 
+    SELECT event_type, success, created_at
+    FROM auth_events
+    ORDER BY created_at DESC
     LIMIT 5;
   "
   ```
@@ -907,3 +907,55 @@ Phase 12: Production Readiness
 ---
 
 **For more details, see [docs/API_REFERENCE.md](./API_REFERENCE.md) or [docs/ARCHITECTURE.md](./ARCHITECTURE.md)**
+
+## Admin Panel Testing
+
+### Prerequisites
+- Admin user: username=admin, password=admin123
+- SQLAdmin at /admin
+
+### Test Scenarios
+
+#### 1. Admin Login
+1. Navigate to `/admin`
+2. Enter username: admin, password: admin123
+3. **Expected**: Dashboard loads with User/Listings/Complaints menus
+4. **Error**: 403 Forbidden or login failure
+
+#### 2. User Management
+1. Click "Users" → "All Users"
+2. **Expected**: List of users with columns: ID, Username, Email, Role, Active
+3. Create new user:
+   - Click "Create"
+   - Fill form: username=testuser, email=test@example.com, role=user
+   - **Expected**: User created successfully
+4. Edit user role:
+   - Click user → Edit
+   - Change role to moderator
+   - **Expected**: Role updated, user now has moderator permissions
+
+#### 3. Listing Moderation
+1. Create test listing via API or frontend
+2. Go to "Listings" → Filter by status
+3. **Expected**: See test listing, can edit/delete (soft delete)
+4. Mark as deleted:
+   - Select listing → Edit → Set is_deleted=True
+   - **Expected**: Listing marked deleted, hidden from frontend
+
+#### 4. Complaint Handling
+1. Create test complaint via API:
+   ```
+   POST /api/complaints
+   {
+     "complainant_user_id": 1,
+     "reported_user_id": 2,
+     "complaint_type": "spam",
+     "description": "Test complaint"
+   }
+   ```
+2. Go to "Complaints"
+3. **Expected**: See complaint in pending status
+4. Resolve complaint:
+   - Click complaint → Edit
+   - Set status="resolved", add moderator notes
+   - **Expected**: Status updated to resolved
