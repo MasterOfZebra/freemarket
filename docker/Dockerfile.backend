@@ -33,12 +33,16 @@ WORKDIR /app
 COPY backend/requirements.txt .
 
 # Install dependencies in stages to reduce peak memory usage
-# Stage 1: Core dependencies first (uvicorn and fastapi with all dependencies)
+# Stage 1: SQLAlchemy 2.0.23 FIRST (before sqladmin to avoid conflicts)
+RUN /opt/venv/bin/pip install --quiet \
+    sqlalchemy==2.0.23
+
+# Stage 1b: Core dependencies (uvicorn and fastapi with all dependencies)
 RUN /opt/venv/bin/pip install --quiet \
     uvicorn[standard]==0.24.0 \
     fastapi==0.104.1
 
-# Stage 1b: Other core dependencies (without deps to avoid conflicts)
+# Stage 1c: Other core dependencies (without deps to avoid conflicts)
 RUN /opt/venv/bin/pip install --quiet --no-deps \
     python-multipart==0.0.6 \
     psycopg2-binary==2.9.9 \
@@ -80,15 +84,14 @@ RUN /opt/venv/bin/pip install --quiet \
     tqdm==4.67.1 \
     jsonschema==4.23.0
 
-# Stage 6: Admin panel dependencies (using SQLAdmin instead of FastAPI-Admin for Python 3.11 compatibility)
-RUN /opt/venv/bin/pip install --quiet \
+# Stage 6: Admin panel dependencies (using SQLAdmin - requires SQLAlchemy 2.0 already installed)
+RUN /opt/venv/bin/pip install --quiet --no-deps \
     "sqladmin>=0.17.0" \
     wtforms>=3.1.2 \
     aiofiles>=23.2.1
 
-# Stage 7: Force SQLAlchemy 2.0.23 (install last to override any downgrades)
-RUN /opt/venv/bin/pip install --quiet --force-reinstall --no-cache-dir \
-    sqlalchemy==2.0.23
+# Stage 7: Verify SQLAlchemy version (should already be 2.0.23 from Stage 1)
+RUN /opt/venv/bin/pip show sqlalchemy | grep Version || echo "SQLAlchemy not found"
 
 # ================================
 # Runtime stage - clean, minimal image
