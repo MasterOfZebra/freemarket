@@ -17,17 +17,16 @@ from backend.auth import get_current_user, verify_password
 from backend.admin_config import ADMIN_CONFIG, ADMIN_SECURITY
 
 
-class UserAdmin(ModelView):
+class UserAdmin(ModelView, model=User):
     """Admin view for User model"""
-    model = User
     name = "User"
     name_plural = "Users"
     icon = "fa-solid fa-user"
-    column_list = ["id", "username", "email", "full_name", "role_id", "is_active", "is_deleted", "created_at"]
-    column_searchable_list = ["username", "email", "full_name"]
-    column_sortable_list = ["id", "username", "created_at"]
-    column_details_list = ["id", "username", "email", "full_name", "phone", "telegram_contact", "role_id", "is_active", "is_deleted", "created_at"]
-    form_columns = ["username", "email", "full_name", "phone", "telegram_contact", "role_id", "is_active", "is_deleted"]
+    column_list = [User.id, User.username, User.email, User.full_name, User.role_id, User.is_active, User.is_deleted, User.created_at]
+    column_searchable_list = [User.username, User.email, User.full_name]
+    column_sortable_list = [User.id, User.username, User.created_at]
+    column_details_list = [User.id, User.username, User.email, User.full_name, User.phone, User.telegram_contact, User.role_id, User.is_active, User.is_deleted, User.created_at]
+    form_columns = [User.username, User.email, User.full_name, User.phone, User.telegram_contact, User.role_id, User.is_active, User.is_deleted]
     can_create = True
     can_edit = True
     can_delete = False  # Use soft delete instead
@@ -39,31 +38,29 @@ class UserAdmin(ModelView):
         return True
 
 
-class ListingAdmin(ModelView):
+class ListingAdmin(ModelView, model=Listing):
     """Admin view for Listing model"""
-    model = Listing
     name = "Listing"
     name_plural = "Listings"
     icon = "fa-solid fa-list"
-    column_list = ["id", "user_id", "title", "is_deleted", "created_at"]
-    column_searchable_list = ["title", "description"]
-    column_sortable_list = ["id", "created_at"]
-    column_details_list = ["id", "user_id", "title", "description", "is_deleted", "created_at"]
-    form_columns = ["user_id", "title", "description", "is_deleted"]
+    column_list = [Listing.id, Listing.user_id, Listing.title, Listing.is_deleted, Listing.created_at]
+    column_searchable_list = [Listing.title, Listing.description]
+    column_sortable_list = [Listing.id, Listing.created_at]
+    column_details_list = [Listing.id, Listing.user_id, Listing.title, Listing.description, Listing.is_deleted, Listing.created_at]
+    form_columns = [Listing.user_id, Listing.title, Listing.description, Listing.is_deleted]
     can_create = True
     can_edit = True
     can_delete = False  # Use soft delete instead
     can_view_details = True
 
 
-class ComplaintAdmin(ModelView):
+class ComplaintAdmin(ModelView, model=Complaint):
     """Admin view for Complaint model"""
-    model = Complaint
     name = "Complaint"
     name_plural = "Complaints"
     icon = "fa-solid fa-flag"
-    column_list = ["id", "complainant_user_id", "reported_user_id", "status", "created_at"]
-    column_sortable_list = ["id", "created_at", "status"]
+    column_list = [Complaint.id, Complaint.complainant_user_id, Complaint.reported_user_id, Complaint.status, Complaint.created_at]
+    column_sortable_list = [Complaint.id, Complaint.created_at, Complaint.status]
     can_create = False
     can_edit = True
     can_delete = False
