@@ -153,12 +153,16 @@ def setup_admin_panel(app: FastAPI):
 
 def setup_admin_api(app: FastAPI):
     """Setup additional admin API endpoints"""
+    from pydantic import BaseModel
+
+    class TokenRequest(BaseModel):
+        user_id: int
+        scope: Optional[str] = "read"
+        ttl_hours: Optional[int] = 24
 
     @app.post("/admin/api/generate-token", tags=["Admin"], dependencies=[Depends(check_admin_access)])
     async def generate_user_token(
-        user_id: int,
-        scope: Optional[str] = "read",
-        ttl_hours: Optional[int] = 24,
+        request: TokenRequest,
         admin: User = Depends(check_admin_access),
         db: Session = Depends(get_db)
     ):
@@ -166,6 +170,11 @@ def setup_admin_api(app: FastAPI):
         from backend.auth import create_access_token
         from datetime import timedelta
         import uuid
+
+        # Extract parameters from request body
+        user_id = request.user_id
+        scope = request.scope
+        ttl_hours = request.ttl_hours
 
         # Check if target user exists
         target_user = db.query(User).filter(User.id == user_id).first()
