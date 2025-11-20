@@ -160,7 +160,7 @@ def setup_admin_api(app: FastAPI):
         scope: Optional[str] = "read"
         ttl_hours: Optional[int] = 24
 
-    @app.post("/admin/api/generate-token", tags=["Admin"], dependencies=[Depends(check_admin_access)])
+    @app.post("/api/admin/generate-token", tags=["Admin"], dependencies=[Depends(check_admin_access)])
     async def generate_user_token(
         request: TokenRequest,
         admin: User = Depends(check_admin_access),

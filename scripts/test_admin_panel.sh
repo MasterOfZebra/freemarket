@@ -33,14 +33,14 @@ docker compose -f docker-compose.prod.yml exec -T backend curl -sS -w "\nHTTP St
   http://localhost:8000/admin/ 2>&1 | tail -2
 echo ""
 
-# 4. Проверка API эндпоинта /admin/api/generate-token
-echo "4. Проверка API /admin/api/generate-token:"
+# 4. Проверка API эндпоинта /api/admin/generate-token
+echo "4. Проверка API /api/admin/generate-token:"
 RESPONSE=$(docker compose -f docker-compose.prod.yml exec -T backend curl -sS -w "\n%{http_code}" \
   -X POST \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"user_id": 1, "scope": "read", "ttl_hours": 24}' \
-  http://localhost:8000/admin/api/generate-token 2>&1)
+  http://localhost:8000/api/admin/generate-token 2>&1)
 
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 BODY=$(echo "$RESPONSE" | head -n -1)
@@ -97,7 +97,7 @@ echo "Готовый токен для API:"
 echo "export TOKEN=\"$TOKEN\""
 echo ""
 echo "Пример использования API:"
-echo "curl -X POST https://assistance-kz.ru/admin/api/generate-token \\"
+echo "curl -X POST https://assistance-kz.ru/api/admin/generate-token \\"
 echo "  -H \"Authorization: Bearer \$TOKEN\" \\"
 echo "  -H \"Content-Type: application/json\" \\"
 echo "  -d '{\"user_id\": 1, \"scope\": \"read\", \"ttl_hours\": 24}'"
